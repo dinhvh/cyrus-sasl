@@ -1,7 +1,7 @@
 /* db_berkeley.c--SASL berkeley db interface
  * Rob Siemborski
  * Tim Martin
- * $Id: db_berkeley.c,v 1.1.2.1 2001/07/17 21:48:48 rjs3 Exp $
+ * $Id: db_berkeley.c,v 1.1.2.2 2001/07/18 18:47:54 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -71,7 +71,7 @@ static int berkeleydb_open(const sasl_utils_t *utils,
     if (utils->getcallback(conn, SASL_CB_GETOPT,
 			   &getopt, &cntxt) == SASL_OK) {
 	const char *p;
-	if (getopt(cntxt, NULL, "sasldb_path", &p, NULL) == SASL_OK 
+      	if (getopt(cntxt, NULL, "sasldb_path", &p, NULL) == SASL_OK 
 	    && p != NULL && *p != 0) {
 	    path = p;
 	}
@@ -135,17 +135,23 @@ static int alloc_key(const sasl_utils_t *utils,
 {
   size_t auth_id_len, realm_len;
 
+  /* this is here for future expansion */
+  const char propName[] = SASL_AUX_PASSWORD;
+  const int propLen = sizeof(propName);
+  
   assert(utils && auth_identity && realm && key && key_len);
 
   auth_id_len = strlen(auth_identity);
   realm_len = strlen(realm);
-  *key_len = auth_id_len + realm_len + 1;
+  *key_len = auth_id_len + realm_len + propLen + 2;
   *key = utils->malloc(*key_len);
   if (! *key)
     return SASL_NOMEM;
   memcpy(*key, auth_identity, auth_id_len);
   (*key)[auth_id_len] = '\0';
   memcpy(*key + auth_id_len + 1, realm, realm_len);
+  (*key)[auth_id_len + realm_len + 1] = '\0';
+  memcpy(*key + auth_id_len + realm_len + 2, propName, propLen);
 
   return SASL_OK;
 }
@@ -251,7 +257,7 @@ putsecret(const sasl_utils_t *utils,
   DBT dbkey;
   DB *mbdb = NULL;
 
-  if (!auth_identity || !realm)
+  if (!auth_identity || !realm || !db_ok)
       return SASL_FAIL;
 
   result = alloc_key(utils, auth_identity, realm, &key, &key_len);
