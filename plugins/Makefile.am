@@ -47,10 +47,10 @@
 # CURRENT:REVISION:AGE
 plain_version = 1:0:0
 anonymous_version = 1:0:0
-kerberos4_version = 1:0:1
+kerberos4_version = 1:1:0
 crammd5_version = 1:0:0
 gssapiv2_version = 1:0:0
-digestmd5_version = 1:0:1
+digestmd5_version = 1:1:0
 login_version = 1:0:0
 srp_version = 1:0:0
 
