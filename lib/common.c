@@ -1,7 +1,7 @@
 /* common.c - Functions that are common to server and clinet
  * Rob Siemborski
  * Tim Martin
- * $Id: common.c,v 1.64.2.29 2001/07/03 18:00:56 rjs3 Exp $
+ * $Id: common.c,v 1.64.2.30 2001/07/06 21:06:15 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -273,7 +273,8 @@ void sasl_done(void)
     _sasl_client_cleanup_hook();
   
   _sasl_canonuser_free();
-
+  _sasl_done_with_plugins();
+  
   sasl_MUTEX_FREE(free_mutex);
   free_mutex = NULL;
 

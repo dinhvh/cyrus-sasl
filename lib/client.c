@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: client.c,v 1.34.4.20 2001/07/06 18:14:23 rjs3 Exp $
+ * $Id: client.c,v 1.34.4.21 2001/07/06 21:06:15 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -89,10 +89,7 @@ static void client_done(void) {
 	cprevm->plug->mech_free(cprevm->plug->glob_context,
 				cmechlist->utils);
     }
-    
-    if (cprevm->library!=NULL) {
-	_sasl_done_with_plugin(cprevm->library);
-    }
+
     sasl_FREE(cprevm);    
   }
   sasl_MUTEX_FREE(cmechlist->mutex);
@@ -187,6 +184,11 @@ client_idle(sasl_conn_t *conn)
 int sasl_client_init(const sasl_callback_t *callbacks)
 {
   int ret;
+  const add_plugin_list_t ep_list[] = {
+      { "sasl_client_plug_init", (void *)&sasl_client_add_plugin },
+      { "sasl_canonuser_init", (void *)&sasl_canonuser_add_plugin },
+      { NULL, NULL }
+  };
 
   _sasl_client_cleanup_hook = &client_done;
   _sasl_client_idle_hook = &client_idle;
@@ -202,15 +204,14 @@ int sasl_client_init(const sasl_callback_t *callbacks)
   if (ret!=SASL_OK)
     return ret;
 
-  add_plugin((void *) &external_client_init, NULL);
+  sasl_client_add_plugin("EXTERNAL", &external_client_init);
 
   ret = _sasl_common_init();
 
   if (ret == SASL_OK)
-      ret=_sasl_get_mech_list("sasl_client_plug_init",
-			      _sasl_find_getpath_callback(callbacks),
-			      _sasl_find_verifyfile_callback(callbacks),
-			      &add_plugin);
+      ret = _sasl_load_plugins(ep_list,
+			       _sasl_find_getpath_callback(callbacks),
+			       _sasl_find_verifyfile_callback(callbacks));
   
   return ret;
 }

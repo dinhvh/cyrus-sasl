@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: server.c,v 1.84.2.39 2001/07/06 18:14:23 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.40 2001/07/06 21:06:16 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -267,9 +267,9 @@ static int init_mechlist(void)
 /*
  * parameters:
  *  p - entry point
- *  library - shared library ptr returned by dlopen
  */
-static int add_plugin(void *p, void *library) 
+int sasl_server_add_plugin(const char *plugname __attribute__((unused)),
+			   sasl_server_plug_init_t *p)
 {
     int plugcount;
     sasl_server_plug_t *pluglist;
@@ -313,29 +313,12 @@ static int add_plugin(void *p, void *library)
 	/* wheather this mech actually has any users in it's db */
 	mech->condition = result; /* SASL_OK or SASL_NOUSER */
 
-	/*
-	 * We want plugin library to close but we only
-	 * want to do this once per plugin regardless
-	 * of how many mechs are in a single plugin 
-	 */
-	if (lupe==0) {
-	    mech->u.library=library;
- 	} else {
-	    mech->u.library=NULL;
-	}
-
 	mech->next = mechlist->mech_list;
 	mechlist->mech_list = mech;
 	mechlist->mech_length++;
     }
 
     return SASL_OK;
-}
-
-int sasl_server_add_plugin(const char *plugname __attribute__((unused)),
-			   sasl_server_plug_init_t *entry)
-{
-    return add_plugin(entry, NULL);
 }
 
 static void server_done(void) {
@@ -359,11 +342,7 @@ static void server_done(void) {
 	  if (prevm->plug->glob_context!=NULL) {
 	      sasl_FREE(prevm->plug->glob_context);
 	  }
-	  
-	  if (prevm->condition == SASL_OK && prevm->u.library != NULL) {
-	      _sasl_done_with_plugin(prevm->u.library);
-	  }
-	  
+	  	  
 	  sasl_FREE(prevm);    
       }
       _sasl_free_utils(&mechlist->utils);
@@ -540,7 +519,7 @@ static int parse_mechlist_file(const char *mechlistfile)
 	*/
 	
 	/* grab file */
-	n->u.f = grab_field(buf, &ptr);
+	n->f = grab_field(buf, &ptr);
 
 	/* grab mech_name */
 	nplug->mech_name = grab_field(ptr, &ptr);
@@ -604,6 +583,13 @@ int sasl_server_init(const sasl_callback_t *callbacks,
     sasl_getopt_t *getopt;
     void *context;
 
+    const add_plugin_list_t ep_list[] = {
+	{ "sasl_server_plug_init", (void *)&sasl_server_add_plugin },
+	{ "sasl_auxprop_plug_init", (void *)&sasl_auxprop_add_plugin },
+	{ "sasl_canonuser_init", (void *)&sasl_canonuser_add_plugin },
+	{ NULL, NULL }
+    };
+
     /* we require the appname to be non-null */
     if (appname==NULL) return SASL_BADPARAM;
 
@@ -636,7 +622,7 @@ int sasl_server_init(const sasl_callback_t *callbacks,
 
     /* load internal plugins */
     sasl_auxprop_add_plugin("SASLDB", &sasldb_auxprop_plug_init);
-    add_plugin((void *)&external_server_init, NULL);
+    sasl_server_add_plugin(NULL, &external_server_init);
 
     /* delayed loading of plugins? (DSO only, as it doesn't
      * make much [any] sense to delay in the static library case) */
@@ -663,24 +649,10 @@ int sasl_server_init(const sasl_callback_t *callbacks,
 	    ret = parse_mechlist_file(pluginfile);
 	}
     } else {
-	const sasl_callback_t *getpath_cb, *verifyfile_cb;
-
-	getpath_cb = _sasl_find_getpath_callback(callbacks);
-	verifyfile_cb = _sasl_find_verifyfile_callback(callbacks);
-	
 	/* load all plugins now */
-	ret = _sasl_get_mech_list("sasl_server_plug_init",
-				  getpath_cb, verifyfile_cb,
-				  &add_plugin);
-	if(ret == SASL_OK)
-	    ret = _sasl_get_mech_list("sasl_auxprop_plug_init",
-				      getpath_cb, verifyfile_cb,
-				      &_sasl_auxprop_add_plugin);
-	if(ret == SASL_OK)
-	    ret = _sasl_get_mech_list("sasl_canonuser_init",
-				      getpath_cb, verifyfile_cb,
-				      &_sasl_canonuser_add_plugin);
-	
+	ret = _sasl_load_plugins(ep_list,
+				 _sasl_find_getpath_callback(callbacks),
+				 _sasl_find_verifyfile_callback(callbacks));
     }
 
     if (ret == SASL_OK)	ret = _sasl_common_init();
@@ -1009,13 +981,20 @@ int sasl_server_start(sasl_conn_t *conn,
 	int l = 0;
 
 	/* need to load this plugin */
-	result = _sasl_get_plugin(m->u.f, "sasl_server_plug_init",
+	result = _sasl_get_plugin(m->f,
 		    _sasl_find_verifyfile_callback(global_callbacks.callbacks),
-				  (void **) &entry_point, &library);
+				  &library);
+
+	if (result == SASL_OK) {
+	    result = _sasl_locate_entry(library, "sasl_server_plug_init",
+					(void **)&entry_point);
+	}
+
 	if (result == SASL_OK) {
 	    result = entry_point(mechlist->utils, SASL_SERVER_PLUG_VERSION,
 				 &version, &pluglist, &plugcount);
 	}
+
 	if (result == SASL_OK) {
 	    /* find the correct mechanism in this plugin */
 	    for (l = 0; l < plugcount; l++) {
@@ -1041,14 +1020,10 @@ int sasl_server_start(sasl_conn_t *conn,
 	    sasl_FREE((sasl_server_plug_t *) m->plug);
 	    m->plug = &pluglist[l];
 	    m->condition = SASL_OK;
-	    m->u.library = library;
 	}
 
 	if (result != SASL_OK) {
-	    if (library) {
-		/* won't be using you after all */
-		_sasl_done_with_plugin(library);
-	    }
+	    /* The library will eventually be freed, don't sweat it */
 	    return result;
 	}
     }

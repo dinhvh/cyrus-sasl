@@ -1,7 +1,7 @@
 /* saslint.h - internal SASL library definitions
  * Rob Siemborski
  * Tim Martin
- * $Id: saslint.h,v 1.33.2.30 2001/07/06 18:14:23 rjs3 Exp $
+ * $Id: saslint.h,v 1.33.2.31 2001/07/06 21:06:16 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -75,6 +75,12 @@ typedef struct buffer_info
     unsigned reallen;
 } buffer_info_t;
 
+typedef struct add_plugin_list 
+{
+    const char *entryname;
+    int (*add_plugin)(const char *, void *);
+} add_plugin_list_t;
+
 enum Sasl_conn_type { SASL_CONN_UNKNOWN = 0,
 		      SASL_CONN_SERVER = 1,
                       SASL_CONN_CLIENT = 2 };
@@ -131,11 +137,7 @@ typedef struct mechanism
 		      set to SASL_CONTINUE if delayed plugn loading */
     const sasl_server_plug_t *plug;
     struct mechanism *next;
-    union {
-	void *library; /* this a pointer to shared library returned by dlopen 
-			  or some similar function on other platforms */
-	char *f;       /* where should i load the mechanism from? */
-    } u;
+    char *f;       /* where should i load the mechanism from? */
 } mechanism_t;
 
 typedef struct mech_list {
@@ -278,16 +280,23 @@ extern int _is_sasl_server_active(void);
 /*
  * dlopen.c and staticopen.c
  */
-extern int _sasl_get_mech_list(const char *entryname,
+/*
+ * The differences here are:
+ * _sasl_load_plugins loads all plugins from all files
+ * _sasl_get_plugin loads the LIBRARY for an individual file
+ * _sasl_done_with_plugins frees the LIBRARIES loaded by the above 2
+ * _sasl_locate_entry locates an entrypoint in a given library
+ */
+extern int _sasl_load_plugins(const add_plugin_list_t *entrypoints,
 			       const sasl_callback_t *getpath_callback,
-			       const sasl_callback_t *verifyfile_callback,
-			       int (*add_plugin)(void *,void *));
-extern int _sasl_done_with_plugin(void *plugin);
+			       const sasl_callback_t *verifyfile_callback);
 extern int _sasl_get_plugin(const char *file,
-			    const char *entryname,
-			    const sasl_callback_t *verifyfile_callback,
-			    void **entrypoint,
-			    void **library);
+			    const sasl_callback_t *verifyfile_cb,
+			    void **libraryptr);
+extern int _sasl_locate_entry(void *library, const char *entryname,
+                              void **entry_point);
+extern int _sasl_done_with_plugins();
+
 
 /*
  * common.c

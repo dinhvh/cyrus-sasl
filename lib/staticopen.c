@@ -1,7 +1,7 @@
 /* dlopen.c--Unix dlopen() dynamic loader interface
  * Rob Siemborski
  * Rob Earhart
- * $Id: staticopen.c,v 1.1.2.2 2001/07/06 15:22:56 rjs3 Exp $
+ * $Id: staticopen.c,v 1.1.2.3 2001/07/06 21:06:16 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -54,123 +54,147 @@
 const int _is_sasl_server_static = 1;
 
 /* gets the list of mechanisms */
-int _sasl_get_mech_list(const char *entryname,
-			const sasl_callback_t *getpath_cb
-			  __attribute__((unused)),
-			const sasl_callback_t *verifyfile_cb
-			  __attribute__((unused)),
-			int (*add_plugin)(void *,void *))
+int _sasl_load_plugins(const add_plugin_list_t *entrypoints,
+                       const sasl_callback_t *getpath_callback __attribute__((unused)),
+                       const sasl_callback_t *verifyfile_callback __attribute__((unused)))
 {
-    int result;
+    int result = SASL_OK;
+    const add_plugin_list_t *cur_ep;
+    int (*add_plugin)(const char *, void *);
+    enum {
+	UNKNOWN = 0, SERVER = 1, CLIENT = 2, AUXPROP = 3, CANONUSER = 4
+    } type;
 
-    enum Sasl_conn_type type;
+    for(cur_ep = entrypoints; cur_ep->entryname; cur_ep++) {
 
-    /* What type of plugin are we looking for? */
-    if(!strcmp(entryname, "sasl_server_plug_init")) {
-	type = SASL_CONN_SERVER;
-    } else if (!strcmp(entryname, "sasl_client_plug_init")) {
-	type = SASL_CONN_CLIENT;
-    } else if (!strcmp(entryname, "sasl_auxprop_plug_init")) {
-	/* NOT IMPLEMENTED */
-	return SASL_OK;
-    } else if (!strcmp(entryname, "sasl_canonuser_init")) {
-	/* NOT IMPLEMENTED */
-	return SASL_OK;
-    } else {
-	/* What are we looking for then? */
-	return SASL_FAIL;
-    }
+	/* What type of plugin are we looking for? */
+	if(!strcmp(cur_ep->entryname, "sasl_server_plug_init")) {
+	    type = SERVER;
+	    add_plugin = (void *)sasl_server_add_plugin;
+	} else if (!strcmp(cur_ep->entryname, "sasl_client_plug_init")) {
+	    type = CLIENT;
+	    add_plugin = (void *)sasl_client_add_plugin;
+	} else if (!strcmp(cur_ep->entryname, "sasl_auxprop_plug_init")) {
+	    type = AUXPROP;
+	    add_plugin = (void *)sasl_auxprop_add_plugin;
+	} else if (!strcmp(cur_ep->entryname, "sasl_canonuser_init")) {
+	    type = CANONUSER;
+	    add_plugin = (void *)sasl_canonuser_add_plugin;
+	} else {
+	    /* What are we looking for then? */
+	    return SASL_FAIL;
+	}
 
 #ifdef STATIC_ANONYMOUS
-    if(type == SASL_CONN_SERVER) {
-	result = (*add_plugin)(SPECIFIC_SERVER_PLUG_INIT( anonymous ), NULL);
-    } else {
-	result = (*add_plugin)(SPECIFIC_CLIENT_PLUG_INIT( anonymous ), NULL);
-    }
-    if(result != SASL_OK) return result;
+	if(type == SERVER) {
+	    result = (*add_plugin)("ANONYMOUS",
+				   SPECIFIC_SERVER_PLUG_INIT( anonymous ));
+	} else if (type == CLIENT) {
+	    result = (*add_plugin)("ANONYMOUS",
+				   SPECIFIC_CLIENT_PLUG_INIT( anonymous ));
+	}
+	if(result != SASL_OK) return result;
 #endif
 
 #ifdef STATIC_CRAMMD5
-    if(type == SASL_CONN_SERVER) {
-	result = (*add_plugin)(SPECIFIC_SERVER_PLUG_INIT( crammd5 ), NULL);
-    } else {
-	result = (*add_plugin)(SPECIFIC_CLIENT_PLUG_INIT( crammd5 ), NULL);
-    }
-    if(result != SASL_OK) return result;
+	if(type == SERVER) {
+	    result = (*add_plugin)("CRAM-MD5",
+				   SPECIFIC_SERVER_PLUG_INIT( crammd5 ));
+	} else if (type == CLIENT) {
+	    result = (*add_plugin)("CRAM-MD5",
+				   SPECIFIC_CLIENT_PLUG_INIT( crammd5 ));
+	}
+	if(result != SASL_OK) return result;
 #endif
 
 #ifdef STATIC_DIGESTMD5
-    if(type == SASL_CONN_SERVER) {
-	result = (*add_plugin)(SPECIFIC_SERVER_PLUG_INIT( digestmd5 ), NULL);
-    } else {
-	result = (*add_plugin)(SPECIFIC_CLIENT_PLUG_INIT( digestmd5 ), NULL);
-    }
-    if(result != SASL_OK) return result;
+	if(type == SERVER) {
+	    result = (*add_plugin)("DIGEST-MD5",
+				   SPECIFIC_SERVER_PLUG_INIT( digestmd5 ));
+	} else if (type == CLIENT) {
+	    result = (*add_plugin)("DIGEST-MD5",
+				   SPECIFIC_CLIENT_PLUG_INIT( digestmd5 ));
+	}
+	if(result != SASL_OK) return result;
 #endif
 
 #ifdef STATIC_GSSAPIV2
-    if(type == SASL_CONN_SERVER) {
-	result = (*add_plugin)(SPECIFIC_SERVER_PLUG_INIT( gssapiv2 ), NULL);
-    } else {
-	result = (*add_plugin)(SPECIFIC_CLIENT_PLUG_INIT( gssapiv2 ), NULL);
-    }
-    if(result != SASL_OK) return result;
+	if(type == SERVER) {
+	    result = (*add_plugin)("GSSAPI",
+				   SPECIFIC_SERVER_PLUG_INIT( gssapiv2 ));
+	} else if (type == CLIENT) {
+	    result = (*add_plugin)("GSSAPI",
+				   SPECIFIC_CLIENT_PLUG_INIT( gssapiv2 ));
+	}
+	if(result != SASL_OK) return result;
 #endif
 
 #ifdef STATIC_KERBEROS4
-    if(type == SASL_CONN_SERVER) {
-	result = (*add_plugin)(SPECIFIC_SERVER_PLUG_INIT( kerberos4 ), NULL);
-    } else {
-	result = (*add_plugin)(SPECIFIC_CLIENT_PLUG_INIT( kerberos4 ), NULL);
-    }
-    if(result != SASL_OK) return result;
+	if(type == SERVER) {
+	    result = (*add_plugin)("KERBEROS_V4",
+				   SPECIFIC_SERVER_PLUG_INIT( kerberos4 ));
+	} else if (type == CLIENT) {
+	    result = (*add_plugin)("KERBEROS_V4",
+				   SPECIFIC_CLIENT_PLUG_INIT( kerberos4 ));
+	}
+	if(result != SASL_OK) return result;
 #endif
 
 #ifdef STATIC_LOGIN
-    if(type == SASL_CONN_SERVER) {
-	result = (*add_plugin)(SPECIFIC_SERVER_PLUG_INIT( login ), NULL);
-    } else {
-	result = (*add_plugin)(SPECIFIC_CLIENT_PLUG_INIT( login ), NULL);
-    }
-    if(result != SASL_OK) return result;
+	if(type == SERVER) {
+	    result = (*add_plugin)("LOGIN",
+				   SPECIFIC_SERVER_PLUG_INIT( login ));
+	} else if (type == CLIENT) {
+	    result = (*add_plugin)("LOGIN",
+				   SPECIFIC_CLIENT_PLUG_INIT( login ));
+	}
+	if(result != SASL_OK) return result;
 #endif
 
 #ifdef STATIC_PLAIN
-    if(type == SASL_CONN_SERVER) {
-	result = (*add_plugin)(SPECIFIC_SERVER_PLUG_INIT( plain ), NULL);
-    } else {
-	result = (*add_plugin)(SPECIFIC_CLIENT_PLUG_INIT( plain ), NULL);
-    }
-    if(result != SASL_OK) return result;
+	if(type == SERVER) {
+	    result = (*add_plugin)("PLAIN",
+				   SPECIFIC_SERVER_PLUG_INIT( plain ));
+	} else if (type == CLIENT) {
+	    result = (*add_plugin)("PLAIN",
+				   SPECIFIC_CLIENT_PLUG_INIT( plain ));
+	}
+	if(result != SASL_OK) return result;
 #endif
 
 #ifdef STATIC_SRP
-    if(type == SASL_CONN_SERVER) {
-	result = (*add_plugin)(SPECIFIC_SERVER_PLUG_INIT( srp ), NULL);
-    } else {
-	result = (*add_plugin)(SPECIFIC_CLIENT_PLUG_INIT( srp ), NULL);
-    }
-    if(result != SASL_OK) return result;
+	if(type == SERVER) {
+	    result = (*add_plugin)("SRP", SPECIFIC_SERVER_PLUG_INIT( srp ));
+	} else if (type == CLIENT) {
+	    result = (*add_plugin)("SRP", SPECIFIC_CLIENT_PLUG_INIT( srp ));
+	}
+	if(result != SASL_OK) return result;
 #endif
-
+    }
+    
     return SASL_OK;
 }
 
 
-
 /* loads a single mechanism (or rather, fails to) */
 int _sasl_get_plugin(const char *file __attribute__((unused)),
-                     const char *entryname __attribute__((unused)),
-                     const sasl_callback_t *verifyfile_cb
-		       __attribute__((unused)),
-                     void **entrypointptr __attribute__((unused)),
-                     void **libraryptr __attribute__((unused))) 
+		     const sasl_callback_t *verifyfile_cb __attribute__((unused)),
+		     void **libraryptr __attribute__((unused)))
 {
     return SASL_FAIL;
 }
 
+/* fails to locate an entry point ;) */
+int _sasl_locate_entry(void *library __attribute__((unused)),
+		       const char *entryname __attribute__((unused)),
+                       void **entry_point __attribute__((unused)))
+{
+    return SASL_FAIL;
+}
+
+
 int
-_sasl_done_with_plugin(void *plugin __attribute__((unused))) 
+_sasl_done_with_plugins() 
 {
     return SASL_OK;
 }

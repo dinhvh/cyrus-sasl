@@ -3,6 +3,9 @@
 	  (This still sucks performance wise, and will be fixed soon)
 	* Fixed some lack of indirection in the plugins
 	* Reverted to the v1 entry points for the plugins
+	* Cleaned up a good deal of the library loading code so it
+	  now only gets called from the sasl_*_init functions, and
+	  all the cleanup happens in the common sasl_done function
 
 2000-07-05  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Working libsfsasl and smtptest program (--with-sfio)

@@ -1,7 +1,7 @@
 /* dlopen.c--Unix dlopen() dynamic loader interface
  * Rob Siemborski
  * Rob Earhart
- * $Id: dlopen.c,v 1.32.2.3 2001/07/02 22:50:07 rjs3 Exp $
+ * $Id: dlopen.c,v 1.32.2.4 2001/07/06 21:06:16 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -150,23 +150,85 @@ char *dlerror()
 #define SO_SUFFIX	".so"
 #endif /* __hpux */
 
-/* loads a single mechanism */
-int _sasl_get_plugin(const char *file,
-		     const char *entryname,
-		     const sasl_callback_t *verifyfile_cb,
-		     void **entrypointptr,
-		     void **libraryptr)
+typedef struct lib_list 
 {
-    int r = 0;
-    int flag;
+    struct lib_list *next;
     void *library;
-    void *entry_point;
+} lib_list_t;
+
+static lib_list_t *lib_list_head = NULL;
+
+int _sasl_locate_entry(void *library, const char *entryname,
+		       void **entry_point) 
+{
 #if __OpenBSD__
     char adj_entryname[1024];
 #else
 #define adj_entryname entryname
 #endif
 
+    if(!entryname) {
+	_sasl_log(NULL, SASL_LOG_ERR,
+		  "no entryname in _sasl_locate_entry");
+	return SASL_BADPARAM;
+    }
+
+    if(!library) {
+	_sasl_log(NULL, SASL_LOG_ERR,
+		  "no library in _sasl_locate_entry");
+	return SASL_BADPARAM;
+    }
+
+    if(!entry_point) {
+	_sasl_log(NULL, SASL_LOG_ERR,
+		  "no entrypoint output pointer in _sasl_locate_entry");
+	return SASL_BADPARAM;
+    }
+
+#if __OpenBSD__
+    snprintf(adj_entryname, sizeof adj_entryname, "_%s", entryname);
+#endif
+
+    *entry_point = NULL;
+    *entry_point = dlsym(library, adj_entryname);
+    if (*entry_point == NULL) {
+	_sasl_log(NULL, SASL_LOG_ERR,
+		  "unable to get entry point %s: %s", adj_entryname,
+		  dlerror());
+	return SASL_FAIL;
+    }
+
+    return SASL_OK;
+}
+
+static int _sasl_plugin_load(char *file, void *library, const char *entryname,
+			     int (*add_plugin)(const char *, void *)) 
+{
+    void *entry_point;
+    int result;
+    
+    result = _sasl_locate_entry(library, entryname, &entry_point);
+    if(result == SASL_OK) {
+	result = add_plugin(NULL, entry_point);
+	if(result != SASL_OK)
+	    _sasl_log(NULL, SASL_LOG_ERR,
+		      "_sasl_plugin_load failed on %s in %s\n",
+		      entryname, file);
+    }
+
+    return result;
+}
+
+/* loads a plugin library */
+int _sasl_get_plugin(const char *file,
+		     const sasl_callback_t *verifyfile_cb,
+		     void **libraryptr)
+{
+    int r = 0;
+    int flag;
+    void *library;
+    lib_list_t *newhead;
+    
     r = ((sasl_verifyfile_t *)(verifyfile_cb->proc))
 		    (verifyfile_cb->context, file, SASL_VRFY_PLUGIN);
     if (r != SASL_OK) return r;
@@ -176,35 +238,29 @@ int _sasl_get_plugin(const char *file,
 #else
     flag = 0;
 #endif
+
+    newhead = sasl_ALLOC(sizeof(lib_list_t));
+    if(!newhead) return SASL_NOMEM;
+
     if (!(library = dlopen(file, flag))) {
 	_sasl_log(NULL, SASL_LOG_ERR,
 		  "unable to dlopen %s: %s", file, dlerror());
+	sasl_FREE(newhead);
 	return SASL_FAIL;
     }
 
-#if __OpenBSD__
-    snprintf(adj_entryname, sizeof adj_entryname, "_%s", entryname);
-#endif
+    newhead->library = library;
+    newhead->next = lib_list_head;
+    lib_list_head = newhead;
 
-    entry_point = NULL;
-    entry_point = dlsym(library, adj_entryname);
-    if (entry_point == NULL) {
-	_sasl_log(NULL, SASL_LOG_ERR,
-		  "unable to get entry point %s in %s: %s", adj_entryname,
-		  file, dlerror());
-	return SASL_FAIL;
-    }
-
-    *entrypointptr = entry_point;
     *libraryptr = library;
     return SASL_OK;
 }
 
 /* gets the list of mechanisms */
-int _sasl_get_mech_list(const char *entryname,
-			const sasl_callback_t *getpath_cb,
-			const sasl_callback_t *verifyfile_cb,
-			int (*add_plugin)(void *,void *))
+int _sasl_load_plugins(const add_plugin_list_t *entrypoints,
+		       const sasl_callback_t *getpath_cb,
+		       const sasl_callback_t *verifyfile_cb)
 {
     int result;
     char str[PATH_MAX], tmp[PATH_MAX+2], prefix[PATH_MAX+2];
@@ -215,15 +271,15 @@ int _sasl_get_mech_list(const char *entryname,
     int position;
     DIR *dp;
     struct dirent *dir;
+    const add_plugin_list_t *cur_ep;
 
-    if (! entryname
+    if (! entrypoints
 	|| ! getpath_cb
 	|| getpath_cb->id != SASL_CB_GETPATH
 	|| ! getpath_cb->proc
 	|| ! verifyfile_cb
 	|| verifyfile_cb->id != SASL_CB_VERIFYFILE
-	|| ! verifyfile_cb->proc
-	|| ! add_plugin)
+	|| ! verifyfile_cb->proc)
 	return SASL_BADPARAM;
 
     /* get the path to the plugins */
@@ -257,7 +313,6 @@ int _sasl_get_mech_list(const char *entryname,
 	    {
 		size_t length;
 		void *library;
-		void *entry_point;
 		char name[PATH_MAX];
 
 		length = NAMLEN(dir);
@@ -274,18 +329,12 @@ int _sasl_get_mech_list(const char *entryname,
 		strcpy(tmp,prefix);
 		strcat(tmp,name);
 	
-		result = _sasl_get_plugin(tmp, entryname,
-					  verifyfile_cb,
-					  &entry_point, &library);
+		result = _sasl_get_plugin(tmp, verifyfile_cb, &library);
 
-		if (result == SASL_OK) {
-		    result = (*add_plugin)(entry_point, library);
-		    if (result != SASL_OK) {
-			_sasl_log(NULL, SASL_LOG_ERR,
-				  "add_plugin(%s) failed: %z", tmp, result);
-			dlclose(library);
-			continue;
-		    }
+		for(cur_ep = entrypoints; cur_ep->entryname; cur_ep++) {
+			_sasl_plugin_load(tmp, library, cur_ep->entryname,
+					  cur_ep->add_plugin);
+			/* If this fails, it's not the end of the world */
 		}
 
 		/* added successfully */
@@ -302,12 +351,18 @@ int _sasl_get_mech_list(const char *entryname,
 }
 
 int
-_sasl_done_with_plugin(void *plugin)
+_sasl_done_with_plugins(void)
 {
-  if (! plugin)
-    return SASL_BADPARAM;
+    lib_list_t *libptr, *libptr_next;
+    
+    for(libptr = lib_list_head; libptr; libptr = libptr_next) {
+	libptr_next = libptr->next;
+	if(libptr->library)
+	    dlclose(libptr->library);
+	sasl_FREE(libptr);
+    }
 
-  dlclose(plugin);
+    lib_list_head = NULL;
 
-  return SASL_OK;
+    return SASL_OK;
 }

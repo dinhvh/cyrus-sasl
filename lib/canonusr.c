@@ -1,6 +1,6 @@
 /* canonusr.c - user canonicalization support
  * Rob Siemborski
- * $Id: canonusr.c,v 1.1.2.12 2001/07/06 17:39:14 rjs3 Exp $
+ * $Id: canonusr.c,v 1.1.2.13 2001/07/06 21:06:15 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -57,14 +57,7 @@ typedef struct canonuser_plug_list
     const sasl_canonuser_plug_t *plug;
 } canonuser_plug_list_t;
 
-typedef struct canonuser_plug_lib_list 
-{
-    struct canonuser_plug_lib_list *next;
-    void *library;
-} canonuser_plug_lib_list_t;
-
 static canonuser_plug_list_t *canonuser_head = NULL;
-static canonuser_plug_lib_list_t *canonuser_lib_head = NULL;
 
 /* default behavior:
  *                   eliminate leading & trailing whitespace,
@@ -210,10 +203,7 @@ int sasl_canonuser_add_plugin(const char *plugname,
 int _sasl_canonuser_add_plugin(void *p, void *library) 
 {
     sasl_canonuser_init_t *entry_point = NULL;
-    canonuser_plug_lib_list_t *newhead = NULL;
     int result;
-
-    fprintf(stderr, "in cu add plugin\n");
 
     if(!p) {
 	_sasl_log(NULL, SASL_LOG_DEBUG,
@@ -227,30 +217,19 @@ int _sasl_canonuser_add_plugin(void *p, void *library)
 	return SASL_BADPARAM;
     }
 
-    newhead = sasl_ALLOC(sizeof(canonuser_plug_lib_list_t));
-    if(!newhead) {
-	return SASL_NOMEM;
-    }
-
     entry_point = (sasl_canonuser_init_t *)p;
 
     result = sasl_canonuser_add_plugin(NULL, entry_point);
     if(result != SASL_OK) {
-	sasl_FREE(newhead);
 	return result;
     }
         
-    newhead->library = library;
-    newhead->next = canonuser_lib_head;
-    canonuser_lib_head = newhead;
-
     return SASL_OK;
 }
 
 void _sasl_canonuser_free() 
 {
     canonuser_plug_list_t *ptr, *ptr_next;
-    canonuser_plug_lib_list_t *libptr, *libptr_next;
     
     for(ptr = canonuser_head; ptr; ptr = ptr_next) {
 	ptr_next = ptr->next;
@@ -259,14 +238,6 @@ void _sasl_canonuser_free()
 	sasl_FREE(ptr);
     }
 
-    for(libptr = canonuser_lib_head; libptr; libptr = libptr_next) {
-	libptr_next = libptr->next;
-	if(libptr->library)
-	    _sasl_done_with_plugin(libptr->library);
-	sasl_FREE(libptr);
-    }
-
-    canonuser_lib_head = NULL;
     canonuser_head = NULL;
 }
 
