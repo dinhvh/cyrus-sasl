@@ -1,6 +1,6 @@
 <HTML><HEAD>
 <title>SASL Plugin Programmer's Guide</title>
-<!-- $Id: plugprog.html,v 1.1.2.3 2001/07/24 22:57:58 rjs3 Exp $ -->
+<!-- $Id: plugprog.html,v 1.1.2.4 2001/08/20 20:13:47 rjs3 Exp $ -->
 </HEAD>
 <BODY>
 <h1>SASL Plugin Programmer's Guide</h1>
@@ -93,7 +93,7 @@
        speed and namespace reasons, the symbol tables are not shared across
        plugins.  Thus, the only interface that the plugin should assume it
        has to the outside world is through the <tt>sasl_utils_t</tt> structure (or
-       throug links that it specifically requires).  Likewise, the glue code
+       through links that it specifically requires).  Likewise, the glue code
        has no (and will use no) interface into the plugin other than the
        contents of the structures that are passed back to it by the
        initialization function.</p>
@@ -201,11 +201,23 @@
 	should return SASL_OK, otherwise it should return a valid SASL
 	error code (and call seterror).  This should also set up the
         oparams structure before returning SASL_OK, including any
-        security layer information (in the way of callbacks).  As soon
-        as the server has computed both the authentication and the
+        security layer information (in the way of callbacks and SSF
+	information).  Also, as soon
+        as the mechanism has computed both the authentication and the
         authorization IDs, it MUST call the canon_user function provided
         in the server params structure.  This will also fill in its
-        propctx, so any requests should be done before this point.</li>
+        propctx, so any auxilliary property requests (for example, to lookup
+        the password) should be done before this point.<p>
+
+        Before returning SASL_OK, <tt>mech_step</tt> must fill in the
+        oparams fields for which it is responsible, that is, <tt>doneflag</tt>
+        (set to 1 to indicate a complete exchange), <tt>maxoutbuf</tt>, or
+        the maximum output size it can do at once for a security layer,
+        <tt>mech_ssf</tt> or the supplied SSF of the security layer,
+        and <tt>encode</tt>, <tt>decode</tt>, <tt>encode_context</tt>,
+	and <tt>decode_context</tt>,
+        which are what the glue code will call on calls to <tt>sasl_encode</tt>,
+	<tt>sasl_encodev</tt>, and <tt>sasl_decode</tt>.</li>
       <li><b>mech_dispose</b> - Called to dispose of a connection context.
 	This is only called when the connection will no longer be used
         (e.g. when <tt>sasl_dispose</tt> is called)</li>
