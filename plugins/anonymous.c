@@ -1,7 +1,7 @@
 /* Anonymous SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: anonymous.c,v 1.34.2.18 2001/07/06 18:15:35 rjs3 Exp $
+ * $Id: anonymous.c,v 1.34.2.19 2001/07/12 14:01:31 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -138,7 +138,7 @@ server_continue_step (void *conn_context __attribute__((unused)),
 
   sparams->utils->log(sparams->utils->conn,
 		      SASL_LOG_NOTE,
-		      "login: \"%s\"",
+		      "ANONYMOUS login: \"%s\"",
 		      clientdata);
 
   if (clientdata != clientin)
@@ -265,24 +265,14 @@ client_continue_step(void *conn_context,
   context_t *text;
   text=conn_context;
 
-  if (text->state == 3) {
+  if (text->state == 2) {
       *clientout = NULL;
       *clientoutlen = 0;
       text->state++;
       return SASL_OK;      
   }
 
-  if (clientout == NULL && text->state == 1) {
-      /* no initial client send */
-      *clientout = NULL;
-      *clientoutlen = 0;
-      text->state = 2;
-      return SASL_CONTINUE;
-  } else if (text->state == 1) {
-      text->state = 2;
-  }
-
-  if (text->state != 2) {
+  if (text->state != 1) {
       SETERROR( cparams->utils, "Invalid state in ANONYMOUS continue_step" );
       return SASL_FAIL;
   }
@@ -295,7 +285,6 @@ client_continue_step(void *conn_context,
       return SASL_BADPARAM;
   }
       
-
   if (serverinlen != 0) {
       SETERROR( cparams->utils, "Nonzero serverinlen in ANONYMOUS continue_step" );
       return SASL_BADPROT;
@@ -390,7 +379,7 @@ client_continue_step(void *conn_context,
 
   oparams->param_version=0;
 
-  text->state = 3;
+  text->state = 2;
 
   return SASL_CONTINUE;
 }
