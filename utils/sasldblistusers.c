@@ -1,4 +1,6 @@
 /* sasldblistusers.c -- list users in sasldb
+ * $Id: sasldblistusers.c,v 1.13.2.7 2001/08/03 20:39:38 rjs3 Exp $
+ * Rob Siemborski
  * Tim Martin
  */
 /* 
@@ -64,7 +66,10 @@ int listusers(sasl_conn_t *conn)
     
     dbh = _sasldb_getkeyhandle(sasl_global_utils, conn);
 
-    if(!dbh) return SASL_FAIL;
+    if(!dbh) {
+	printf("can't getkeyhandle\n");
+	return SASL_FAIL;
+    }
 
     result = _sasldb_getnextkey(sasl_global_utils, dbh,
 				key_buf, 32768, &key_len);
@@ -73,12 +78,13 @@ int listusers(sasl_conn_t *conn)
     {
 	char authid_buf[16384];
 	char realm_buf[16384];
+	char property_buf[16384];
 	int ret;
 
 	ret = _sasldb_parse_key(key_buf, key_len,
 				authid_buf, 16384,
 				realm_buf, 16384,
-				NULL, 0);
+				property_buf, 16384);
 
 	if(ret == SASL_BUFOVER) {
 	    printf("Key too large\n");
@@ -88,7 +94,7 @@ int listusers(sasl_conn_t *conn)
 	    continue;
 	}
 	
-	printf("user: %s realm: %s\n",authid_buf,realm_buf);
+	printf("%s@%s: %s\n",authid_buf,realm_buf,property_buf);
 
 	result = _sasldb_getnextkey(sasl_global_utils, dbh,
 				    key_buf, 32768, &key_len);

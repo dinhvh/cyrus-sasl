@@ -301,10 +301,6 @@ int _sasl_sasldb_set_pass(sasl_conn_t *conn,
     } else { 
 	/* SASL_SET_DISABLE specified */
 	ret = _sasldb_putsecret(sasl_global_utils, conn, userid, realm, NULL);
-
-	if (ret != SASL_OK) {
-	    printf("failed to disable account for %s", userid);
-	}
     }
 
     if (userid)   free(userid);
@@ -426,6 +422,16 @@ main(int argc, char *argv[])
 	  }
       }
   }
+      /* Delete the possibly old entries */
+      /* We don't care if these fail */
+      _sasldb_putdata(sasl_global_utils, conn,
+		      userid, user_domain, "cmusaslsecretCRAM-MD5", NULL, 0);
+      _sasldb_putdata(sasl_global_utils, conn,
+		      userid, user_domain, "cmusaslsecretDIGEST-MD5", NULL, 0);
+      _sasldb_putdata(sasl_global_utils, conn,
+		      userid, user_domain, "cmusaslsecretPLAIN", NULL, 0);
+
+  
 
   if((result = _sasl_check_db(sasl_global_utils,conn)) == SASL_OK) {
     result = _sasl_sasldb_set_pass(conn, myhostname, userid, password, passlen,
@@ -434,9 +440,36 @@ main(int argc, char *argv[])
 				   | (flag_disable ? SASL_SET_DISABLE : 0));
   }
 
-  if(result != SASL_OK)
+  if(result != SASL_OK && !flag_disable)
       exit_sasl(result, NULL);
+  else {
+      int ret = 1;
+      /* Either we were setting and succeeded or we were disableing and
+	 failed.  In either case, we want to wipe old entries */
 
+      /* Delete the possibly old entries */
+      /* We don't care if these fail */
+      ret = _sasldb_putdata(sasl_global_utils, conn,
+			    userid, (user_domain ? user_domain : myhostname),
+			    "cmusaslsecretCRAM-MD5", NULL, 0);
+      if(ret == SASL_OK) result = ret;
+
+      ret = _sasldb_putdata(sasl_global_utils, conn,
+			    userid, (user_domain ? user_domain : myhostname),
+			    "cmusaslsecretDIGEST-MD5", NULL, 0);
+      if(ret == SASL_OK) result = ret;
+
+      ret = _sasldb_putdata(sasl_global_utils, conn,
+			    userid, (user_domain ? user_domain : myhostname),
+			    "cmusaslsecretPLAIN", NULL, 0);
+      if(ret == SASL_OK) result = ret;
+
+      /* Were we disableing and failed above? */
+      if(result != SASL_OK)
+	  exit_sasl(result, NULL);
+  }
+      
+      
   result = sasl_setpass(conn,
 			userid,
 			password,

@@ -1,7 +1,7 @@
 /* db_berkeley.c--SASL berkeley db interface
  * Rob Siemborski
  * Tim Martin
- * $Id: allockey.c,v 1.1.2.4 2001/07/30 16:14:28 rjs3 Exp $
+ * $Id: allockey.c,v 1.1.2.5 2001/08/03 20:39:36 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -127,6 +127,9 @@ int _sasldb_parse_key(const char *key, const size_t key_len,
 	if(pnlen >= max_propname)
 	    return SASL_BUFOVER;
 	strncpy(propName, key + alen + rlen + 2, pnlen);
+
+	/* Have to add the missing NULL */
+	propName[pnlen] = '\0';
     }
 
     return SASL_OK;

@@ -1,7 +1,7 @@
 /* CRAM-MD5 SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: cram.c,v 1.55.2.20 2001/07/27 20:47:58 rjs3 Exp $
+ * $Id: cram.c,v 1.55.2.21 2001/08/03 20:39:33 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -362,8 +362,10 @@ static int crammd5_server_mech_step (void *conn_context,
     sasl_secret_t *sec = NULL;
     int lup,pos,len;
     int result = SASL_FAIL;
-    const char *password_request[] = { SASL_AUX_PASSWORD, NULL };
-    struct propval auxprop_values[2];
+    const char *password_request[] = { SASL_AUX_PASSWORD,
+				       "cmusaslsecretCRAM-MD5",
+				       NULL };
+    struct propval auxprop_values[3];
     HMAC_MD5_CTX tmphmac;
     HMAC_MD5_STATE md5state;
     int clear_md5state = 0;
@@ -407,7 +409,9 @@ static int crammd5_server_mech_step (void *conn_context,
 
     result = sparams->utils->prop_getnames(sparams->propctx, password_request,
 					   auxprop_values);
-    if(result != 1 || !auxprop_values[0].name || !auxprop_values[0].values) {
+    if(result < 0 ||
+       ((!auxprop_values[0].name || !auxprop_values[0].values) &&
+	(!auxprop_values[1].name || !auxprop_values[1].values))) {
 	/* We didn't find this username */
 	sparams->utils->seterror(sparams->utils->conn,0,
 				 "no secret in database");
@@ -415,26 +419,35 @@ static int crammd5_server_mech_step (void *conn_context,
 	goto done;
     }
 
-    len = strlen(auxprop_values[0].values[0]);
-    if (len == 0) {
-	sparams->utils->seterror(sparams->utils->conn,0,
-				 "empty secret");
-	result = SASL_FAIL;
-	goto done;
-    }
+    if(auxprop_values[0].name && auxprop_values[0].values) {
+	len = strlen(auxprop_values[0].values[0]);
+	if (len == 0) {
+	    sparams->utils->seterror(sparams->utils->conn,0,
+				     "empty secret");
+	    result = SASL_FAIL;
+	    goto done;
+	}
+	
+	sec = sparams->utils->malloc(sizeof(sasl_secret_t) + len);
+	if(!sec) goto done;
+	
+	sec->len = len;
+	strncpy(sec->data, auxprop_values[0].values[0], len + 1);   
 
-    sec = sparams->utils->malloc(sizeof(sasl_secret_t) + len);
-    if(!sec) goto done;
-
-    sec->len = len;
-    strncpy(sec->data, auxprop_values[0].values[0], len + 1);   
-
-    clear_md5state = 1;
-    /* Do precalculation on plaintext secret */
-    sparams->utils->hmac_md5_precalc(&md5state, /* OUT */
-				     sec->data,
-				     sec->len);
-
+	clear_md5state = 1;
+	/* Do precalculation on plaintext secret */
+	sparams->utils->hmac_md5_precalc(&md5state, /* OUT */
+					 sec->data,
+					 sec->len);
+    } else if (auxprop_values[1].name && auxprop_values[1].values) {
+	/* We have a precomputed secret */
+	memcpy(&md5state, auxprop_values[1].values[0], sizeof(HMAC_MD5_STATE));
+    } else {
+	sparams->utils->seterror(sparams->utils->conn, 0,
+				 "Have neither type of secret");
+	return SASL_FAIL;
+    }    
+    
     /* ok this is annoying:
        so we have this half-way hmac transform instead of the plaintext
        that means we half to:

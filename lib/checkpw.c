@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: checkpw.c,v 1.41.2.19 2001/07/25 15:32:06 rjs3 Exp $
+ * $Id: checkpw.c,v 1.41.2.20 2001/08/03 20:39:31 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -93,6 +93,38 @@
 extern int errno;
 #endif
 
+
+/* we store the following secret to check plaintext passwords:
+ *
+ * <salt> \0 <secret>
+ *
+ * where <secret> = MD5(<salt>, "sasldb", <pass>)
+ */
+static int _sasl_make_plain_secret(const char *salt, 
+				   const char *passwd, int passlen,
+				   sasl_secret_t **secret)
+{
+    MD5_CTX ctx;
+    unsigned sec_len = 16 + 1 + 16; /* salt + "\0" + hash */
+
+    *secret = (sasl_secret_t *) sasl_ALLOC(sizeof(sasl_secret_t) +
+					   sec_len * sizeof(char));
+    if (*secret == NULL) {
+	return SASL_NOMEM;
+    }
+
+    _sasl_MD5Init(&ctx);
+    _sasl_MD5Update(&ctx, salt, 16);
+    _sasl_MD5Update(&ctx, "sasldb", 6);
+    _sasl_MD5Update(&ctx, passwd, passlen);
+    memcpy((*secret)->data, salt, 16);
+    memcpy((*secret)->data + 16, "\0", 1);
+    _sasl_MD5Final((*secret)->data + 17, &ctx);
+    (*secret)->len = sec_len;
+    
+    return SASL_OK;
+}
+
 /* erase & dispose of a sasl_secret_t
  */
 static int auxprop_verify_password(sasl_conn_t *conn,
@@ -106,8 +138,10 @@ static int auxprop_verify_password(sasl_conn_t *conn,
     char *realm = NULL;
     int result = SASL_OK;
     sasl_server_conn_t *sconn = (sasl_server_conn_t *)conn;
-    const char *password_request[] = { SASL_AUX_PASSWORD, NULL };
-    struct propval auxprop_values[2];
+    const char *password_request[] = { SASL_AUX_PASSWORD,
+				       "cmusaslsecretPLAIN",
+				       NULL };
+    struct propval auxprop_values[3];
     
     if (!conn || !userstr)
 	return SASL_BADPARAM;
@@ -130,8 +164,10 @@ static int auxprop_verify_password(sasl_conn_t *conn,
     if(result < 0)
 	return result;
 
-    if(!auxprop_values[0].name
-       || !auxprop_values[0].values || !auxprop_values[0].values[0])
+    if((!auxprop_values[0].name
+         || !auxprop_values[0].values || !auxprop_values[0].values[0])
+       && (!auxprop_values[1].name
+         || !auxprop_values[1].values || !auxprop_values[1].values[0]))
 	    return SASL_FAIL;
         
     /* It is possible for us to get useful information out of just
@@ -143,8 +179,33 @@ static int auxprop_verify_password(sasl_conn_t *conn,
 
     /* At the point this has been called, the username has been canonified
      * and we've done the auxprop lookup.  This should be easy. */
-    if(!strcmp(auxprop_values[0].values[0], passwd)) {
+    if(auxprop_values[0].name
+       && auxprop_values[0].values
+       && auxprop_values[0].values[0]
+       && !strcmp(auxprop_values[0].values[0], passwd)) {
+	/* We have a plaintext version and it matched! */
 	return SASL_OK;
+    } else if(auxprop_values[1].name
+	      && auxprop_values[1].values
+	      && auxprop_values[1].values[0]) {
+	const char *db_secret = auxprop_values[1].values[0];
+	sasl_secret_t *construct;
+	
+	ret = _sasl_make_plain_secret(db_secret, passwd, strlen(passwd),
+				      &construct);
+	if (ret != SASL_OK) {
+	    goto done;
+	}
+
+	if (!memcmp(db_secret, construct->data, construct->len)) {
+	    /* password verified! */
+	    ret = SASL_OK;
+	} else {
+	    /* passwords do not match */
+	    ret = SASL_BADAUTH;
+	}
+
+	sasl_FREE(construct);
     } else {
 	/* passwords do not match */
 	ret = SASL_BADAUTH;
@@ -187,13 +248,11 @@ int _sasl_auxprop_verify_apop(sasl_conn_t *conn,
     if(ret < 0)
 	goto done;
 
-    if(!auxprop_values[0].name)
+    if(!auxprop_values[0].name ||
+       !auxprop_values[0].values ||
+       !auxprop_values[0].values[0])
 	goto done;
     
-    if(!auxprop_values[0].values[0])
-	goto done;
-    
-
     _sasl_MD5Init(&ctx);
     _sasl_MD5Update(&ctx, challenge, strlen(challenge));
     _sasl_MD5Update(&ctx, auxprop_values[0].values[0],

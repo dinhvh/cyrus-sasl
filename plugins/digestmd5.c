@@ -2,7 +2,7 @@
  * Rob Siemborski
  * Tim Martin
  * Alexey Melnikov 
- * $Id: digestmd5.c,v 1.97.2.24 2001/07/27 20:47:59 rjs3 Exp $
+ * $Id: digestmd5.c,v 1.97.2.25 2001/08/03 20:39:33 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -2239,7 +2239,9 @@ digestmd5_server_mech_step(void *conn_context,
     HASH            A1;
 
     /* password prop_request */
-    const char *password_request[] = { SASL_AUX_PASSWORD, NULL };
+    const char *password_request[] = { SASL_AUX_PASSWORD,
+				       "cmusaslsecretDIGEST-MD5",
+				       NULL };
     unsigned len;
     struct propval auxprop_values[2];
     
@@ -2459,7 +2461,9 @@ digestmd5_server_mech_step(void *conn_context,
 
     result = sparams->utils->prop_getnames(sparams->propctx, password_request,
 					   auxprop_values);
-    if(result != 1 || !auxprop_values[0].name || !auxprop_values[0].values) {
+    if(result < 0 ||
+       ((!auxprop_values[0].name || !auxprop_values[0].values) &&
+	(!auxprop_values[1].name || !auxprop_values[1].values))) {
 	/* We didn't find this username */
 	sparams->utils->seterror(sparams->utils->conn, 0,
 				 "no secret in database");
@@ -2467,50 +2471,59 @@ digestmd5_server_mech_step(void *conn_context,
 	goto FreeAllMem;
     }
 
-    len = strlen(auxprop_values[0].values[0]);
-    if (len == 0) {
-	sparams->utils->seterror(sparams->utils->conn,0,
-				 "empty secret");
-	result = SASL_FAIL;
-	goto FreeAllMem;
-    }
+    if(auxprop_values[0].name && auxprop_values[0].values) {
+	len = strlen(auxprop_values[0].values[0]);
+	if (len == 0) {
+	    sparams->utils->seterror(sparams->utils->conn,0,
+				     "empty secret");
+	    result = SASL_FAIL;
+	    goto FreeAllMem;
+	}
 
-    sec = sparams->utils->malloc(sizeof(sasl_secret_t) + len);
-    if (!sec) {
-	SETERROR(sparams->utils, "unable to allocate secret");
-	result = SASL_FAIL;
-	goto FreeAllMem;
-    }
-
-    sec->len = len;
-    strncpy(sec->data, auxprop_values[0].values[0], len + 1); 
-
-    /*
-     * Verifying response obtained from client
-     * 
-     * H_URP = H( { username-value, ":", realm-value, ":", passwd } ) sec->data
-     * contains H_URP
-     */
-
-    /* Calculate the secret from the plaintext password */
-    {
-	HASH HA1;
-
-	DigestCalcSecret(sparams->utils,
-			 username, text->realm, sec->data, sec->len, HA1);
+	sec = sparams->utils->malloc(sizeof(sasl_secret_t) + len);
+	if (!sec) {
+	    SETERROR(sparams->utils, "unable to allocate secret");
+	    result = SASL_FAIL;
+	    goto FreeAllMem;
+	}
+	
+	sec->len = len;
+	strncpy(sec->data, auxprop_values[0].values[0], len + 1); 
 
 	/*
-	 * A1       = { H( { username-value, ":", realm-value, ":", passwd } ),
-	 * ":", nonce-value, ":", cnonce-value }
+	 * Verifying response obtained from client
+	 * 
+	 * H_URP = H({ username-value,":",realm-value,":",passwd}) sec->data
+	 * contains H_URP
 	 */
 
-	memcpy(A1, HA1, HASHLEN);
-	A1[HASHLEN] = '\0';
-    }
+	/* Calculate the secret from the plaintext password */
+	{
+	    HASH HA1;
+	    
+	    DigestCalcSecret(sparams->utils,
+			     username, text->realm, sec->data, sec->len, HA1);
+	    
+	    /*
+	     * A1 = { H( { username-value, ":", realm-value, ":", passwd } ),
+	     * ":", nonce-value, ":", cnonce-value }
+	     */
 
-    /* We're done with sec now. Let's get rid of it */
-    _plug_free_secret(sparams->utils, &sec);
+	    memcpy(A1, HA1, HASHLEN);
+	    A1[HASHLEN] = '\0';
+	}
 
+	/* We're done with sec now. Let's get rid of it */
+	_plug_free_secret(sparams->utils, &sec);
+    } else if (auxprop_values[1].name && auxprop_values[1].values) {
+	    memcpy(A1, auxprop_values[1].values[0], HASHLEN);
+	    A1[HASHLEN] = '\0';
+    } else {
+	sparams->utils->seterror(sparams->utils->conn, 0,
+				 "Have neither type of secret");
+	return SASL_FAIL;
+    } 
+    
     serverresponse = create_response(text,
 				     sparams->utils,
 				     text->nonce,
@@ -2521,7 +2534,6 @@ digestmd5_server_mech_step(void *conn_context,
 				     A1,
 				     authorization_id,
 				     &text->response_value);
-
 
     if (serverresponse == NULL) {
 	SETERROR(sparams->utils, "internal error: unable to create response");

@@ -1,6 +1,20 @@
 2001-08-01  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* utils/smtptest.c (iptostring): better behaved w.r.t endianness
 
+	* plugins/cram.c (crammd5_server_mech_step): support for old-style
+	  secrets
+	* plugins/digestmd5.c (digestmd5_server_mech_step): support for
+	  old-style secrets
+	* lib/checkpw.c (auxprop_verify_password,_sasl_make_plain_secret):
+	  support for old-style secrets
+	* utils/dbconverter-2.c: added
+	* utils/sasldblistusers.c (listusers): Print out property names
+	  as well as username@realm format.
+	* utils/saslpasswd.c (_sasl_sasldb_set_pass): Correctly handle updates
+	  that concern old-style secrets
+
+	* sasldb/allockey.c: Added a missing null to propName in key parser
+	
 2001-07-31  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* plugins/kerberos4.c (mech_avail): made static
 
