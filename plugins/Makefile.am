@@ -64,29 +64,29 @@ sasldir = $(prefix)/lib/sasl2
 sasl_LTLIBRARIES = @SASL_MECHS@
 EXTRA_LTLIBRARIES = libplain.la libanonymous.la libkerberos4.la libcrammd5.la libgssapiv2.la libdigestmd5.la liblogin.la libsrp.la
 
-libplain_la_SOURCES = plain.c plugin_common.c
+libplain_la_SOURCES = plain.c plugin_common.c plugin_common.h
 libplain_la_LDFLAGS = -version-info $(plain_version)
 libplain_la_LIBADD = $(PLAIN_LIBS)
 
-libanonymous_la_SOURCES = anonymous.c plugin_common.c
+libanonymous_la_SOURCES = anonymous.c plugin_common.c plugin_common.h
 libanonymous_la_LDFLAGS = -version-info $(anonymous_version)
 
-libkerberos4_la_SOURCES = kerberos4.c plugin_common.c
+libkerberos4_la_SOURCES = kerberos4.c plugin_common.c plugin_common.h
 libkerberos4_la_LDFLAGS = -version-info $(kerberos4_version)
 libkerberos4_la_LIBADD = $(SASL_KRB_LIB) $(LIB_SOCKET)
 
-libgssapiv2_la_SOURCES = gssapi.c plugin_common.c
+libgssapiv2_la_SOURCES = gssapi.c plugin_common.c plugin_common.h
 libgssapiv2_la_LDFLAGS = -version-info $(gssapiv2_version)
 libgssapiv2_la_LIBADD = $(GSSAPIBASE_LIBS) $(GSSAPI_LIBS) $(LIB_SOCKET)
 
-libcrammd5_la_SOURCES = cram.c plugin_common.c
+libcrammd5_la_SOURCES = cram.c plugin_common.c plugin_common.h
 libcrammd5_la_LDFLAGS = -version-info $(crammd5_version)
 
-libdigestmd5_la_SOURCES = digestmd5.c plugin_common.c
+libdigestmd5_la_SOURCES = digestmd5.c plugin_common.c plugin_common.h
 libdigestmd5_la_LDFLAGS = -version-info $(digestmd5_version)
 libdigestmd5_la_LIBADD = $(LIB_DES) $(LIB_SOCKET)
 
-liblogin_la_SOURCES = login.c plugin_common.c
+liblogin_la_SOURCES = login.c plugin_common.c plugin_common.h
 liblogin_la_LDFLAGS = -version-info $(login_version)
 liblogin_la_LIBADD = $(PLAIN_LIBS)
 
