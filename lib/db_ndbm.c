@@ -83,7 +83,7 @@ static int alloc_key(const char *mechanism,
 }
 
 static int
-getsecret(void *context __attribute__((unused)),
+getsecret(sasl_conn_t *conn,
 	  const char *mechanism,
 	  const char *auth_identity,
 	  const char *realm,
@@ -97,7 +97,6 @@ getsecret(void *context __attribute__((unused)),
   void *cntxt;
   sasl_getopt_t *getopt;
   const char *path = SASL_DB_PATH;
-  sasl_conn_t *conn = context;
 
   if (! mechanism || ! auth_identity || ! secret || ! realm || ! db_ok)
     return SASL_FAIL;
@@ -153,7 +152,7 @@ getsecret(void *context __attribute__((unused)),
 }
 
 static int
-putsecret(void *context,
+putsecret(sasl_conn_t *conn,
 	  const char *mechanism,
 	  const char *auth_identity,
 	  const char *realm,
@@ -167,7 +166,6 @@ putsecret(void *context,
   void *cntxt;
   sasl_getopt_t *getopt;
   const char *path = SASL_DB_PATH;
-  sasl_conn_t *conn = context;
 
   if (! mechanism || ! auth_identity || ! realm)
     return SASL_FAIL;

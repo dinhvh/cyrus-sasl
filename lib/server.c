@@ -1,6 +1,6 @@
 /* SASL server API implementation
  * Tim Martin
- * $Id: server.c,v 1.84.2.9 2001/06/07 14:56:07 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.10 2001/06/07 20:11:45 rjs3 Exp $
  */
 
 /* 
@@ -1309,3 +1309,16 @@ int sasl_checkpass(sasl_conn_t *conn,
 
     return result;
 }
+
+int sasl_checkapop(sasl_conn_t *conn __attribute__((unused)),
+		   const char *challenge __attribute__((unused)),
+		   unsigned challen __attribute__((unused)),
+		   const char *response __attribute__((unused)),
+		   unsigned resplen __attribute__((unused)))
+{
+    /* FIXME: Not Implemented (it's optional) */
+    return SASL_FAIL;
+}
+
+
+ 

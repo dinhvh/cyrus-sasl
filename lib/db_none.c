@@ -49,7 +49,7 @@
 /* This just exists to provide these symbols on systems where configure
  * couldn't find a database library. */
 
-static int getsecret(void *context __attribute__((unused)),
+static int getsecret(sasl_conn_t *context __attribute__((unused)),
 		     const char *mechanism __attribute__((unused)),
 		     const char *auth_identity __attribute__((unused)),
 		     const char *realm __attribute__((unused)),
@@ -58,7 +58,7 @@ static int getsecret(void *context __attribute__((unused)),
     return SASL_FAIL;
 }
 
-static int putsecret(void *context __attribute__((unused)),
+static int putsecret(sasl_conn_t *context __attribute__((unused)),
 		     const char *mechanism __attribute__((unused)),
 		     const char *auth_identity __attribute__((unused)),
 		     const char *realm __attribute__((unused)),

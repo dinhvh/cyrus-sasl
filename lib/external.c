@@ -314,19 +314,18 @@ external_client_step(void *conn_context,
   return result;
 }
 
-static void external_client_dispose(void **conn_context,
+static void external_client_dispose(void *conn_context,
 				    const sasl_utils_t *utils __attribute__((unused))) 
 {
     external_client_context_t *text;
     
-    if(!conn_context || !(*conn_context)) return;
+    if(!conn_context) return;
 
-    text = *conn_context;
+    text = (external_client_context_t *)conn_context;
 
     if(text->out_buf) sasl_FREE(text->out_buf);
 
     sasl_FREE(text);
-    *conn_context = NULL;
 }
 
 

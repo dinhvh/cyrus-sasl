@@ -60,7 +60,6 @@
  *  sasl_checkpass    Check a plaintext passphrase
  *  sasl_checkapop    Check an APOP challenge/response (uses pseudo "APOP"
  *                    mechanism similar to CRAM-MD5 mechanism; optional)
- *  sasl_checkexternal Check if external mechanism is available (optional)
  *  sasl_user_exists  Check if user exists
  *  sasl_setpass      Change a password or add a user entry
  *  sasl_auxprop_request  Request auxiliary properties
@@ -535,49 +534,6 @@ typedef int sasl_authorize_t(sasl_conn_t *conn,
 			     const char *def_realm, int urlen,
 			     struct propctx *propctx);
 #define SASL_CB_PROXY_POLICY 0x8001
-
-#if 0
-/*OBSOLETE?*/
-/* Funcions for plugins to call to get/set passwords. Provided by
- * middleware or overridden by application (openLDAP for example)
- */
-
-/* callback to lookup a user's secret for a mechanism
- *  mechanism     -- the mechanism requesting its secret
- *  auth_identity -- the identity being looked up
- *  realm         -- the realm the identity is in
- * return:
- *  secret        -- the secret associated with this user
- *                   for this mechanism.  Memory must persist
- *                   until next call to sasl_server_getsecret_t,
- *                   but plug-in may erase the secret when it's
- *                   done with it.
- * returns SASL_OK on success or other SASL response on failure
- *
- * Plug-ins may use their own database instead of this callback.  */
-typedef int sasl_server_getsecret_t(void *context,
-				    const char *mechanism,
-				    const char *auth_identity,
-				    const char *realm,
-				    sasl_secret_t ** secret);
-#define SASL_CB_SERVER_GETSECRET (0x8002)
-
-/* callback to store a user's secret for a mechanism
- *  mechanism     -- the mechanism storing its secret
- *  auth_identity -- the identity being stored
- *  realm         -- the realm the identity is in
- *  secret        -- the secret associated with this user
- *                   for this mechanism.  If NULL, user's secret
- *		     for this mechanism will be erased.
- * returns SASL_OK on success or other SASL response on failure
- */
-typedef int sasl_server_putsecret_t(void *context,
-				    const char *mechanism,
-				    const char *auth_identity,
-				    const char *realm,
-				    const sasl_secret_t * secret);
-#define SASL_CB_SERVER_PUTSECRET (0x8003)
-#endif
 
 /* functions for "userdb" based plugins to call to get/set passwords.
  * the location for the passwords is determined by the caller or middleware.

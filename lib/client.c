@@ -583,25 +583,3 @@ int sasl_client_auth(sasl_conn_t *conn __attribute__((unused)),
   return SASL_FAIL;
 }
 
-/* erase & dispose of a sasl_secret_t
- *  calls free utility last set by sasl_set_alloc
- */
-
-void sasl_free_secret(sasl_secret_t **secret)
-{
-  size_t lup;
-
-  VL(("trying to free secret\n"));
-
-  if (secret==NULL) return;
-  if (*secret==NULL) return;
-
-  /* overwrite the memory */
-  for (lup=0;lup<(*secret)->len;lup++)
-    (*secret)->data[lup]='\0';
-
-  sasl_FREE(*secret);
-
-  *secret=NULL;
-}
-

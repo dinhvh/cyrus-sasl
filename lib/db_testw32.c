@@ -68,7 +68,7 @@
 
 
 static int
-getsecret(void *context __attribute__((unused)),
+getsecret(sasl_conn_t *context __attribute__((unused)),
 	  const char *mechanism,
 	  const char *auth_identity,
 	  sasl_secret_t ** secret)
@@ -123,7 +123,7 @@ getsecret(void *context __attribute__((unused)),
 }
 
 static int
-putsecret(void *context __attribute__((unused)),
+putsecret(sasl_conn_t *context __attribute__((unused)),
 	  const char *mechanism,
 	  const char *auth_identity,
 	  const sasl_secret_t * secret)

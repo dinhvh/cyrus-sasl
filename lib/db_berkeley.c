@@ -1,6 +1,6 @@
 /* db_berkeley.c--SASL berkeley db interface
  * Tim Martin
- * $Id: db_berkeley.c,v 1.16 2001/01/04 21:20:45 leg Exp $
+ * $Id: db_berkeley.c,v 1.16.2.1 2001/06/07 20:11:44 rjs3 Exp $
  */
 
 /* 
@@ -163,7 +163,7 @@ static int alloc_key(const char *mechanism,
  */
 
 static int
-getsecret(void *context,
+getsecret(sasl_conn_t *context,
 	  const char *mechanism,
 	  const char *auth_identity,
 	  const char *realm,
@@ -186,7 +186,7 @@ getsecret(void *context,
     return result;
 
   /* open the db */
-  result = berkeleydb_open((sasl_conn_t *) context, 0, &mbdb);
+  result = berkeleydb_open(context, 0, &mbdb);
   if (result != SASL_OK) goto cleanup;
 
   /* zero out and create the key to search for */
@@ -245,7 +245,7 @@ getsecret(void *context,
  */
 
 static int
-putsecret(void *context,
+putsecret(sasl_conn_t *context,
 	  const char *mechanism,
 	  const char *auth_identity,
 	  const char *realm,
@@ -268,7 +268,7 @@ putsecret(void *context,
     return result;
 
   /* open the db */
-  result=berkeleydb_open((sasl_conn_t *) context, 1, &mbdb);
+  result=berkeleydb_open(context, 1, &mbdb);
   if (result!=SASL_OK) goto cleanup;
 
   /* create the db key */

@@ -178,7 +178,7 @@ int sasl_encodev(sasl_conn_t *conn,
     if (! conn || ! invec || ! output || ! outputlen || numiov < 1)
 	return SASL_BADPARAM;
 
-    if(conn->oparams.encode == NULL) {
+    if(conn->oparams.encode == NULL)  {
 	result = _iovec_to_buf(invec, numiov, &conn->encode_buf);
 	if(result != SASL_OK) return result;
        
@@ -311,6 +311,8 @@ int _sasl_conn_init(sasl_conn_t *conn,
   memset(&conn->props, 0, sizeof(conn->props));
 
   /* Start this buffer out as an empty string */
+  conn->error_buf = NULL;
+  conn->error_buf_len = 0;
   result = _buf_alloc(&conn->error_buf, &conn->error_buf_len, 100);     
   if(result != SASL_OK) return result;
 
@@ -483,7 +485,16 @@ int sasl_getprop(sasl_conn_t *conn, int propnum, const void **pvalue)
       /* FIXME: either this is wrong or sasl_errdetail is */
       *((const char **)pvalue) = conn->error_buf;
       break;
-    default: 
+  case SASL_SSF_EXTERNAL:
+      *((const sasl_ssf_t **)pvalue) = &conn->external.ssf;
+      break;
+  case SASL_AUTH_EXTERNAL:
+      *((const char **)pvalue) = conn->external.auth_id;
+      break;
+  case SASL_SEC_PROPS:
+      *((const sasl_security_properties_t **)pvalue) = &conn->props;
+      break;
+  default: 
       result = SASL_BADPARAM;
   }
 
@@ -499,7 +510,6 @@ int sasl_setprop(sasl_conn_t *conn, int propnum, const void *value)
 {
   int result = SASL_OK;
   char *str;
-  struct sockaddr_in addr;
 
   /* make sure the sasl context is valid */
   if (!conn)
@@ -528,26 +538,8 @@ int sasl_setprop(sasl_conn_t *conn, int propnum, const void *value)
       memcpy(&(conn->props),(sasl_security_properties_t *)value,
 	     sizeof(sasl_security_properties_t));
       break;
-  case SASL_IPLOCALPORT: /* FIXME: WRONG */
-      if(value && _sasl_ipfromstring(value, &addr) != SASL_OK) {
-	  /* It checks out OK */
-	  memcpy(&conn->ip_local, &addr, sizeof(struct sockaddr_in));
-	  strcpy(conn->iplocalport, value);
-	  conn->got_ip_local = 1;
-      } else {
-	  return SASL_BADPARAM;
-      }
-      break;
-  case SASL_IPREMOTEPORT:
-      if(value && _sasl_ipfromstring(value, &addr) != SASL_OK) {
-	  /* It checks out OK */
-	  memcpy(&conn->ip_remote, &addr, sizeof(struct sockaddr_in));
-	  strcpy(conn->ipremoteport, value);
-	  conn->got_ip_remote = 1;
-      } else {
-	  return SASL_BADPARAM;
-      }
-      break;
+  /* FIXME: do we have to support setting of the other properties?  my guess
+   * is NO */
   default:
       result = SASL_BADPARAM;
   }
