@@ -2,7 +2,7 @@
  * Rob Siemborski (SASLv2 Conversion)
  * contributed by Rainer Schoepf <schoepf@uni-mainz.de>
  * based on PLAIN, by Tim Martin <tmartin@andrew.cmu.edu>
- * $Id: login.c,v 1.6.2.8 2001/07/03 18:01:05 rjs3 Exp $
+ * $Id: login.c,v 1.6.2.9 2001/07/03 18:55:49 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -318,6 +318,11 @@ static sasl_interact_t *find_prompt(sasl_interact_t **promptlist,
  * Somehow retrieve the userid
  * This is the same as in digest-md5 so change both
  */
+
+/* Note: we want to grab the authname and not the userid, which is
+ *       who we AUTHORIZE as, and will be the same as the authname
+ *       for the LOGIN mech.
+ */
 static int get_userid(sasl_client_params_t *params,
 		      const char **userid,
 		      sasl_interact_t **prompt_need)
@@ -329,7 +334,7 @@ static int get_userid(sasl_client_params_t *params,
   const char *id;
 
   /* see if we were given the userid in the prompt */
-  prompt=find_prompt(prompt_need,SASL_CB_USER);
+  prompt=find_prompt(prompt_need,SASL_CB_AUTHNAME);
   if (prompt!=NULL)
     {
 	*userid = prompt->result;
@@ -338,13 +343,13 @@ static int get_userid(sasl_client_params_t *params,
 
   /* Try to get the callback... */
   result = params->utils->getcallback(params->utils->conn,
-				      SASL_CB_USER,
+				      SASL_CB_AUTHNAME,
 				      &getuser_cb,
 				      &getuser_context);
   if (result == SASL_OK && getuser_cb) {
     id = NULL;
     result = getuser_cb(getuser_context,
-			SASL_CB_USER,
+			SASL_CB_AUTHNAME,
 			&id,
 			NULL);
     if (result != SASL_OK)
@@ -428,7 +433,7 @@ static int make_prompts(sasl_client_params_t *params,
   if (user_res==SASL_INTERACT)
   {
     /* We weren't able to get the callback; let's try a SASL_INTERACT */
-    (prompts)->id=SASL_CB_USER;
+    (prompts)->id=SASL_CB_AUTHNAME;
     (prompts)->challenge="Authorization Name";
     (prompts)->prompt="Please enter your authorization name";
     (prompts)->defresult=NULL;
