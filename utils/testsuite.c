@@ -756,7 +756,7 @@ void sendbadsecond(char *mech, void *rock)
     memcpy(&addr.sin_addr, hp->h_addr, hp->h_length);
     addr.sin_port = htons(0);
 
-    sprintf(buf,"%s;%d", inet_ntoa(addr.sin_addr), 0);
+    sprintf(buf,"%s;%d", inet_ntoa(addr.sin_addr), 23);
 
     /* client new connection */
     if (sasl_client_new(service,
@@ -947,6 +947,329 @@ void sendbadsecond(char *mech, void *rock)
     sasl_done();
 }
 
+/* Authenticate two sasl_conn_t's to eachother, validly.
+ * used to test the security layer */
+int doauth(char *mech, sasl_conn_t **server_conn, sasl_conn_t **client_conn)
+{
+    int result, need_another_client = 0;
+    sasl_conn_t *saslconn;
+    sasl_conn_t *clientconn;
+    const char *out, *out2;
+    unsigned outlen, outlen2;
+    sasl_interact_t *client_interact=NULL;
+    const char *mechusing;
+    const char *service = "rcmd";
+
+    struct sockaddr_in addr;
+    struct hostent *hp;
+    char buf[8192];
+
+    if(!server_conn || !client_conn) return SASL_BADPARAM;
+    
+    if (strcmp(mech,"GSSAPI")==0) service = gssapi_service;
+
+    if (sasl_client_init(client_callbacks)!=SASL_OK) fatal("Unable to init client");
+
+    if (sasl_server_init(goodsasl_cb,"TestSuite")!=SASL_OK) fatal("unable to init server");
+
+    if ((hp = gethostbyname(myhostname)) == NULL) {
+	perror("gethostbyname");
+	fatal("");
+    }
+
+    addr.sin_family = 0;
+    memcpy(&addr.sin_addr, hp->h_addr, hp->h_length);
+    addr.sin_port = htons(0);
+
+    sprintf(buf,"%s;%d", inet_ntoa(addr.sin_addr), 0);
+
+    /* client new connection */
+    if (sasl_client_new(service,
+			myhostname,
+			buf, buf, NULL,
+			0,
+			&clientconn)!= SASL_OK) fatal("sasl_client_new() failure");
+
+    set_properties(clientconn);
+
+    if (sasl_server_new(service, myhostname, NULL,
+			buf, buf, NULL, 0, 
+			&saslconn) != SASL_OK) {
+	fatal("");
+    }
+    set_properties(saslconn);
+
+    do {
+	result = sasl_client_start(clientconn, mech,
+				   &client_interact,
+				   &out, &outlen,
+				   &mechusing);
+
+	if (result == SASL_INTERACT) fillin_correctly(client_interact);
+	else if(result == SASL_CONTINUE) need_another_client = 1;
+	else if(result == SASL_OK) need_another_client = 0;
+    } while (result == SASL_INTERACT);
+			       
+    if (result < 0)
+    {
+	printf("%s - \n",sasl_errstring(result,NULL,NULL));
+	fatal("sasl_client_start() error");
+    }
+
+    result = sasl_server_start(saslconn,
+			       mech,
+			       out,
+			       outlen,
+			       &out,
+			       &outlen);
+
+    if (result < 0) 
+    {
+	printf("%s\n",sasl_errstring(result,NULL,NULL));
+	fatal("sasl_server_start() error");
+    }
+
+    while (result == SASL_CONTINUE) {
+	do {
+	    result = sasl_client_step(clientconn,
+				      out, outlen,
+				      &client_interact,
+				      &out2, &outlen2);
+	    
+	    if (result == SASL_INTERACT)
+		fillin_correctly(client_interact);
+	    else if (result == SASL_CONTINUE)
+		need_another_client = 1;
+	    else if (result == SASL_OK)
+		need_another_client = 0;
+	} while (result == SASL_INTERACT);
+
+	if (result < 0) 
+	{
+	    printf("%s\n",sasl_errstring(result,NULL,NULL));
+	    fatal("sasl_client_step() error");
+	}
+
+	out=out2;
+	outlen=outlen2;
+
+	result = sasl_server_step(saslconn,
+				  out,
+				  outlen,
+				  &out,
+				  &outlen);
+	
+	if (result < 0) 
+	{
+	    printf("%s\n",sasl_errstring(result,NULL,NULL));
+	    fatal("sasl_server_step() error");
+	}
+
+    }
+
+    if(need_another_client) {
+	result = sasl_client_step(clientconn,
+				  out, outlen,
+				  &client_interact,
+				  &out2, &outlen2);
+	if(result != SASL_OK)
+	    fatal("client was not ok on last server step");
+    }
+
+    *server_conn = saslconn;
+    *client_conn = clientconn;
+    
+    return SASL_OK;
+}
+
+void cleanup_auth(sasl_conn_t **client, sasl_conn_t **server) 
+{
+    sasl_dispose(client);
+    sasl_dispose(server);
+    sasl_done();
+}
+
+void testseclayer(char *mech, void *rock __attribute__((unused))) 
+{
+    sasl_conn_t *sconn, *cconn;
+    int result;
+    char buf[8192], buf2[8192];
+    const char *txstring = "THIS IS A TEST";
+    const char *out, *out2;
+    char *tmp;
+    unsigned outlen, outlen2, totlen;
+    
+    printf("%s --> security layer start\n", mech);
+    
+
+    /* Basic crash-tests (none should cause a crash): */
+    if(doauth(mech, &sconn, &cconn) != SASL_OK) {
+	fatal("doauth failed in testseclayer");
+    }
+
+    sasl_encode(NULL, txstring, strlen(txstring), &out, &outlen);
+    sasl_encode(cconn, NULL, strlen(txstring), &out, &outlen);
+    sasl_encode(cconn, txstring, 0, &out, &outlen);
+    sasl_encode(cconn, txstring, (unsigned)-1, &out, &outlen);
+    sasl_encode(cconn, txstring, strlen(txstring), NULL, &outlen);
+    sasl_encode(cconn, txstring, strlen(txstring), &out, NULL);
+
+    sasl_decode(NULL, txstring, strlen(txstring), &out, &outlen);
+    sasl_decode(cconn, NULL, strlen(txstring), &out, &outlen);
+    sasl_decode(cconn, txstring, 0, &out, &outlen);
+    sasl_decode(cconn, txstring, (unsigned)-1, &out, &outlen);
+    sasl_decode(cconn, txstring, strlen(txstring), NULL, &outlen);
+    sasl_decode(cconn, txstring, strlen(txstring), &out, NULL);
+
+    cleanup_auth(&sconn, &cconn);
+
+    /* Basic I/O Test */
+    if(doauth(mech, &sconn, &cconn) != SASL_OK) {
+	fatal("doauth failed in testseclayer");
+    }
+
+    result = sasl_encode(cconn, txstring, strlen(txstring), &out, &outlen);
+    if(result != SASL_OK) {
+	fatal("basic sasl_encode failure");
+    }
+
+    result = sasl_decode(sconn, out, outlen, &out, &outlen);
+    if(result != SASL_OK) {
+	fatal("basic sasl_decode failure");
+    }    
+    
+    cleanup_auth(&sconn, &cconn);
+
+    /* Split one block and reassemble */
+    if(doauth(mech, &sconn, &cconn) != SASL_OK) {
+	fatal("doauth failed in testseclayer");
+    }
+
+    result = sasl_encode(cconn, txstring, strlen(txstring), &out, &outlen);
+    if(result != SASL_OK) {
+	fatal("basic sasl_encode failure (2)");
+    }
+
+    memcpy(buf, out, 5);
+    buf[5] = '\0';
+    
+    out += 5;
+
+    result = sasl_decode(sconn, buf, 5, &out2, &outlen2);
+    if(result != SASL_OK) {
+	printf("Failed with: %s\n", sasl_errstring(result, NULL, NULL));
+	fatal("sasl_decode failure part 1/2");
+    }    
+    
+    memset(buf2, 0, 8192);
+    memcpy(buf2, out2, outlen2);
+
+    result = sasl_decode(sconn, out, outlen - 5, &out, &outlen);
+    if(result != SASL_OK) {
+	fatal("sasl_decode failure part 2/2");
+    }
+
+    strcat(buf2, out);
+    if(strcmp(buf2, txstring)) {
+	fatal("did not get correct string back after 2 sasl_decodes");
+    }
+
+    cleanup_auth(&sconn, &cconn);
+
+    /* Combine 2 blocks */
+    if(doauth(mech, &sconn, &cconn) != SASL_OK) {
+	fatal("doauth failed in testseclayer");
+    }
+
+    result = sasl_encode(cconn, txstring, strlen(txstring), &out, &outlen);
+    if(result != SASL_OK) {
+	fatal("basic sasl_encode failure (3)");
+    }
+
+    memcpy(buf, out, outlen);
+
+    tmp = buf + outlen;
+    totlen = outlen;
+    
+    result = sasl_encode(cconn, txstring, strlen(txstring), &out, &outlen);
+    if(result != SASL_OK) {
+	fatal("basic sasl_encode failure (4)");
+    }
+
+    memcpy(tmp, out, outlen);
+    totlen += outlen;
+
+    result = sasl_decode(sconn, buf, totlen, &out, &outlen);
+    if(result != SASL_OK) {
+	printf("Failed with: %s\n", sasl_errstring(result, NULL, NULL));
+	fatal("sasl_decode failure (2 blocks)");
+    }    
+
+    sprintf(buf2, "%s%s", txstring, txstring);
+
+    if(strcmp(out, buf2)) {
+	fatal("did not get correct string back (2 blocks)");
+    }
+
+    cleanup_auth(&sconn, &cconn);
+
+    /* Combine 2 blocks with 1 split */
+    if(doauth(mech, &sconn, &cconn) != SASL_OK) {
+	fatal("doauth failed in testseclayer");
+    }
+
+    result = sasl_encode(cconn, txstring, strlen(txstring), &out, &outlen);
+    if(result != SASL_OK) {
+	fatal("basic sasl_encode failure (3)");
+    }
+
+    memcpy(buf, out, outlen);
+
+    tmp = buf + outlen;
+    
+    result = sasl_encode(cconn, txstring, strlen(txstring), &out2, &outlen2);
+    if(result != SASL_OK) {
+	fatal("basic sasl_encode failure (4)");
+    }
+
+    memcpy(tmp, out2, 5);
+    tmp[5] = '\0';
+    outlen += 5;
+
+    outlen2 -= 5;
+    out2 += 5;
+
+    result = sasl_decode(sconn, buf, outlen, &out, &outlen);
+    if(result != SASL_OK) {
+	printf("Failed with: %s\n", sasl_errstring(result, NULL, NULL));
+	fatal("sasl_decode failure 1/2 (2 blocks, 1 split)");
+    }    
+
+    memset(buf2, 0, 8192);
+    memcpy(buf2, out, outlen);
+
+    tmp = buf2 + outlen;
+
+    result = sasl_decode(sconn, out2, outlen2, &out, &outlen);
+    if(result != SASL_OK) {
+	printf("Failed with: %s\n", sasl_errstring(result, NULL, NULL));
+	fatal("sasl_decode failure 2/2 (2 blocks, 1 split)");
+    }
+
+    memcpy(tmp, out, outlen);
+
+    sprintf(buf, "%s%s", txstring, txstring);
+    if(strcmp(buf, buf2)) {
+	fatal("did not get correct string back (2 blocks, 1 split)");
+    }
+
+    cleanup_auth(&sconn, &cconn);
+
+    printf("%s --> security layer OK\n", mech);
+    
+}
+
+
 /*
  * Apply the given function to each machanism 
  */
@@ -1121,6 +1444,10 @@ void test_all_corrupt()
     }
 }
 
+void test_seclayer() 
+{
+    foreach_mechanism((foreach_t *) &testseclayer, NULL);
+}
 
 void create_ids(void)
 {
@@ -1298,7 +1625,7 @@ void notes(void)
 {
     printf("NOTE:\n");
     printf("-For KERBEROS_V4 must be able to read srvtab file (usually /etc/srvtab)\n");
-    printf("-For GSSAPI must be able to read srvtab (? /etc/krb5.keytab ? )\n");
+    printf("-For GSSAPI must be able to read srvtab (/etc/krb5.keytab)\n");
     printf("-Must be able to read and write to sasldb.\n");
     printf("\n\n");
 }
@@ -1382,6 +1709,9 @@ int main(int argc, char **argv)
 	test_rand_corrupt(random_tests);
 	printf("Random tests... ok\n");
     }
+
+    test_seclayer();
+    printf("Tests of security layer... ok\n");
     
     printf("All tests seemed to go ok (i.e. we didn't crash)\n");
 
