@@ -1,7 +1,7 @@
 /* GSSAPI SASL plugin
  * Leif Johansson
  * Rob Siemborski (SASL v2 Conversion)
- * $Id: gssapi.c,v 1.41.2.13 2001/06/27 14:56:30 rjs3 Exp $
+ * $Id: gssapi.c,v 1.41.2.14 2001/07/02 16:27:58 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -121,8 +121,10 @@ typedef struct context {
 
     char *encode_buf;                /* For encoding/decoding mem management */
     char *decode_buf;
+    char *decode_once_buf;
     unsigned encode_buf_len;
     unsigned decode_buf_len;
+    unsigned decode_once_buf_len;
     buffer_info_t *enc_in_buf;
 
     char *out_buf;                   /* per-step mem management */
@@ -320,12 +322,19 @@ sasl_gss_decode_once(void *context,
     if (outputlen)
 	*outputlen = output_token->length;
 
-    /* FIXME: This really looks like a potential memory leak to me! */
     if (output_token->value) {
-	if (output)
-	    *output = output_token->value;
-	else
-	    gss_release_buffer(&min_stat, output_token);
+	if (output) {
+	    result = _plug_buf_alloc(text->utils, &text->decode_once_buf,
+				     &text->decode_once_buf_len,
+				     *outputlen);
+	    if(result != SASL_OK) {
+		gss_release_buffer(&min_stat, output_token);
+		return result;
+	    }
+	    *output = text->decode_once_buf;
+	    memcpy(*output, output_token->value, *outputlen);
+	}
+	gss_release_buffer(&min_stat, output_token);
     }
 
     /* reset for the next packet */
@@ -348,6 +357,7 @@ static int sasl_gss_decode(void *context,
 
     while (inputlen!=0)
     {
+	/* no need to free tmp */
       ret = sasl_gss_decode_once(text, &input, &inputlen,
 				 &tmp, &tmplen);
 
@@ -367,7 +377,6 @@ static int sasl_gss_decode(void *context,
 	  *(text->decode_buf + *outputlen + tmplen) = '\0';
 
 	  *outputlen+=tmplen;
-	  text->utils->free(tmp);
       }
     }
 
@@ -453,6 +462,11 @@ sasl_gss_free_context_contents(context_t *text)
       text->decode_buf = NULL;
   }
 
+  if (text->decode_once_buf) {
+      text->utils->free(text->decode_once_buf);
+      text->decode_once_buf = NULL;
+  }
+  
   if (text->enc_in_buf) {
       if(text->enc_in_buf->data) text->utils->free(text->enc_in_buf->data);
       text->utils->free(text->enc_in_buf);
