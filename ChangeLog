@@ -4,6 +4,10 @@
 	* plugins/kerberos4.c (mech_avail): fixed ipv4 check
 	  (patch from Hajimu UMEMOTO <ume@mahoroba.org>)
 
+	* doc/appconvert.html: vague guide documenting our experience
+	  porting Cyrus IMAPd to use SASLv2
+	* doc/Makefile.am: added appconvert.html
+
 2001-07-30  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* sasldb/db_berkeley.c: utils->seterror() calls
 	* sasldb/db_gdbm.c: utils->seterror() calls
