@@ -1,6 +1,6 @@
 /* Generic SASL plugin utility functions
  * Rob Siemborski
- * $Id: plugin_common.c,v 1.1.2.12 2001/07/18 21:27:33 rjs3 Exp $
+ * $Id: plugin_common.c,v 1.1.2.13 2001/07/18 21:35:39 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -67,7 +67,14 @@
 #include "plugin_common.h"
 
 /* translate IPv4 mapped IPv6 address to IPv4 address */
-static void sockaddr_unmapped(struct sockaddr *sa, socklen_t *len)
+static void sockaddr_unmapped(
+#ifdef IN6_IS_ADDR_V4MAPPED
+  struct sockaddr *sa, socklen_t *len
+#else
+  struct sockaddr *sa __attribute__((unused)),
+  socklen_t *len __attribute__((unused))
+#endif
+)
 {
 #ifdef IN6_IS_ADDR_V4MAPPED
     struct sockaddr_in6 *sin6;
