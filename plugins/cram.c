@@ -1,6 +1,6 @@
 /* CRAM-MD5 SASL plugin
  * Tim Martin 
- * $Id: cram.c,v 1.55.2.2 2001/06/20 16:28:14 rjs3 Exp $
+ * $Id: cram.c,v 1.55.2.3 2001/06/20 20:40:16 rjs3 Exp $
  */
 
 /* 
@@ -386,7 +386,8 @@ static int server_continue_step (void *conn_context,
     sparams->utils->free(authstr);
     if (result != SASL_OK) goto done;
 
-    prop_request(sparams->propctx, password_request);
+    result = prop_request(sparams->propctx, password_request);
+    if (result != SASL_OK) goto done;
 
     /* this will trigger the getting of the aux properties */
     result = sparams->canon_user(sparams->utils->conn,
@@ -403,10 +404,7 @@ static int server_continue_step (void *conn_context,
 	goto done;
     }
 
-    /* Casting here is ugly but ok */
     len = strlen(auxprop_values[0].values[0]);
-
-    /* Request secret */
     if (len == 0) {
 	sparams->utils->seterror(sparams->utils->conn,0,
 				 "empty secret");
