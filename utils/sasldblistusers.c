@@ -48,11 +48,11 @@
 
 #include <sasl.h>
 
-typedef void *listcb_t(const char *, const char *, const char *);
+typedef void *listcb_t(const char *, const char *);
 
-void listusers_cb(const char *authid, const char *realm, const char *mechanism)
+void listusers_cb(const char *authid, const char *realm)
 {
-    if ( !authid || !mechanism || !realm) {
+    if ( !authid || !realm) {
 	fprintf(stderr,"userlist callback has bad param");
 	return;
     }
@@ -60,7 +60,7 @@ void listusers_cb(const char *authid, const char *realm, const char *mechanism)
     /* the entries that just say the mechanism exists */
     if (strlen(authid)==0) return;
 
-    printf("user: %s realm: %s mech: %s\n",authid,realm,mechanism);
+    printf("user: %s realm: %s\n",authid,realm);
 }
 
 /*
@@ -90,20 +90,10 @@ int listusers(const char *path, listcb_t *cb)
     while (dkey.dptr != NULL) {
 	char *authid = dkey.dptr;
 	char *realm  = dkey.dptr+strlen(authid)+1;
-	char *tmp    = realm + strlen(realm)+1;
-	char mech[1024];
-	int len = dkey.dsize - (tmp - ((char *)dkey.dptr));
-
-	if (len >= (int) sizeof mech) {
-	    fprintf(stderr, "malformed database entry\n");
-	    break;
-	}
-	memcpy(mech, tmp, len);
-	mech[dkey.dsize - (tmp - ((char *)dkey.dptr))] = '\0';
 
 	if (*authid) {
 	    /* don't check return values */
-	    cb(authid,realm,mech);
+	    cb(authid,realm);
 	}
 
 	nextkey=gdbm_nextkey(indb, dkey);
@@ -113,7 +103,8 @@ int listusers(const char *path, listcb_t *cb)
     gdbm_close(indb);
 }
 
-#else /* SASL_GDBM */
+#endif /* SASL_GDBM */
+
 #ifdef SASL_NDBM
 
 #include <ndbm.h>
@@ -138,19 +129,10 @@ int listusers(const char *path, listcb_t *cb)
 	char *authid = dkey.dptr;
 	char *realm  = dkey.dptr+strlen(authid)+1;
 	char *tmp    = realm + strlen(realm)+1;
-	char mech[1024];
-	int len = dkey.dsize - (tmp - ((char *)dkey.dptr));
-
-	if (len >= (int) sizeof mech) {
-	    fprintf(stderr, "malformed database entry\n");
-	    break;
-	}
-	memcpy(mech, tmp, len);
-	mech[dkey.dsize - (tmp - ((char *)dkey.dptr))] = '\0';
 
 	if (*authid) {
 	    /* don't check return values */
-	    cb(authid,realm,mech);
+	    cb(authid,realm);
 	}
 
 	nextkey=dbm_nextkey(indb);
@@ -160,7 +142,8 @@ int listusers(const char *path, listcb_t *cb)
     dbm_close(indb);
 }
 
-#else /* SASL_NDBM */
+#endif /* SASL_NDBM */
+
 #ifdef SASL_BERKELEYDB
 
 #include <db.h>
@@ -250,18 +233,15 @@ int listusers(const char *path, listcb_t *cb)
     {
 	char *authid;
 	char *realm;
-	char *tmp;
-	unsigned int len;
-	char mech[1024];
 	int numnulls = 0;
 	unsigned int lup;
 
-	/* make sure there are exactly 2 null's */
+	/* make sure there is exactly 1 null */
 	for (lup=0;lup<key.size;lup++)
 	    if (((char *)key.data)[lup]=='\0')
 		numnulls++;
 
-	if (numnulls != 2) {
+	if (numnulls != 1) {
 	    fprintf(stderr,"warning: probable database corruption\n");
 	    result = cursor->c_get(cursor, &key, &data, DB_NEXT);
 	    continue;
@@ -269,22 +249,10 @@ int listusers(const char *path, listcb_t *cb)
 
 	authid = key.data;
 	realm  = authid + strlen(authid)+1;
-	tmp    = realm + strlen(realm)+1;
-	len = key.size - (tmp - authid);
-
-	/* make sure we have enough space of mech */
-	if (len >=sizeof(mech)) {
-	    fprintf(stderr,"warning: absurdly long mech name\n");
-	    result = cursor->c_get(cursor, &key, &data, DB_NEXT);
-	    continue;
-	}
-
-	memcpy(mech, tmp, key.size - (tmp - ((char *)key.data)));
-	mech[key.size - (tmp - ((char *)key.data))] = '\0';
 
 	if (*authid) {
 	    /* don't check return values */
-	    cb(authid,realm,mech);
+	    cb(authid,realm);
 	}
 
 	result = cursor->c_get(cursor, &key, &data, DB_NEXT);
@@ -307,8 +275,9 @@ int listusers(const char *path, listcb_t *cb)
     return result;
 }
 
-#else 
+#endif /* BERKELEY */
 
+#if !defined(SASL_GDBM) && !defined(SASL_NDBM) && !defined(SASL_BERKELEYDB)
 int listusers(const char *path, listcb_t *cb)
 {
     fprintf(stderr,"Unsupported DB format");
@@ -316,10 +285,6 @@ int listusers(const char *path, listcb_t *cb)
 }
 
 #endif /* BERKELEY */
-
-#endif /* SASL_NDBM */
-
-#endif /* SASL_GDBM */
 
 
 int main(int argc, char **argv)
