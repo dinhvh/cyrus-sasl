@@ -1,7 +1,7 @@
 /* testsuite.c -- Stress the library a little
  * Rob Siemborski
  * Tim Martin
- * $Id: testsuite.c,v 1.13.2.15 2001/06/26 23:05:48 rjs3 Exp $
+ * $Id: testsuite.c,v 1.13.2.16 2001/06/28 19:35:44 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -310,7 +310,7 @@ int my_mutex_lock(my_mutex_t *m)
 {
     if (m->val != 0)
     {
-	fatal("Trying to lock a mutex already locked. This is not good in a single threaded app");
+	fatal("Trying to lock a mutex already locked [single-threaded app]");
     }
 
     m->val = 1;
@@ -329,13 +329,13 @@ int my_mutex_unlock(my_mutex_t *m)
     return SASL_OK;
 }
 
-int my_mutex_dispose(my_mutex_t *m)
+void my_mutex_dispose(my_mutex_t *m)
 {
-    if (m==NULL) return SASL_OK;
+    if (m==NULL) return;
 
     free(m);
 
-    return SASL_OK;
+    return;
 }
 
 int good_getopt(void *context __attribute__((unused)), 
