@@ -4,6 +4,8 @@
  *
  */
 
+#include <config.h>
+
 #include <sfio.h>
 #include <sfio/stdio.h>
 #include <ctype.h>
@@ -51,26 +53,19 @@ extern int optind;
 int verbose = 0;
 int emacs = 0;
 
-/* FIXME: This only parses IPV4 addresses */
-int iptostring(const struct sockaddr_in *addr,
-	       char *out, unsigned outlen) {
-    unsigned char a[4];
-    int i;
+int iptostring(const struct sockaddr *addr, socklen_t addrlen,
+		     char *out, unsigned outlen) {
+    char hbuf[NI_MAXHOST], pbuf[NI_MAXSERV];
     
-    /* FIXME: Weak bounds check, are we less than the largest possible size? */
-    /* (21 = 4*3 for address + 3 periods + 1 semicolon + 5 port digits */
-    if(outlen <= 21) return SASL_BUFOVER;
     if(!addr || !out) return SASL_BADPARAM;
 
-    memset(out, 0, outlen);
+    getnameinfo(addr, addrlen, hbuf, sizeof(hbuf), pbuf, sizeof(pbuf),
+		NI_NUMERICHOST | NI_WITHSCOPEID | NI_NUMERICSERV);
 
-    for(i=3; i>=0; i--) {
-	a[i] = (addr->sin_addr.s_addr & (0xFF << (8*i))) >> (i*8);
-    }
-    
-    snprintf(out,outlen,"%d.%d.%d.%d;%d",(int)a[3],(int)a[2],
-	                                 (int)a[1],(int)a[0],
-	                                 (int)addr->sin_port);
+    if(outlen < strlen(hbuf) + strlen(pbuf) + 2)
+	return SASL_BUFOVER;
+
+    snprintf(out, outlen, "%s;%s", hbuf, pbuf);
 
     return SASL_OK;
 }
@@ -372,7 +367,8 @@ int main(int argc, char **argv)
 	    perror("getpeername");
 	    exit(EX_NOHOST);
 	}
-	r = iptostring((struct sockaddr_in *)&saddr_r, remote_ip, 64);
+	r = iptostring((struct sockaddr *)&saddr_r,
+		       sizeof(struct sockaddr_in), remote_ip, 64);
     }
     if (!r) {
 	struct sockaddr_in saddr_l;
@@ -382,7 +378,8 @@ int main(int argc, char **argv)
 	    perror("getsockname");
 	    exit(EX_OSERR);
 	}
-	r = iptostring((struct sockaddr_in *)&saddr_l, local_ip, 64);
+	r = iptostring((struct sockaddr *)&saddr_l,
+		       sizeof(struct sockaddr_in), local_ip, 64);
     }
 
     if (!r) r = sasl_client_new("smtp", host, local_ip, remote_ip,

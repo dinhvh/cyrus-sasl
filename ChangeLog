@@ -1,3 +1,6 @@
+2001-08-01  Rob Siemborski <rjs3+@andrew.cmu.edu>
+	* utils/smtptest.c (iptostring): better behaved w.r.t endianness
+
 2001-07-31  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* plugins/kerberos4.c (mech_avail): made static
 
