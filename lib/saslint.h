@@ -339,6 +339,11 @@ extern int _sasl_sasldb_set_pass(sasl_conn_t *conn,
 				 const char *user_realm,
 				 int flags);
 
+int _sasl_sasldb_verify_apop(sasl_conn_t *conn,
+			     const char *userstr,
+			     const char *challenge,
+			     const char *response,
+			     const char *user_realm);
 
 /* The following is defined in common.c */
 /* Basically a conditional call to realloc(), if we need more */

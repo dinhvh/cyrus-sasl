@@ -128,6 +128,8 @@ static int _sasl_make_plain_secret(const char *salt __attribute__((unused)),
     return SASL_OK;
 }
 
+
+
 /* returns the realm we should pretend to be in */
 static int parseuser(char **user, char **realm, const char *user_realm, 
 		     const char *serverFQDN, const char *input)
@@ -226,6 +228,63 @@ static int sasldb_verify_password(sasl_conn_t *conn,
     return ret;
 }
 
+int _sasl_sasldb_verify_apop(sasl_conn_t *conn,
+			     const char *userstr,
+			     const char *challenge,
+			     const char *response,
+			     const char *user_realm)
+{
+    int ret = SASL_FAIL;
+    sasl_secret_t *secret = NULL;
+    char *userid = NULL;
+    char *realm = NULL;
+    unsigned char digest[16];
+    char digeststr[32];
+    MD5_CTX ctx;
+    int i;
+
+    if (!userstr || !challenge || !response) {
+      return SASL_BADPARAM;
+    }
+
+    ret = parseuser(&userid, &realm, user_realm, conn->serverFQDN, userstr);
+    if (ret != SASL_OK) {
+      /* error parsing user */
+      goto done;
+    }
+
+    ret = _sasl_db_getsecret(conn, "PLAIN", userid, realm, &secret);
+    if (ret != SASL_OK) {
+      /* error getting APOP secret */
+      goto done;
+    }
+
+    MD5Init(&ctx);
+    MD5Update(&ctx, challenge, strlen(challenge));
+    MD5Update(&ctx, secret->data, strlen(secret->data));
+    MD5Final(digest, &ctx);
+
+    /* convert digest from binary to ASCII hex */
+    for (i = 0; i < 16; i++)
+      sprintf(digeststr + (i*2), "%02x", digest[i]);
+
+    if (!strncasecmp(digeststr, response, 32)) {
+      /* password verified! */
+      ret = SASL_OK;
+    } else {
+      /* passwords do not match */
+      ret = SASL_BADAUTH;
+    }
+
+ done:
+    if (userid) sasl_FREE(userid);
+    if (realm)  sasl_FREE(realm);
+
+    if (secret) _sasl_free_secret(&secret);
+    return ret;
+}
+
+
 /* this routine sets the sasldb password given a user/pass */
 int _sasl_sasldb_set_pass(sasl_conn_t *conn,
 			  const char *userstr, 
@@ -246,7 +305,6 @@ int _sasl_sasldb_set_pass(sasl_conn_t *conn,
     if (pass != NULL && !(flags & SASL_SET_DISABLE)) {
 	/* set the password */
 	sasl_secret_t *sec = NULL;
-	sasl_rand_t *rpool = NULL;
 
 	/* if SASL_SET_CREATE is set, we don't want to overwrite an
 	   existing account */
@@ -256,7 +314,7 @@ int _sasl_sasldb_set_pass(sasl_conn_t *conn,
 		_sasl_free_secret(&sec);
 		ret = SASL_NOCHANGE;
 	    }
-/* FIXME this needs to be the way it was before*/
+/* FIXME this needs to be the way it was before ? */
 /*	    if (ret == SASL_NOUSER) { */
 	    else {
 		/* hmmm, don't want to change this */
@@ -274,9 +332,6 @@ int _sasl_sasldb_set_pass(sasl_conn_t *conn,
 	if (ret != SASL_OK) {
 	    _sasl_log(conn, SASL_LOG_ERR, NULL, ret, 0,
 		      "failed to set plaintext secret for %s: %z", userid);
-	}
-	if (rpool) {
-	    sasl_randfree(&rpool);
 	}
 	if (sec) {
 	    _sasl_free_secret(&sec);

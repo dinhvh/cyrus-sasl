@@ -1,6 +1,6 @@
 /* SASL server API implementation
  * Tim Martin
- * $Id: server.c,v 1.84.2.11 2001/06/08 16:25:37 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.12 2001/06/11 14:48:01 rjs3 Exp $
  */
 
 /* 
@@ -84,6 +84,7 @@ extern int gethostname(char *, int);
  * sasl_server_start
  * sasl_server_step
  * sasl_checkpass
+ * sasl_checkapop
  * sasl_userexists <= not yet implemented
  * sasl_setpass
  */
@@ -1302,14 +1303,42 @@ int sasl_checkpass(sasl_conn_t *conn,
     return result;
 }
 
-int sasl_checkapop(sasl_conn_t *conn __attribute__((unused)),
-		   const char *challenge __attribute__((unused)),
-		   unsigned challen __attribute__((unused)),
-		   const char *response __attribute__((unused)),
-		   unsigned resplen __attribute__((unused)))
+/* check if an APOP exchange is valid
+ *  (note this is an optional part of the SASL API)
+ * inputs:
+ *  user          -- user to query in current user_realm
+ *  userlen       -- length of username, 0 = strlen(user)
+ *  challenge     -- challenge which was sent to client
+ *  challen       -- length of challenge, 0 = strlen(challenge)
+ *  response      -- client response string: "32HEXDIGIT"
+ *  resplen       -- length of response, 0 = strlen(response)
+ * returns 
+ *  SASL_OK       -- success
+ *  SASL_FAIL     -- failure
+ *  SASL_BADPARAM -- invalid parameter
+ *  SASL_BADAUTH  -- authentication failed
+ *  SASL_NOUSER   -- user not found
+ */
+int sasl_checkapop(sasl_conn_t *conn,
+ 		   const char *user,
+ 		   unsigned userlen __attribute__((unused)),
+ 		   const char *challenge,
+ 		   unsigned challen __attribute__((unused)),
+ 		   const char *response,
+ 		   unsigned resplen __attribute__((unused)))
 {
-    /* FIXME: Not Implemented (it's optional) */
-    return SASL_FAIL;
+    sasl_server_conn_t *s_conn = (sasl_server_conn_t *) conn;
+    int result = SASL_FAIL;
+ 
+    /* check params */
+    if (_sasl_server_active==0) return SASL_NOTINIT;
+    if (!conn || !user || !response || !challenge)
+	return SASL_BADPARAM;
+
+    result = _sasl_sasldb_verify_apop(conn, user, challenge, response,
+				      s_conn->user_realm);
+
+    return result;
 }
 
 
