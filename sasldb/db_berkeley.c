@@ -1,7 +1,7 @@
 /* db_berkeley.c--SASL berkeley db interface
  * Rob Siemborski
  * Tim Martin
- * $Id: db_berkeley.c,v 1.1.2.7 2001/07/30 16:14:28 rjs3 Exp $
+ * $Id: db_berkeley.c,v 1.1.2.8 2001/07/30 16:24:54 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -370,7 +370,7 @@ sasldb_handle _sasldb_getkeyhandle(const sasl_utils_t *utils,
 
     if(!db_ok) {
 	utils->seterror(conn, 0, "Database not OK in _sasldb_getkeyhandle");
-	return SASL_FAIL;
+	return NULL;
     }
 
     ret = berkeleydb_open(utils, conn, 0, &mbdb);
