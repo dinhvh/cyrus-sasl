@@ -380,11 +380,8 @@ typedef int sasl_client_plug_init_t(const sasl_utils_t *utils,
 /*				    sasl_client_plug_t **pluglist, */
 /* FIXME: this is not const in chris newman's implementation */
 				    const sasl_client_plug_t **pluglist,
-				    int *plugcount);
-/* Chris Newman's Implementation has the following additional parameter
- * which I don't understand (FIXME)
- *				    const char *plugname);
- */
+				    int *plugcount,
+				    const char *plugname);
 
 /* add a client plug-in
  */
@@ -702,13 +699,11 @@ typedef int sasl_server_plug_init_t(const sasl_utils_t *utils,
 /*				    sasl_server_plug_t **pluglist, */
 /* FIXME: this is not const in chris newman's implementation */
 				    const sasl_server_plug_t **pluglist,
-				    int *plugcount);
-/* Chris Newman's Implementation has the following additional parameter
- * which I don't understand (FIXME)
- *				    const char *plugname);
- */
+				    int *plugcount,
+				    const char *plugname);
 
-/* add a server plug-in
+/* 
+ * add a server plug-in
  */
 LIBSASL_API int sasl_server_add_plugin(const char *plugname,
 				       sasl_server_plug_init_t *splugfunc);

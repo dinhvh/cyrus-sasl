@@ -47,8 +47,11 @@
 #include <limits.h>
 #include <ctype.h>
 #include <string.h>
-#include <sasl.h>
-#include <saslutil.h>
+
+/* SASL Headers */
+#include "sasl.h"
+#include "saslplug.h"
+#include "saslutil.h"
 #include "saslint.h"
 
 static cmech_list_t *cmechlist; /* global var which holds the list */
@@ -111,7 +114,7 @@ static int add_plugin(void *p, void *library) {
   entry_point = (sasl_client_plug_init_t *)p;
 
   result = entry_point(cmechlist->utils, SASL_CLIENT_PLUG_VERSION, &version,
-		       &pluglist, &plugcount);
+		       &pluglist, &plugcount, NULL);
 
   if (result != SASL_OK)
   {
@@ -142,6 +145,12 @@ static int add_plugin(void *p, void *library) {
     }
 
   return SASL_OK;
+}
+
+int sasl_client_add_plugin(const char *plugname __attribute__((unused)),
+			   sasl_client_plug_init_t *entry)
+{
+    return add_plugin(entry, NULL);
 }
 
 static int

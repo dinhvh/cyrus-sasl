@@ -1,7 +1,7 @@
 /* Login SASL plugin
  * contributed by Rainer Schoepf <schoepf@uni-mainz.de>
  * based on PLAIN, by Tim Martin <tmartin@andrew.cmu.edu>
- * $Id: login.c,v 1.6.2.3 2001/06/22 15:37:55 rjs3 Exp $
+ * $Id: login.c,v 1.6.2.4 2001/06/25 16:44:10 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
@@ -271,7 +271,8 @@ int sasl_server_plug_init(sasl_utils_t *utils __attribute__((unused)),
 			  int maxversion,
 			  int *out_version,
 			  const sasl_server_plug_t **pluglist,
-			  int *plugcount)
+			  int *plugcount,
+			  const char *plugname __attribute__((unused)))
 {
   if (maxversion<SASL_SERVER_PLUG_VERSION)
     return SASL_BADVERS;
@@ -622,7 +623,8 @@ int sasl_client_plug_init(sasl_utils_t *utils __attribute__((unused)),
 			  int maxversion,
 			  int *out_version,
 			  const sasl_client_plug_t **pluglist,
-			  int *plugcount)
+			  int *plugcount,
+			  const char *plugname __attribute__((unused)))
 {
   if (maxversion<SASL_CLIENT_PLUG_VERSION)
     return SASL_BADVERS;

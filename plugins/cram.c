@@ -1,6 +1,6 @@
 /* CRAM-MD5 SASL plugin
  * Tim Martin 
- * $Id: cram.c,v 1.55.2.6 2001/06/25 15:47:14 rjs3 Exp $
+ * $Id: cram.c,v 1.55.2.7 2001/06/25 16:44:09 rjs3 Exp $
  */
 
 /* 
@@ -510,7 +510,8 @@ int sasl_server_plug_init(sasl_utils_t *utils __attribute__((unused)),
 			  int maxversion,
 			  int *out_version,
 			  const sasl_server_plug_t **pluglist,
-			  int *plugcount)
+			  int *plugcount,
+			  const char *plugname __attribute__((unused)))
 {
   if (maxversion<SASL_SERVER_PLUG_VERSION)
     return SASL_BADVERS;
@@ -914,7 +915,8 @@ int sasl_client_plug_init(sasl_utils_t *utils __attribute__((unused)),
 			  int maxversion,
 			  int *out_version,
 			  const sasl_client_plug_t **pluglist,
-			  int *plugcount)
+			  int *plugcount,
+			  const char *plugname __attribute__((unused)))
 {
   if (maxversion<SASL_CLIENT_PLUG_VERSION)
     return SASL_BADVERS;

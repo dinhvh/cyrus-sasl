@@ -1,6 +1,6 @@
 /* Plain SASL plugin
  * Tim Martin 
- * $Id: plain.c,v 1.43.2.4 2001/06/22 15:37:55 rjs3 Exp $
+ * $Id: plain.c,v 1.43.2.5 2001/06/25 16:44:10 rjs3 Exp $
  */
 
 /* 
@@ -283,7 +283,8 @@ int sasl_server_plug_init(const sasl_utils_t *utils __attribute__((unused)),
 			  int maxversion,
 			  int *out_version,
 			  const sasl_server_plug_t **pluglist,
-			  int *plugcount)
+			  int *plugcount,
+			  const char *plugname __attribute__((unused)))
 {
   if (maxversion<SASL_SERVER_PLUG_VERSION)
     return SASL_BADVERS;
@@ -705,7 +706,8 @@ int sasl_client_plug_init(sasl_utils_t *utils __attribute__((unused)),
 			  int maxversion,
 			  int *out_version,
 			  const sasl_client_plug_t **pluglist,
-			  int *plugcount)
+			  int *plugcount,
+			  const char *plugname __attribute__((unused)))
 {
   if (maxversion<SASL_CLIENT_PLUG_VERSION)
     return SASL_BADVERS;

@@ -1,7 +1,7 @@
 /* DIGEST-MD5 SASL plugin
  * Tim Martin
  * Alexey Melnikov 
- * $Id: digestmd5.c,v 1.97.2.2 2001/06/22 15:37:53 rjs3 Exp $
+ * $Id: digestmd5.c,v 1.97.2.3 2001/06/25 16:44:09 rjs3 Exp $
  */
 
 /* 
@@ -2740,7 +2740,8 @@ int sasl_server_plug_init(sasl_utils_t * utils __attribute__((unused)),
 			  int maxversion __attribute__((unused)),
 			  int *out_version,
 			  const sasl_server_plug_t ** pluglist,
-			  int *plugcount) 
+			  int *plugcount,
+			  const char *plugname __attribute__((unused))) 
 {
   if (maxversion < SASL_SERVER_PLUG_VERSION)
       return SASL_BADVERS;
@@ -3891,7 +3892,8 @@ int sasl_client_plug_init(sasl_utils_t * utils __attribute__((unused)),
 			  int maxversion,
 			  int *out_version,
 			  const sasl_client_plug_t ** pluglist,
-			  int *plugcount) {
+			  int *plugcount,
+			  const char *plugname __attribute__((unused))) {
   if (maxversion < SASL_CLIENT_PLUG_VERSION)
     return SASL_BADVERS;
 

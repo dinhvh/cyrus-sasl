@@ -1,6 +1,6 @@
 /* Kerberos4 SASL plugin
  * Tim Martin 
- * $Id: kerberos4.c,v 1.65.2.15 2001/06/25 14:56:39 rjs3 Exp $
+ * $Id: kerberos4.c,v 1.65.2.16 2001/06/25 16:44:10 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
@@ -926,7 +926,8 @@ int sasl_server_plug_init(const sasl_utils_t *utils,
 			  int maxversion,
 			  int *out_version,
 			  const sasl_server_plug_t **pluglist,
-			  int *plugcount)
+			  int *plugcount,
+			  const char *plugname __attribute__((unused)))
 {
 #ifdef macintosh
 	return SASL_BADVERS;
@@ -1419,7 +1420,8 @@ int sasl_client_plug_init(const sasl_utils_t *utils __attribute__((unused)),
 			  int maxversion,
 			  int *out_version,
 			  const sasl_client_plug_t **pluglist,
-			  int *plugcount)
+			  int *plugcount,
+			  const char *plugname __attribute__((unused)))
 {
   if (maxversion < SASL_CLIENT_PLUG_VERSION)
     return SASL_BADVERS;

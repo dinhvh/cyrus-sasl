@@ -1,6 +1,9 @@
 /* SRP SASL plugin
  * Tim Martin  3/17/00
  */
+
+#error This plugin has not been converted to the SASLv2 API yet, and is unsupported.
+
 /* 
  * Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
  *
@@ -1501,7 +1504,8 @@ int sasl_server_plug_init(sasl_utils_t *utils __attribute__((unused)),
 			  int maxversion,
 			  int *out_version,
 			  const sasl_server_plug_t **pluglist,
-			  int *plugcount)
+			  int *plugcount,
+			  const char *plugname __attribute__((unused)))
 {
   if (maxversion<SRP_VERSION)
     return SASL_BADVERS;
@@ -2133,7 +2137,8 @@ int sasl_client_plug_init(sasl_utils_t *utils __attribute__((unused)),
 			  int maxversion,
 			  int *out_version,
 			  const sasl_client_plug_t **pluglist,
-			  int *plugcount)
+			  int *plugcount,
+			  const char *plugname __attribute__((unused)))
 {
   if (maxversion < SRP_VERSION)
     return SASL_BADVERS;

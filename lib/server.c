@@ -1,6 +1,6 @@
 /* SASL server API implementation
  * Tim Martin
- * $Id: server.c,v 1.84.2.23 2001/06/25 14:56:37 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.24 2001/06/25 16:43:57 rjs3 Exp $
  */
 
 /* 
@@ -62,8 +62,8 @@
 
 #include "sasl.h"
 #include "saslint.h"
+#include "saslplug.h"
 #include "saslutil.h"
-
 
 #ifdef sun
 /* gotta define gethostname ourselves on suns */
@@ -288,7 +288,7 @@ static int add_plugin(void *p, void *library)
     /* call into the shared library asking for information about it */
     /* version is filled in with the version of the plugin */
     result = entry_point(mechlist->utils, SASL_SERVER_PLUG_VERSION, &version,
-			 &pluglist, &plugcount);
+			 &pluglist, &plugcount, NULL);
 
     if ((result != SASL_OK) && (result != SASL_NOUSER)) {
 	VL(("entry_point error %i\n",result));
@@ -331,6 +331,12 @@ static int add_plugin(void *p, void *library)
     }
 
     return SASL_OK;
+}
+
+int sasl_server_add_plugin(const char *plugname __attribute__((unused)),
+			   sasl_server_plug_init_t *entry)
+{
+    return add_plugin(entry, NULL);
 }
 
 static void server_done(void) {
@@ -983,7 +989,7 @@ int sasl_server_start(sasl_conn_t *conn,
 				  (void **) &entry_point, &library);
 	if (result == SASL_OK) {
 	    result = entry_point(mechlist->utils, SASL_SERVER_PLUG_VERSION,
-				 &version, &pluglist, &plugcount);
+				 &version, &pluglist, &plugcount, NULL);
 	}
 	if (result == SASL_OK) {
 	    /* find the correct mechanism in this plugin */

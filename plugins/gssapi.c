@@ -917,7 +917,8 @@ sasl_server_plug_init(
 		      int maxversion,
 		      int *out_version,
 		      const sasl_server_plug_t **pluglist,
-		      int *plugcount)
+		      int *plugcount,
+		      const char *plugname __attribute__((unused)))
 {
 #ifdef HAVE_GSSKRB5_REGISTER_ACCEPTOR_IDENTITY
     const char *keytab;
@@ -1460,7 +1461,8 @@ sasl_client_plug_init(const sasl_utils_t *utils __attribute__((unused)),
 		      int maxversion,
 		      int *out_version, 
 		      const sasl_client_plug_t **pluglist,
-		      int *plugcount)
+		      int *plugcount,
+		      const char *plugname __attribute__((unused)))
 {
   if (maxversion<SASL_CLIENT_PLUG_VERSION)
     return SASL_BADVERS;

@@ -307,13 +307,15 @@ int external_client_init(const sasl_utils_t *utils,
 			 int max_version,
 			 int *out_version,
 			 const sasl_client_plug_t **pluglist,
-			 int *plugcount);
+			 int *plugcount,
+			 const char *plugname);
 extern const sasl_client_plug_t external_client_mech;
 int external_server_init(const sasl_utils_t *utils,
 			 int max_version,
 			 int *out_version,
 			 const sasl_server_plug_t **pluglist,
-			 int *plugcount);
+			 int *plugcount,
+			 const char *plugname);
 extern const sasl_server_plug_t external_server_mech;
 
 
