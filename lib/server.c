@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: server.c,v 1.84.2.40 2001/07/06 21:06:16 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.41 2001/07/10 19:22:20 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -129,8 +129,8 @@ static sasl_global_callbacks_t global_callbacks;
 int sasl_setpass(sasl_conn_t *conn,
 		 const char *user,
 		 const char *pass, unsigned passlen,
-		 const char *oldpass __attribute__((unused)),
-		 unsigned oldpasslen __attribute__((unused)),
+		 const char *oldpass,
+		 unsigned oldpasslen,
 		 unsigned flags)
 {
     int result=SASL_OK, tmpresult;
@@ -148,7 +148,7 @@ int sasl_setpass(sasl_conn_t *conn,
     if ((flags & SASL_SET_CREATE) && (flags & SASL_SET_DISABLE))
 	return SASL_BADPARAM;
 
-    /* set/create password for PLAIN usage */
+    /* set/create password for sasldb */
     tmpresult = _sasl_sasldb_set_pass(conn, user, pass, passlen, 
 				      s_conn->user_realm, flags);
 
@@ -183,7 +183,7 @@ int sasl_setpass(sasl_conn_t *conn,
 				     user,
 				     pass,
 				     passlen,
-				     NULL, 0,
+				     oldpass, oldpasslen,
 				     flags);
 	if (tmpresult == SASL_OK) {
 	    _sasl_log(conn, SASL_LOG_NOTE,
@@ -1339,7 +1339,9 @@ int sasl_user_exists(sasl_conn_t *conn,
     /* check params */
     if (_sasl_server_active==0) return SASL_NOTINIT;
 
-    if(!conn || !service || !user) return SASL_BADPARAM;
+    if(!conn || !user) return SASL_BADPARAM;
+
+    if(!service) service = conn->service;
 
     for (v = _sasl_verify_password; v->name; v++) {
 	result = v->verify(conn, user, NULL, service, user_realm);
