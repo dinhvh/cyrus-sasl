@@ -377,6 +377,8 @@ void test_listmech(void)
 
     if (str[0]!='[') fatal("Failed sasl_listmech() with long user (didn't start with '['");
 
+    printf("We have the following mechs:\n %s\n",str);
+
     /* Test with really long prefix */
 
     result = sasl_listmech(saslconn,
@@ -1435,7 +1437,8 @@ void test_all_corrupt()
 {
     tosend_t tosend;
     
-    for(tosend.type=0; tosend.type<CORRUPT_SIZE; tosend.type++) {
+    /* Start just beyond NOTHING */
+    for(tosend.type=1; tosend.type<CORRUPT_SIZE; tosend.type++) {
 	for(tosend.step=0; tosend.step<MAX_STEPS; tosend.step++) {
 	    printf("TEST: %s in step %d:\n", corrupt_types[tosend.type],
 		   tosend.step);
