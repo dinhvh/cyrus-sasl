@@ -1,6 +1,6 @@
 /* SASL server API implementation
  * Tim Martin
- * $Id: server.c,v 1.84.2.12 2001/06/11 14:48:01 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.13 2001/06/11 18:26:06 rjs3 Exp $
  */
 
 /* 
@@ -874,13 +874,11 @@ static int mech_permitted(sasl_conn_t *conn,
  *
  */
 
-static int do_authorization(sasl_server_conn_t *s_conn __attribute__((unused)))
+static int do_authorization(sasl_server_conn_t *s_conn)
 {
-#if 0 /* FIXME: THIS IS SCREWED (specifically the call to authproc) */
     int ret;
     sasl_authorize_t *authproc;
     void *auth_context;
-    const char *canonuser;
     
     /* now let's see if authname is allowed to proxy for username! */
     
@@ -889,18 +887,13 @@ static int do_authorization(sasl_server_conn_t *s_conn __attribute__((unused)))
 			  &authproc, &auth_context) != SASL_OK) {
 	return SASL_NOAUTHZ;
     }
-    ret = authproc(auth_context, s_conn->base.oparams.authid,
-		   s_conn->base.oparams.user, &canonuser);
+    ret = authproc(&s_conn->base, auth_context,
+		   s_conn->base.oparams.authid, s_conn->base.oparams.alen,
+		   s_conn->base.oparams.user, s_conn->base.oparams.ulen,
+		   s_conn->user_realm, strlen(s_conn->user_realm),
+		   s_conn->sparams->propctx);
     
-    if (ret == SASL_OK && canonuser != NULL) {
-	if (s_conn->base.oparams.user != NULL)
-	    sasl_FREE(s_conn->base.oparams.user);
-	s_conn->base.oparams.user = (char *) canonuser;
-    }
-
     return ret;
-#endif
-    return SASL_OK;
 }
 
 
@@ -1024,17 +1017,9 @@ int sasl_server_start(sasl_conn_t *conn,
 					  &(conn->context));
 
     if (result == SASL_OK) {
-	result = s_conn->mech->plug->mech_step(conn->context,
-					       s_conn->sparams,
-					       clientin,
-					       clientinlen,
-					       serverout,
-					       serveroutlen,
-					       &conn->oparams);
-    }
-   
-    if (result == SASL_OK) {
-	result = do_authorization(s_conn);
+	result = sasl_server_step(conn,
+				  clientin, clientinlen,
+				  serverout, serveroutlen);
     }
 
  done:
