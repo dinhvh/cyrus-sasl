@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: external.c,v 1.1.2.6 2001/06/25 18:44:38 rjs3 Exp $
+ * $Id: external.c,v 1.1.2.7 2001/06/27 14:56:28 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -137,29 +137,30 @@ external_server_step(void *conn_context __attribute__((unused)),
   return SASL_OK;
 }
 
-const sasl_server_plug_t external_server_mech = {
-  "EXTERNAL",			/* mech_name */
-  0,				/* max_ssf */
-  SASL_SEC_NOPLAINTEXT
-  | SASL_SEC_NOANONYMOUS
-  | SASL_SEC_NODICTIONARY,	/* security_flags */
-  0,                            /* features */
-  NULL,				/* glob_context */
-  &external_server_new,		/* mech_new */
-  &external_server_step,	/* mech_step */
-  NULL,				/* mech_dispose */
-  NULL,				/* mech_free */
-  NULL,				/* setpass */
-  NULL,				/* user_query */
-  NULL,				/* idle */
-  NULL,                         /* mech_avail */
-  NULL				/* spare */
+sasl_server_plug_t external_server_mech =
+{
+    "EXTERNAL",			/* mech_name */
+    0,				/* max_ssf */
+    SASL_SEC_NOPLAINTEXT
+    | SASL_SEC_NOANONYMOUS
+    | SASL_SEC_NODICTIONARY,	/* security_flags */
+    0,                            /* features */
+    NULL,				/* glob_context */
+    &external_server_new,		/* mech_new */
+    &external_server_step,	/* mech_step */
+    NULL,				/* mech_dispose */
+    NULL,				/* mech_free */
+    NULL,				/* setpass */
+    NULL,				/* user_query */
+    NULL,				/* idle */
+    NULL,                         /* mech_avail */
+    NULL				/* spare */
 };
 
 int external_server_init(const sasl_utils_t *utils __attribute__((unused)),
 			 int max_version,
 			 int *out_version,
-			 const sasl_server_plug_t **pluglist,
+			 sasl_server_plug_t **pluglist,
 			 int *plugcount,
 			 const char *plugname __attribute__((unused)))
 {
@@ -331,26 +332,27 @@ static void external_client_dispose(void *conn_context,
 }
 
 
-const sasl_client_plug_t external_client_mech = {
-  "EXTERNAL",			/* mech_name */
-  0,				/* max_ssf */
-  SASL_SEC_NOPLAINTEXT
-  | SASL_SEC_NODICTIONARY,	/* security_flags */
-  0,                            /* features */
-  NULL,				/* required_prompts */
-  NULL,				/* glob_context */
-  &external_client_new,		/* mech_new */
-  &external_client_step,	/* mech_step */
-  &external_client_dispose,	/* mech_dispose */
-  NULL,				/* mech_free */
-  NULL,				/* idle */
-  NULL, NULL                    /* spare */
+sasl_client_plug_t external_client_mech =
+{
+      "EXTERNAL",			/* mech_name */
+      0,				/* max_ssf */
+      SASL_SEC_NOPLAINTEXT
+      | SASL_SEC_NODICTIONARY,	/* security_flags */
+      0,                            /* features */
+      NULL,				/* required_prompts */
+      NULL,				/* glob_context */
+      &external_client_new,		/* mech_new */
+      &external_client_step,	/* mech_step */
+      &external_client_dispose,	/* mech_dispose */
+      NULL,				/* mech_free */
+      NULL,				/* idle */
+      NULL, NULL                    /* spare */
 };
 
 int external_client_init(const sasl_utils_t *utils,
 			 int max_version,
 			 int *out_version,
-			 const sasl_client_plug_t **pluglist,
+			 sasl_client_plug_t **pluglist,
 			 int *plugcount,
 			 const char *plugname __attribute__((unused)))
 {

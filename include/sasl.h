@@ -579,6 +579,7 @@ typedef int sasl_server_userdb_setpass_t(sasl_conn_t *conn,
  *  authid, alen  -- authentication name, may not be NUL terminated
  *                   may be same as out_authid
  *  flags         -- not currently used, supplied by auth mechanism
+ *  user_realm    -- the user realm (may be NULL in case of client)
  *  out_user      -- buffer to copy user name
  *  out_umax      -- max length of user name
  *  out_ulen      -- set to length of user name
@@ -590,19 +591,17 @@ typedef int sasl_server_userdb_setpass_t(sasl_conn_t *conn,
  *  SASL_OK         on success
  *  SASL_BADPROT    username contains invalid character
  */
-/* FIXME: Current behavior allows a NULL to be passed as user_realm, esp
-   in the case of client.  how to resolve this? */
-typedef int sasl_server_canon_user_t(sasl_conn_t *conn,
-				     void *context,
-				     const char *user, unsigned ulen,
-				     const char *authid, unsigned alen,
-				     unsigned flags,
-    				     const char *user_realm,
-				     char *out_user,
-				     unsigned out_umax, unsigned *out_ulen,
-				     char *out_authid,
-				     unsigned out_amax, unsigned *out_alen);
-/* In chris newman's API this is SASL_CB_SSERVER_CANON_USER */
+/* FIXME in chris newman's API this is sasl_server_canon_user_t */
+typedef int sasl_canon_user_t(sasl_conn_t *conn,
+			      void *context,
+			      const char *user, unsigned ulen,
+			      const char *authid, unsigned alen,
+			      unsigned flags,
+			      const char *user_realm,
+			      char *out_user,
+			      unsigned out_umax, unsigned *out_ulen,
+			      char *out_authid,
+			      unsigned out_amax, unsigned *out_alen);
 #define SASL_CB_CANON_USER (0x8007)
 
 /**********************************
@@ -991,7 +990,7 @@ LIBSASL_API int sasl_checkpass(sasl_conn_t *conn,
 
 /* check if a user exists on server
  *  conn          -- connection context
- * FIXME: chris newman allows conn to be null
+ * FIXME: chris newman allows conn to be NULL
  *  service       -- registered name of the service using SASL (e.g. "imap")
  *  user_realm    -- permits multiple user realms on server, NULL = default
  *  user          -- NUL terminated user name

@@ -2,7 +2,7 @@
  * Rob Siemborski (SASLv2 Conversion)
  * contributed by Rainer Schoepf <schoepf@uni-mainz.de>
  * based on PLAIN, by Tim Martin <tmartin@andrew.cmu.edu>
- * $Id: login.c,v 1.6.2.5 2001/06/25 18:44:41 rjs3 Exp $
+ * $Id: login.c,v 1.6.2.6 2001/06/27 14:56:31 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -248,7 +248,7 @@ server_continue_step (void *conn_context,
   return SASL_FAIL; /* should never get here */
 }
 
-static const sasl_server_plug_t plugins[] = 
+static sasl_server_plug_t plugins[] = 
 {
   {
     "LOGIN",
@@ -271,7 +271,7 @@ static const sasl_server_plug_t plugins[] =
 int sasl_server_plug_init(sasl_utils_t *utils __attribute__((unused)),
 			  int maxversion,
 			  int *out_version,
-			  const sasl_server_plug_t **pluglist,
+			  sasl_server_plug_t **pluglist,
 			  int *plugcount,
 			  const char *plugname __attribute__((unused)))
 {
@@ -601,7 +601,7 @@ static int client_continue_step (void *conn_context,
   return SASL_FAIL; /* should never get here */
 }
 
-static const sasl_client_plug_t client_plugins[] = 
+static sasl_client_plug_t client_plugins[] = 
 {
   {
     "LOGIN",
@@ -623,7 +623,7 @@ static const sasl_client_plug_t client_plugins[] =
 int sasl_client_plug_init(sasl_utils_t *utils __attribute__((unused)),
 			  int maxversion,
 			  int *out_version,
-			  const sasl_client_plug_t **pluglist,
+			  sasl_client_plug_t **pluglist,
 			  int *plugcount,
 			  const char *plugname __attribute__((unused)))
 {

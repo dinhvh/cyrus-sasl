@@ -1,6 +1,6 @@
 /* canonusr.c - user canonicalization support
  * Rob Siemborski
- * $Id: canonusr.c,v 1.1.2.5 2001/06/26 19:07:02 rjs3 Exp $
+ * $Id: canonusr.c,v 1.1.2.6 2001/06/27 14:56:27 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -77,7 +77,7 @@ int _sasl_canon_user(sasl_conn_t *conn,
     canonuser_plug_list_t *ptr;
     sasl_server_conn_t *sconn = NULL;
     sasl_client_conn_t *cconn = NULL;
-    sasl_server_canon_user_t *cuser_cb;
+    sasl_canon_user_t *cuser_cb;
     sasl_getopt_t *getopt;
     void *context;
     int result;

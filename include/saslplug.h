@@ -86,12 +86,10 @@ typedef struct sasl_utils {
     void (*rand)(sasl_rand_t *rpool, char *buf, unsigned len);
     void (*churn)(sasl_rand_t *rpool, const char *data, unsigned len);
 
-    /* FIXME: This is *WRONG*.  If this were true, then saslauthd would
-     * not necessarally be available if PLAIN were to be changed. */
     /* This allows recursive calls to the sasl_checkpass() routine from
      * within a SASL plug-in.  This MUST NOT be used in the PLAIN mechanism
-     * as sasl_checkpass is a front-end for the PLAIN mechanism.
-     * 
+     * as sasl_checkpass MAY be a front-end for the PLAIN mechanism.
+     * (FIXME: the above "MAY" is an "is" for chris newman)
      * This is intended for use by the non-standard LOGIN mechanism and
      * potentially by a future mechanism which uses public-key technology to
      * set up a lightweight encryption layer just for sending a password.
@@ -216,7 +214,8 @@ typedef struct sasl_client_params {
     const char *clientFQDN;	/* client's fully qualified domain name */
     const sasl_utils_t *utils;	/* SASL API utility routines */
 				/* FIXME: (different from chris's API)
-				 * Must remain valid until mech_free is
+				 * for a particular sasl_conn_t,
+				 * MUST remain valid until mech_free is
 				 * called */
     const sasl_callback_t *prompt_supp; /* client callback list */
     const char *iplocalport;	/* server IP domain literal & port */
@@ -377,9 +376,7 @@ typedef struct sasl_client_plug {
 typedef int sasl_client_plug_init_t(const sasl_utils_t *utils,
 				    int max_version,
 				    int *out_version,
-/*				    sasl_client_plug_t **pluglist, */
-/* FIXME: this is not const in chris newman's implementation */
-				    const sasl_client_plug_t **pluglist,
+				    sasl_client_plug_t **pluglist,
 				    int *plugcount,
 				    const char *plugname);
 
@@ -430,7 +427,8 @@ typedef struct sasl_server_params {
 
     const sasl_utils_t *utils;	/* SASL API utility routines */
 				/* FIXME: (different from chris's API)
-				 * Must remain valid until mech_free is
+				 * for a particular sasl_conn_t,
+				 * MUST remain valid until mech_free is
 				 * called */
     const sasl_callback_t *callbacks;	/* Callbacks from application */
 
@@ -696,9 +694,7 @@ typedef struct sasl_server_plug {
 typedef int sasl_server_plug_init_t(const sasl_utils_t *utils,
 				    int max_version,
 				    int *out_version,
-/*				    sasl_server_plug_t **pluglist, */
-/* FIXME: this is not const in chris newman's implementation */
-				    const sasl_server_plug_t **pluglist,
+				    sasl_server_plug_t **pluglist,
 				    int *plugcount,
 				    const char *plugname);
 
@@ -836,8 +832,7 @@ typedef struct sasl_auxprop_plug {
 typedef int sasl_auxprop_init_t(const sasl_utils_t *utils,
 				int max_version,
 				int *out_version,
-		/* FIXME: Not const for chris newman */
-				const sasl_auxprop_plug_t **plug,
+				sasl_auxprop_plug_t **plug,
 				const char *plugname);
 
 /* add an auxiliary property plug-in

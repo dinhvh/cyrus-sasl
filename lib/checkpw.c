@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: checkpw.c,v 1.41.2.11 2001/06/26 23:05:43 rjs3 Exp $
+ * $Id: checkpw.c,v 1.41.2.12 2001/06/27 14:56:27 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -383,7 +383,7 @@ static void sasldb_auxprop_lookup(void *glob_context __attribute__((unused)),
     if (secret) _sasl_free_secret(&secret);
 }
 
-static const sasl_auxprop_plug_t sasldb_auxprop_plugin = {
+static sasl_auxprop_plug_t sasldb_auxprop_plugin = {
     0,           /* Features */
     0,           /* spare */
     NULL,        /* glob_context */
@@ -396,7 +396,7 @@ static const sasl_auxprop_plug_t sasldb_auxprop_plugin = {
 int sasldb_auxprop_plug_init(const sasl_utils_t *utils __attribute__((unused)),
                              int max_version,
                              int *out_version,
-                             const sasl_auxprop_plug_t **plug,
+                             sasl_auxprop_plug_t **plug,
                              const char *plugname) 
 {
     if(!out_version || !plug || !plugname) return SASL_BADPARAM;

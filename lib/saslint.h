@@ -1,7 +1,7 @@
 /* saslint.h - internal SASL library definitions
  * Rob Siemborski
  * Tim Martin
- * $Id: saslint.h,v 1.33.2.22 2001/06/26 19:07:02 rjs3 Exp $
+ * $Id: saslint.h,v 1.33.2.23 2001/06/27 14:56:28 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -308,17 +308,17 @@ _sasl_log(sasl_conn_t *conn,
 int external_client_init(const sasl_utils_t *utils,
 			 int max_version,
 			 int *out_version,
-			 const sasl_client_plug_t **pluglist,
+			 sasl_client_plug_t **pluglist,
 			 int *plugcount,
 			 const char *plugname);
-extern const sasl_client_plug_t external_client_mech;
+extern sasl_client_plug_t external_client_mech;
 int external_server_init(const sasl_utils_t *utils,
 			 int max_version,
 			 int *out_version,
-			 const sasl_server_plug_t **pluglist,
+			 sasl_server_plug_t **pluglist,
 			 int *plugcount,
 			 const char *plugname);
-extern const sasl_server_plug_t external_server_mech;
+extern sasl_server_plug_t external_server_mech;
 
 
 
@@ -364,7 +364,7 @@ void _sasl_auxprop_lookup(sasl_server_params_t *sparams,
 int sasldb_auxprop_plug_init(const sasl_utils_t *utils,
 			     int max_version,
 			     int *out_version,
-			     const sasl_auxprop_plug_t **plug,
+			     sasl_auxprop_plug_t **plug,
 			     const char *plugname);
 
 /* canonuser.c */

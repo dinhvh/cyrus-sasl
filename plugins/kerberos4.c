@@ -1,7 +1,7 @@
 /* Kerberos4 SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: kerberos4.c,v 1.65.2.18 2001/06/26 23:05:46 rjs3 Exp $
+ * $Id: kerberos4.c,v 1.65.2.19 2001/06/27 14:56:31 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -900,7 +900,7 @@ static int server_continue_step (void *conn_context,
   return SASL_FAIL; /* should never get here */
 }
 
-static const sasl_server_plug_t plugins[] = 
+static sasl_server_plug_t plugins[] = 
 {
   {
     "KERBEROS_V4",
@@ -924,7 +924,7 @@ static const sasl_server_plug_t plugins[] =
 int sasl_server_plug_init(const sasl_utils_t *utils,
 			  int maxversion,
 			  int *out_version,
-			  const sasl_server_plug_t **pluglist,
+			  sasl_server_plug_t **pluglist,
 			  int *plugcount,
 			  const char *plugname __attribute__((unused)))
 {
@@ -1396,7 +1396,7 @@ static const long client_required_prompts[] = {
   SASL_CB_LIST_END
 };
 
-static const sasl_client_plug_t client_plugins[] = 
+static sasl_client_plug_t client_plugins[] = 
 {
   {
     "KERBEROS_V4",
@@ -1418,7 +1418,7 @@ static const sasl_client_plug_t client_plugins[] =
 int sasl_client_plug_init(const sasl_utils_t *utils __attribute__((unused)),
 			  int maxversion,
 			  int *out_version,
-			  const sasl_client_plug_t **pluglist,
+			  sasl_client_plug_t **pluglist,
 			  int *plugcount,
 			  const char *plugname __attribute__((unused)))
 {

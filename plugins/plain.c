@@ -1,7 +1,7 @@
 /* Plain SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: plain.c,v 1.43.2.6 2001/06/25 18:44:41 rjs3 Exp $
+ * $Id: plain.c,v 1.43.2.7 2001/06/27 14:56:31 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -259,7 +259,7 @@ server_continue_step (void *conn_context,
   return SASL_FAIL; /* should never get here */
 }
 
-static const sasl_server_plug_t plugins[] = 
+static sasl_server_plug_t plugins[] = 
 {
   {
     "PLAIN",
@@ -282,7 +282,7 @@ static const sasl_server_plug_t plugins[] =
 int sasl_server_plug_init(const sasl_utils_t *utils __attribute__((unused)),
 			  int maxversion,
 			  int *out_version,
-			  const sasl_server_plug_t **pluglist,
+			  sasl_server_plug_t **pluglist,
 			  int *plugcount,
 			  const char *plugname __attribute__((unused)))
 {
@@ -683,7 +683,7 @@ static int client_continue_step (void *conn_context,
   return SASL_FAIL; /* should never get here */
 }
 
-static const sasl_client_plug_t client_plugins[] = 
+static sasl_client_plug_t client_plugins[] = 
 {
   {
     "PLAIN",
@@ -705,7 +705,7 @@ static const sasl_client_plug_t client_plugins[] =
 int sasl_client_plug_init(sasl_utils_t *utils __attribute__((unused)),
 			  int maxversion,
 			  int *out_version,
-			  const sasl_client_plug_t **pluglist,
+			  sasl_client_plug_t **pluglist,
 			  int *plugcount,
 			  const char *plugname __attribute__((unused)))
 {

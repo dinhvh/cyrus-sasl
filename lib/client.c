@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: client.c,v 1.34.4.17 2001/06/25 18:44:37 rjs3 Exp $
+ * $Id: client.c,v 1.34.4.18 2001/06/27 14:56:28 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -104,7 +104,7 @@ static void client_done(void) {
 
 static int add_plugin(void *p, void *library) {
   int plugcount;
-  const sasl_client_plug_t *pluglist;
+  sasl_client_plug_t *pluglist;
   cmechanism_t *mech;
   sasl_client_plug_init_t *entry_point;
   int result;

@@ -1,7 +1,7 @@
 /* GSSAPI SASL plugin
  * Leif Johansson
  * Rob Siemborski (SASL v2 Conversion)
- * $Id: gssapi.c,v 1.41.2.12 2001/06/26 23:05:46 rjs3 Exp $
+ * $Id: gssapi.c,v 1.41.2.13 2001/06/27 14:56:30 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -890,7 +890,7 @@ sasl_gss_server_step (void *conn_context,
   return SASL_FAIL;
 }
 
-static const sasl_server_plug_t plugins[] = 
+static sasl_server_plug_t plugins[] = 
 {
   {
     "GSSAPI",
@@ -919,7 +919,7 @@ sasl_server_plug_init(
 #endif 
 		      int maxversion,
 		      int *out_version,
-		      const sasl_server_plug_t **pluglist,
+		      sasl_server_plug_t **pluglist,
 		      int *plugcount,
 		      const char *plugname __attribute__((unused)))
 {
@@ -1440,7 +1440,7 @@ sasl_gss_client_step (void *conn_context,
   return SASL_FAIL;
 }
 
-static const sasl_client_plug_t client_plugins[] = 
+static sasl_client_plug_t client_plugins[] = 
 {
   {
     "GSSAPI",
@@ -1463,7 +1463,7 @@ int
 sasl_client_plug_init(const sasl_utils_t *utils __attribute__((unused)), 
 		      int maxversion,
 		      int *out_version, 
-		      const sasl_client_plug_t **pluglist,
+		      sasl_client_plug_t **pluglist,
 		      int *plugcount,
 		      const char *plugname __attribute__((unused)))
 {

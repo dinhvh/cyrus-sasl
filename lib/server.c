@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: server.c,v 1.84.2.30 2001/06/26 23:05:43 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.31 2001/06/27 14:56:28 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -266,7 +266,7 @@ static int init_mechlist(void)
 static int add_plugin(void *p, void *library) 
 {
     int plugcount;
-    const sasl_server_plug_t *pluglist;
+    sasl_server_plug_t *pluglist;
     mechanism_t *mech;
     sasl_server_plug_init_t *entry_point;
     int result;
@@ -974,7 +974,7 @@ int sasl_server_start(sasl_conn_t *conn,
     if (m->condition == SASL_CONTINUE) {
 	sasl_server_plug_init_t *entry_point;
 	void *library = NULL;
-	const sasl_server_plug_t *pluglist;
+	sasl_server_plug_t *pluglist;
 	int version, plugcount;
 	int l = 0;
 

@@ -2,7 +2,7 @@
  * Rob Siemborski
  * Tim Martin
  * Alexey Melnikov 
- * $Id: digestmd5.c,v 1.97.2.6 2001/06/26 23:05:46 rjs3 Exp $
+ * $Id: digestmd5.c,v 1.97.2.7 2001/06/27 14:56:30 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -2739,7 +2739,7 @@ server_continue_step(void *conn_context,
   return SASL_FAIL;		/* should never get here */
 }
 
-const sasl_server_plug_t plugins[] =
+static sasl_server_plug_t plugins[] =
 {
   {
     "DIGEST-MD5",
@@ -2768,7 +2768,7 @@ const sasl_server_plug_t plugins[] =
 int sasl_server_plug_init(sasl_utils_t * utils __attribute__((unused)),
 			  int maxversion __attribute__((unused)),
 			  int *out_version,
-			  const sasl_server_plug_t ** pluglist,
+			  sasl_server_plug_t ** pluglist,
 			  int *plugcount,
 			  const char *plugname __attribute__((unused))) 
 {
@@ -3907,7 +3907,7 @@ static const long client_required_prompts[] = {
 };
 
 
-const sasl_client_plug_t client_plugins[] =
+static sasl_client_plug_t client_plugins[] =
 {
   {
     "DIGEST-MD5",
@@ -3935,7 +3935,7 @@ const sasl_client_plug_t client_plugins[] =
 int sasl_client_plug_init(sasl_utils_t * utils __attribute__((unused)),
 			  int maxversion,
 			  int *out_version,
-			  const sasl_client_plug_t ** pluglist,
+			  sasl_client_plug_t ** pluglist,
 			  int *plugcount,
 			  const char *plugname __attribute__((unused))) {
   if (maxversion < SASL_CLIENT_PLUG_VERSION)

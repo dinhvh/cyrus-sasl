@@ -1,7 +1,7 @@
 /* Anonymous SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: anonymous.c,v 1.34.2.13 2001/06/25 18:44:40 rjs3 Exp $
+ * $Id: anonymous.c,v 1.34.2.14 2001/06/27 14:56:30 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -156,7 +156,7 @@ server_continue_step (void *conn_context __attribute__((unused)),
   return SASL_OK;
 }
 
-static const sasl_server_plug_t plugins[] = 
+static sasl_server_plug_t plugins[] = 
 {
   {
     "ANONYMOUS",		/* mech_name */
@@ -179,7 +179,7 @@ static const sasl_server_plug_t plugins[] =
 int sasl_server_plug_init(const sasl_utils_t *utils __attribute__((unused)),
 			  int maxversion,
 			  int *out_version,
-			  const sasl_server_plug_t **pluglist,
+			  sasl_server_plug_t **pluglist,
 			  int *plugcount,
 			  const char *plugname __attribute__((unused)))
 {
