@@ -1,7 +1,7 @@
 /* Kerberos4 SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: kerberos4.c,v 1.65.2.20 2001/06/28 19:28:53 rjs3 Exp $
+ * $Id: kerberos4.c,v 1.65.2.21 2001/06/28 21:50:45 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -620,7 +620,10 @@ static void dispose(void *conn_context, const sasl_utils_t *utils)
 static void mech_free(void *glob_context __attribute__((unused)),
 		      const sasl_utils_t *utils)
 {
-    if (krb_mutex) utils->mutex_free(krb_mutex);
+    if (krb_mutex) {
+	utils->mutex_free(krb_mutex);
+	krb_mutex = NULL; /* in case we need to re-use it */
+    }
 
     if (srvtab && --refcount == 0) {
 	utils->free(srvtab);
