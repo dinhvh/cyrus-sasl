@@ -1,3 +1,8 @@
+2001-08-10  Rob Siemborski <rjs3+@andrew.cmu.edu>
+	* saslauthd/Makefile.am (install-data-local):
+	  correct handling of $(DESTDIR) (and create the directory if it
+	  isn't there) [Amos Gouaux <amos@utdallas.edu>]
+
 2001-08-09  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* plugins/digestmd5.c (digestmd5_client_mech_step): handle
 	  missing authorization name
