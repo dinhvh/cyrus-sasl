@@ -1,6 +1,6 @@
 /* SASL server API implementation
  * Tim Martin
- * $Id: server.c,v 1.84.2.3 2001/05/30 20:22:09 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.4 2001/05/31 21:31:02 rjs3 Exp $
  */
 
 /* 
@@ -276,12 +276,18 @@ static void server_dispose(sasl_conn_t *pconn)
 
 static int init_mechlist(void)
 {
+    mechlist->mutex = sasl_MUTEX_ALLOC();
+    if(!mechlist->mutex) return SASL_FAIL;
+
     /* set util functions - need to do rest */
     mechlist->utils = _sasl_alloc_utils(NULL, &global_callbacks);
     if (mechlist->utils == NULL)
 	return SASL_NOMEM;
 
     mechlist->utils->checkpass = &sasl_checkpass;
+
+    mechlist->mech_list=NULL;
+    mechlist->mech_length=0;
 
     return SASL_OK;
 }
@@ -308,17 +314,17 @@ static int add_plugin(void *p, void *library)
     result = entry_point(mechlist->utils, SASL_SERVER_PLUG_VERSION, &version,
 			 &pluglist, &plugcount);
 
+    if ((result != SASL_OK) && (result != SASL_NOUSER)) {
+	VL(("entry_point error %i\n",result));
+	return result;
+    }
+
     /* Make sure plugin is using the same SASL version as us */
     if (version != SASL_SERVER_PLUG_VERSION)
     {
 	_sasl_log(NULL, SASL_LOG_ERR,
 		  "version mismatch on plugin");
-	result = SASL_BADVERS;
-    }
-
-    if ((result != SASL_OK) && (result != SASL_NOUSER)) {
-	VL(("entry_point error %i\n",result));
-	return result;
+	return SASL_BADVERS;
     }
 
     for (lupe=0;lupe < plugcount ;lupe++)
@@ -345,7 +351,6 @@ static int add_plugin(void *p, void *library)
 
 	mech->next = mechlist->mech_list;
 	mechlist->mech_list = mech;
-
 	mechlist->mech_length++;
     }
 
@@ -365,19 +370,29 @@ static void server_done(void) {
 	  prevm=m;
 	  m=m->next;
     
-	  if (prevm->plug->mech_free)
+	  if (prevm->plug->mech_free) {
 	      prevm->plug->mech_free(prevm->plug->glob_context,
 				     mechlist->utils);
-	  if (prevm->plug->glob_context!=NULL)
+	  }
+	  
+	  if (prevm->plug->glob_context!=NULL) {
 	      sasl_FREE(prevm->plug->glob_context);
-	  if (prevm->condition == SASL_OK && prevm->u.library != NULL)
+	  }
+	  
+	  if (prevm->condition == SASL_OK && prevm->u.library != NULL) {
 	      _sasl_done_with_plugin(prevm->u.library);
+	  }
+	  
 	  sasl_FREE(prevm);    
       }
       _sasl_free_utils(&mechlist->utils);
+      sasl_MUTEX_FREE(mechlist->mutex);
       sasl_FREE(mechlist);
       mechlist = NULL;
   }
+
+  global_callbacks.callbacks = NULL;
+  global_callbacks.appname = NULL;
 
   /* no longer active. fail on listmech's etc. */
   _sasl_server_active = 0;
@@ -619,8 +634,7 @@ int sasl_server_init(const sasl_callback_t *callbacks,
     /* allocate mechlist and set it to empty */
     mechlist = sasl_ALLOC(sizeof(mech_list_t));
     if (mechlist == NULL) return SASL_NOMEM;
-    mechlist->mech_list = NULL;
-    mechlist->mech_length = 0;
+
     ret = init_mechlist();
     if (ret != SASL_OK) return ret;
 
@@ -675,7 +689,7 @@ int sasl_server_init(const sasl_callback_t *callbacks,
   
     if (ret == SASL_OK) {
 	/* _sasl_server_active shows if we're active or not. 
-	   sasl_done() sets it back to 0 */
+	   server_done() sets it back to 0 */
 	_sasl_server_active = 1;
 	_sasl_server_idle_hook = &server_idle;
     }

@@ -248,6 +248,9 @@ void sasl_done(void)
   /* in case of another init/done */
   _sasl_server_cleanup_hook = NULL;
   _sasl_client_cleanup_hook = NULL;
+
+  _sasl_client_idle_hook = NULL;
+  _sasl_server_idle_hook = NULL;
 }
 
 /* fills in the base sasl_conn_t info */

@@ -87,9 +87,15 @@ static sasl_global_callbacks_t global_callbacks;
 
 static int init_mechlist()
 {
+  cmechlist->mutex = sasl_MUTEX_ALLOC();
+  if(!cmechlist->mutex) return SASL_FAIL;
+  
   cmechlist->utils=_sasl_alloc_utils(NULL, &global_callbacks);
   if (cmechlist->utils==NULL)
     return SASL_NOMEM;
+
+  cmechlist->mech_list=NULL;
+  cmechlist->mech_length=0;
 
   return SASL_OK;
 }
@@ -104,16 +110,21 @@ static void client_done(void) {
   {
     cprevm=cm;
     cm=cm->next;
-    if (cprevm->plug->mech_free)
-      cprevm->plug->mech_free(cprevm->plug->glob_context,
-			      cmechlist->utils);
-    if (cprevm->library!=NULL)
-      _sasl_done_with_plugin(cprevm->library);
+    if (cprevm->plug->mech_free) {
+	cprevm->plug->mech_free(cprevm->plug->glob_context,
+				cmechlist->utils);
+    }
+    
+    if (cprevm->library!=NULL) {
+	_sasl_done_with_plugin(cprevm->library);
+    }
     sasl_FREE(cprevm);    
   }
   sasl_MUTEX_FREE(cmechlist->mutex);
   _sasl_free_utils(&cmechlist->utils);
   sasl_FREE(cmechlist);
+
+  cmechlist = NULL;
 }
 
 static int add_plugin(void *p, void *library) {
@@ -132,16 +143,16 @@ static int add_plugin(void *p, void *library) {
   result = entry_point(cmechlist->utils, SASL_CLIENT_PLUG_VERSION, &version,
 		       &pluglist, &plugcount);
 
-  if (version != SASL_CLIENT_PLUG_VERSION)
-  {
-    VL(("Version conflict\n"));
-    result = SASL_BADVERS;
-  }
-
   if (result != SASL_OK)
   {
     VL(("entry_point failed\n"));
     return result;
+  }
+
+  if (version != SASL_CLIENT_PLUG_VERSION)
+  {
+    VL(("Version conflict\n"));
+    return SASL_BADVERS;
   }
 
   for (lupe=0;lupe< plugcount ;lupe++)
@@ -205,16 +216,10 @@ int sasl_client_init(const sasl_callback_t *callbacks)
   cmechlist=sasl_ALLOC(sizeof(cmech_list_t));
   if (cmechlist==NULL) return SASL_NOMEM;
 
-  /* create mutex*/
-  cmechlist->mutex=sasl_MUTEX_ALLOC();
-
   /* load plugins */
   ret=init_mechlist();  
   if (ret!=SASL_OK)
     return ret;
-
-  cmechlist->mech_list=NULL;
-  cmechlist->mech_length=0;
 
 /* FIXME: External Plugin */
 /*  add_plugin((void *) &external_client_init, NULL); */
