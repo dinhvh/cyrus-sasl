@@ -1,7 +1,7 @@
 /* GSSAPI SASL plugin
  * Leif Johansson
  * Rob Siemborski (SASL v2 Conversion)
- * $Id: gssapi.c,v 1.41.2.24 2001/07/20 16:23:05 rjs3 Exp $
+ * $Id: gssapi.c,v 1.41.2.25 2001/07/27 19:11:27 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -144,6 +144,107 @@ enum {
     SASL_GSSAPI_STATE_AUTHENTICATED = 4
 };
 
+static void
+sasl_gss_seterror(const sasl_utils_t *utils, OM_uint32 maj, OM_uint32 min)
+{
+     OM_uint32 maj_stat, min_stat;
+     gss_buffer_desc msg;
+     OM_uint32 msg_ctx;
+     int ret;
+     char *out = NULL;
+     size_t len, curlen = 0;
+     const char prefix[] = "GSSAPI Error: ";
+     
+     if(!utils) return;
+
+     len = sizeof(prefix);
+     ret = _plug_buf_alloc(utils, &out, &curlen, 256);
+     if(ret != SASL_OK) return;
+
+     strcpy(out, prefix);
+     
+     msg_ctx = 0;
+     while (1) {
+	  maj_stat = gss_display_status(&min_stat, maj,
+					GSS_C_GSS_CODE, GSS_C_NULL_OID,
+					&msg_ctx, &msg);
+	  if(GSS_ERROR(maj_stat)) {
+	      utils->seterror(utils->conn, 0,
+			      "GSSAPI Failure "
+			      "(could not get major error message)");
+	      utils->free(out);
+	      return;
+	  }
+
+	  len += len + msg.length;
+	  ret = _plug_buf_alloc(utils, &out, &curlen, len);
+
+	  if(ret != SASL_OK) {
+	      utils->free(out);
+	      return;
+	  }
+
+	  strcat(out, msg.value);
+
+	  gss_release_buffer(&min_stat, &msg);
+
+	  if (!msg_ctx)
+	       break;
+     }
+
+     /* Now get the minor status */
+
+     len += 2;
+     ret = _plug_buf_alloc(utils, &out, &curlen, len);
+     if(ret != SASL_OK) {
+	 utils->free(out);
+	 return;
+     }
+     
+     strcat(out, " (");
+
+     msg_ctx = 0;
+     while (1) {
+	  maj_stat = gss_display_status(&min_stat, min,
+					GSS_C_MECH_CODE, GSS_C_NULL_OID,
+					&msg_ctx, &msg);
+	  if(GSS_ERROR(maj_stat)) {
+	      utils->seterror(utils->conn, 0,
+			      "GSSAPI Failure "
+			      "(could not get minor error message)");
+	      utils->free(out);
+	      return;
+	  }
+
+	  len += len + msg.length;
+	  ret = _plug_buf_alloc(utils, &out, &curlen, len);
+
+	  if(ret != SASL_OK) {
+	      utils->free(out);
+	      return;
+	  }
+
+	  strcat(out, msg.value);
+
+	  gss_release_buffer(&min_stat, &msg);
+
+	  if (!msg_ctx)
+	       break;
+     }
+
+     len += 1;
+     ret = _plug_buf_alloc(utils, &out, &curlen, len);
+     if(ret != SASL_OK) {
+	 utils->free(out);
+	 return;
+     }
+     
+     strcat(out, ")");
+
+     utils->seterror(utils->conn, 0, out);
+     utils->free(out);
+}
+
 static int 
 sasl_gss_encode(void *context, const struct iovec *invec, unsigned numiov,
 		const char **output, unsigned *outputlen, int privacy)
@@ -180,9 +281,9 @@ sasl_gss_encode(void *context, const struct iovec *invec, unsigned numiov,
   
   if (GSS_ERROR(maj_stat))
     {
+      sasl_gss_seterror(text->utils, maj_stat, min_stat);
       if (output_token->value)
 	  gss_release_buffer(&min_stat, output_token);
-      SETERROR(text->utils, "GSSAPI Failure");
       return SASL_FAIL;
     }
 
@@ -267,7 +368,7 @@ sasl_gss_decode_once(void *context,
 	    text->cursize = 0;
 
 	    if (text->size > 0xFFFF || text->size <= 0) {
-		SETERROR(text->utils, "GSSAPI Failure");
+		SETERROR(text->utils, "Illegal size in sasl_gss_decode_once");
 		return SASL_FAIL;
 	    }
 	    
@@ -319,9 +420,9 @@ sasl_gss_decode_once(void *context,
     
     if (GSS_ERROR(maj_stat))
     {
+	sasl_gss_seterror(text->utils,maj_stat,min_stat);
 	if (output_token->value)
 	    gss_release_buffer(&min_stat, output_token);
-	SETERROR(text->utils, "GSSAPI Failure");
 	return SASL_FAIL;
     }
 
@@ -555,7 +656,7 @@ sasl_gss_server_step (void *conn_context,
 	  name_token.value = NULL;
 	  
 	  if (GSS_ERROR(maj_stat)) {
-	      SETERROR(text->utils, "GSSAPI Failure: gss_import_name");
+	      sasl_gss_seterror(text->utils, maj_stat, min_stat);
 	      sasl_gss_free_context_contents(text);
 	      return SASL_FAIL;
 	  }
@@ -575,7 +676,7 @@ sasl_gss_server_step (void *conn_context,
 				      NULL);
 	  
 	  if (GSS_ERROR(maj_stat)) {
-	      SETERROR(text->utils, "GSSAPI Failure: gss_acquire_cred");
+	      sasl_gss_seterror(text->utils, maj_stat, min_stat);
 	      sasl_gss_free_context_contents(text);
 	      return SASL_FAIL;
 	  }
@@ -793,9 +894,9 @@ sasl_gss_server_step (void *conn_context,
 			     output_token);
 	
 	if (GSS_ERROR(maj_stat)) {
+	    sasl_gss_seterror(text->utils, maj_stat, min_stat);
 	    if (output_token->value)
 		gss_release_buffer(&min_stat, output_token);
-	    SETERROR(text->utils, "GSSAPI Failure");
 	    sasl_gss_free_context_contents(text);
 	    return SASL_FAIL;
 	}
@@ -840,7 +941,7 @@ sasl_gss_server_step (void *conn_context,
 			       NULL);
 	
 	if (GSS_ERROR(maj_stat)) {
-	    SETERROR(text->utils, "GSSAPI Failure");
+	    sasl_gss_seterror(text->utils, maj_stat, min_stat);
 	    sasl_gss_free_context_contents(text);
 	    return SASL_FAIL;
 	}
@@ -862,11 +963,10 @@ sasl_gss_server_step (void *conn_context,
 	    oparams->mech_ssf = 56;
 	} else {
 	    /* not a supported encryption layer */
-	    params->utils->log(params->utils->conn, SASL_LOG_WARN,
+	    SETERROR(text->utils,
 		    "protocol violation: client requested invalid layer");
 	    if (output_token->value)
 		gss_release_buffer(&min_stat, output_token);
-	    SETERROR(text->utils, "GSSAPI Failure");
 	    sasl_gss_free_context_contents(text);
 	    return SASL_FAIL;
 	}
@@ -903,13 +1003,13 @@ sasl_gss_server_step (void *conn_context,
       }
 
     default:
-	SETERROR(text->utils, "GSSAPI Failure");
+	SETERROR(text->utils, "GSSAPI Failure (Illegal step)");
 	return SASL_FAIL;
 	break;
     }
 
   /* we should never get here ! */
-  SETERROR(text->utils, "GSSAPI Failure");
+  SETERROR(text->utils, "GSSAPI Failure (Unknown)");
   return SASL_FAIL;
 }
 
@@ -964,8 +1064,8 @@ int gssapiv2_server_plug_init(
     if (keytab != NULL) {
 	if (access(keytab, R_OK) != 0) {
 	    utils->log(NULL, SASL_LOG_ERR,
-		       "can't access keytab file %s: %m", keytab, errno);
-	    SETERROR(utils, "GSSAPI Failure");
+		       "Could not find keytab file: %s: %m",
+		       keytab, errno);
 	    return SASL_FAIL;
 	}
 
@@ -1025,7 +1125,7 @@ make_prompts(sasl_client_params_t *params,
    if (pass_res==SASL_INTERACT) num++;
  
    if (num==1) {
-       SETERROR(params->utils, "GSSAPI Failure");
+       SETERROR(params->utils, "GSSAPI Failure - Bad number of prompts");
        return SASL_FAIL;
    }
    
@@ -1241,7 +1341,7 @@ sasl_gss_client_step (void *conn_context,
 	    
 	    if (GSS_ERROR(maj_stat))
 	    {
-		SETERROR(text->utils, "GSSAPI Failure");
+		sasl_gss_seterror(text->utils, maj_stat, min_stat);
 		sasl_gss_free_context_contents(text);
 		return SASL_FAIL;
 	    }
@@ -1279,9 +1379,9 @@ sasl_gss_client_step (void *conn_context,
 	
 	if (GSS_ERROR(maj_stat))
 	{
+	    sasl_gss_seterror(text->utils, maj_stat, min_stat);
 	    if (output_token->value)
 		gss_release_buffer(&min_stat, output_token);
-	    SETERROR(text->utils, "GSSAPI Failure");
 	    sasl_gss_free_context_contents(text);
 	    return SASL_FAIL;
 	}
@@ -1330,7 +1430,7 @@ sasl_gss_client_step (void *conn_context,
 			       NULL);
 	
 	if (GSS_ERROR(maj_stat)) {
-	    SETERROR(text->utils, "GSSAPI Failure");
+	    sasl_gss_seterror(text->utils, maj_stat, min_stat);
 	    sasl_gss_free_context_contents(text);
 	    if (output_token->value)
 		gss_release_buffer(&min_stat, output_token);
@@ -1422,11 +1522,11 @@ sasl_gss_client_step (void *conn_context,
 	
 	if (GSS_ERROR(maj_stat))
 	  {
-	    if (output_token->value)
-		gss_release_buffer(&min_stat, output_token);
-	    SETERROR(text->utils, "GSSAPI Failure");
-	    sasl_gss_free_context_contents(text);
-	    return SASL_FAIL;
+	      sasl_gss_seterror(text->utils, maj_stat, min_stat);
+	      if (output_token->value)
+		  gss_release_buffer(&min_stat, output_token);
+	      sasl_gss_free_context_contents(text);
+	      return SASL_FAIL;
 	  }
 	
 	if (clientoutlen)
@@ -1452,13 +1552,13 @@ sasl_gss_client_step (void *conn_context,
       }
 
     default:
-	SETERROR(text->utils, "GSSAPI Failure");
+	SETERROR(text->utils, "GSSAPI Failure - Illegal Step");
 	return SASL_FAIL;
 	break;
     }
 
   /* we should never get here!!! */
-  SETERROR(text->utils, "GSSAPI Failure");
+  SETERROR(text->utils, "GSSAPI Failure (Unknown)");
   return SASL_FAIL;
 }
 

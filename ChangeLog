@@ -4,6 +4,9 @@
 
 	* configure.in: now cache the JNI include directory path
 
+	* utils/testsuite.c: switch some sasl_errstrings to sasl_errdetail
+	* plugins/gssapi.c: Fix error reporting
+	
 2001-07-26  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* lib/common.c (_sasl_getcallback): fixed reference to
 	  	possibly NULL conn
