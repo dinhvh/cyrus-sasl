@@ -1,5 +1,6 @@
 2000-07-09  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Removed dependency on "name" in canonuser plugin structure
+	* Update configure.in from a new configure.scan
 
 2000-07-09  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* First attempt at making the java code work again
