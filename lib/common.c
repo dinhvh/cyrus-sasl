@@ -1,7 +1,7 @@
 /* common.c - Functions that are common to server and clinet
  * Rob Siemborski
  * Tim Martin
- * $Id: common.c,v 1.64.2.35 2001/07/12 14:10:11 rjs3 Exp $
+ * $Id: common.c,v 1.64.2.36 2001/07/12 15:41:13 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -512,6 +512,7 @@ int sasl_getprop(sasl_conn_t *conn, int propnum, const void **pvalue)
   case SASL_SERVICE:
       *((const char **)pvalue) = conn->service;
       break;
+  case SASL_AUTHSOURCE: /* FIXME: I doubt these are identical */
   case SASL_MECHNAME:
       if(conn->type == SASL_CONN_CLIENT) {
 	  *((const char **)pvalue) = ((sasl_client_conn_t *)conn)->mech->plug->mech_name;
@@ -522,10 +523,6 @@ int sasl_getprop(sasl_conn_t *conn, int propnum, const void **pvalue)
       }
       
       if(!(*pvalue) && result == SASL_OK) result = SASL_NOTDONE;
-      break;
-  case SASL_AUTHSOURCE:
-      /* FIXME: What is this? */
-      result=SASL_FAIL;
       break;
   case SASL_PLUGERR:
       *((const char **)pvalue) = conn->error_buf;
