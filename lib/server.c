@@ -1,6 +1,6 @@
 /* SASL server API implementation
  * Tim Martin
- * $Id: server.c,v 1.84.2.6 2001/06/05 19:45:33 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.7 2001/06/06 18:41:06 rjs3 Exp $
  */
 
 /* 
@@ -659,8 +659,7 @@ int sasl_server_init(const sasl_callback_t *callbacks,
     /* delayed loading of plugins? */
     if (_sasl_getcallback(NULL, SASL_CB_GETOPT, &getopt, &context) 
 	   == SASL_OK) {
-	getopt((void *) &global_callbacks, NULL, 
-	       "plugin_list", &pluginfile, NULL);
+	getopt(context, NULL, "plugin_list", &pluginfile, NULL);
     }
     if (pluginfile != NULL) {
 	/* this file should contain a list of plugins available.
