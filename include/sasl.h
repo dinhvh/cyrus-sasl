@@ -833,7 +833,6 @@ LIBSASL_API int sasl_server_init(const sasl_callback_t *callbacks,
 
 /* IP/port syntax:
  *  a.b.c.d;p              where a-d are 0-255 and p is 0-65535 port number.
- *  a.b.c.d:p              alternate (discouraged) syntax for previous
  *  e:f:g:h:i:j:k:l;p      where e-l are 0000-ffff lower-case hexidecimal
  *  e:f:g:h:i:j:a.b.c.d;p  alternate syntax for previous
  *
