@@ -1,5 +1,5 @@
 /* dbconverter-2.c -- convert libsasl v1 sasldb's to SASLv2 format
- * $Id: dbconverter-2.c,v 1.1.2.4 2001/08/12 16:48:49 rjs3 Exp $
+ * $Id: dbconverter-2.c,v 1.1.2.5 2001/08/17 16:49:20 rjs3 Exp $
  * Rob Siemborski
  * based on SASLv1 sasldblistusers
  */
@@ -48,8 +48,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <sasl/sasl.h>
-#include <sasl/saslplug.h>
+#include <sasl.h>
+#include <saslplug.h>
 #include "../sasldb/sasldb.h"
 
 /* Cheating to make the utils work out right */

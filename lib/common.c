@@ -1,7 +1,7 @@
 /* common.c - Functions that are common to server and clinet
  * Rob Siemborski
  * Tim Martin
- * $Id: common.c,v 1.64.2.55 2001/08/15 20:08:11 rjs3 Exp $
+ * $Id: common.c,v 1.64.2.56 2001/08/17 16:49:16 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -1634,6 +1634,8 @@ int _iovec_to_buf(const struct iovec *vec,
     return SASL_OK;
 }
 
+/* This code might be useful in the future, but it isn't now, so.... */
+#if 0
 int _sasl_iptostring(const struct sockaddr *addr, socklen_t addrlen,
 		     char *out, unsigned outlen) {
     char hbuf[NI_MAXHOST], pbuf[NI_MAXSERV];
@@ -1650,6 +1652,7 @@ int _sasl_iptostring(const struct sockaddr *addr, socklen_t addrlen,
 
     return SASL_OK;
 }
+#endif
 
 int _sasl_ipfromstring(const char *addr,
 		       struct sockaddr *out, socklen_t outlen) 

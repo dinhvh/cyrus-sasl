@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: server.c,v 1.84.2.56 2001/08/10 18:06:31 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.57 2001/08/17 16:49:17 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -1484,6 +1484,9 @@ int sasl_user_exists(sasl_conn_t *conn,
 		     const char *user) 
 {
     int result=SASL_NOMECH;
+    const char *mech;
+    void *context;
+    sasl_getopt_t *getopt;
     struct sasl_verify_password_s *v;
     
     /* check params */
@@ -1493,10 +1496,22 @@ int sasl_user_exists(sasl_conn_t *conn,
 	PARAMERROR(conn);
 
     if(!service) service = conn->service;
+    
+    /* figure out how to check (i.e. auxprop or saslauthd or pwcheck) */
+    if (_sasl_getcallback(conn, SASL_CB_GETOPT, &getopt, &context)
+            == SASL_OK) {
+        getopt(context, NULL, "pwcheck_method", &mech, NULL);
+    }
+
+    if(!mech) mech = DEFAULT_CHECKPASS_MECH;
+
+    result = SASL_NOMECH;
 
     for (v = _sasl_verify_password; v->name; v++) {
-	result = v->verify(conn, user, NULL, service, user_realm);
-	if(result == SASL_BADPARAM || result == SASL_OK) break;
+	if(is_mech(mech, v->name)) {
+	    result = v->verify(conn, user, NULL, service, user_realm);
+	    break;
+	}
     }
 
     /* Screen out the SASL_BADPARAM response

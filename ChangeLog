@@ -1,3 +1,16 @@
+2001-08-15  Rob Siemborski <rjs3+@andrew.cmu.edu>
+	* lib/common.c (_sasl_iptostring): #if 0'd out.
+
+	* lib/server.c (sasl_user_exists): only check the verifier we
+	  are using
+
+	* config/kerberos_v4.m4 (SASL_DES_CHK): added
+	* config/kerberos_v4.m4 (SASL_KERBEROS_V4_CHK): included
+	  entire check from configure.in
+	* configure.in: moved kerberos 4 code completely out.
+	* saslauthd/acconfig.h (WITH_DES, WITH_SSL_DES): Added
+	  DES-related symbols	
+
 2001-08-14  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* configure.in: Check for sys/uio.h
 	* saslauthd/configure.in: Check for sys/uio.h

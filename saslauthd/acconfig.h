@@ -32,6 +32,8 @@
 
 /* Things SASLAUTHd doesn't really care about */
 #undef HAVE_SASLAUTHD
+#undef WITH_DES
+#undef WITH_SSL_DES
 #undef STATIC_GSSAPIV2
 #undef STATIC_KERBEROS4
 #undef STATIC_PLAIN
