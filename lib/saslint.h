@@ -88,6 +88,13 @@ typedef struct _sasl_external_properties
     char *auth_id;
 } _sasl_external_properties_t;
 
+typedef struct buffer_info
+{ 
+    char *data;
+    unsigned curlen;
+    unsigned reallen;
+} buffer_info_t;
+
 struct sasl_conn {
   void (*destroy_conn)(sasl_conn_t *); /* destroy function */
 
@@ -120,8 +127,11 @@ struct sasl_conn {
   char *serverFQDN;
 
   /* Pointers to memory that we are responsible for */
-  char *encode_buf, *decode_buf;
-  unsigned encode_buf_len, decode_buf_len;
+  buffer_info_t *encode_buf;
+
+  char *decode_buf;
+  unsigned decode_buf_len;
+
   char *user_buf, *authid_buf;
 };
 
@@ -243,9 +253,8 @@ extern int _sasl_sasldb_set_pass(sasl_conn_t *conn,
 int _buf_alloc(char **rwbuf, unsigned *curlen, unsigned newlen);
 
 /* convert an iovec to a single buffer */
-int _iovec_to_buf(const struct iovec *vec, unsigned numiov,
-		  char **output, unsigned *outputlen);
-
+int _iovec_to_buf(const struct iovec *vec,
+		  unsigned numiov, buffer_info_t **output);
 
 /* The following are defined in saslutil.c */
 /* FIXME: Should they be in common.c instead? */

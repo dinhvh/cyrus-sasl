@@ -162,25 +162,11 @@ int sasl_encodev(sasl_conn_t *conn,
 	return SASL_BADPARAM;
 
     if(conn->oparams.encode == NULL) {
-	char *input;
-	unsigned inputlen;
-
-	result = _iovec_to_buf(invec, numiov, &input, &inputlen);
+	result = _iovec_to_buf(invec, numiov, &conn->encode_buf);
 	if(result != SASL_OK) return result;
        
-	result = _buf_alloc(&conn->encode_buf, &conn->encode_buf_len,
-			    inputlen + 1);
-	if(result != SASL_OK) {
-	    sasl_FREE(input);
-	    return result;
-	}
-	
-	memcpy(conn->encode_buf, input, inputlen);
-        conn->encode_buf[inputlen] = '\0'; /* sanity for stupid clients */
-	*output = conn->encode_buf;
-	*outputlen = inputlen;
-			
-	sasl_FREE(input);
+	*output = conn->encode_buf->data;
+	*outputlen = conn->encode_buf->curlen;
 
         return SASL_OK;
     } else {
@@ -210,7 +196,7 @@ int sasl_decode(sasl_conn_t *conn,
 	conn->decode_buf[inputlen] = '\0';
 	*output = conn->decode_buf;
 	*outputlen = inputlen;
-			
+	
         return SASL_OK;
     } else {
         result = conn->oparams.decode(conn->context, input, inputlen,
@@ -273,7 +259,7 @@ int _sasl_conn_init(sasl_conn_t *conn,
 
   memset(&conn->oparams, 0, sizeof(sasl_out_params_t));
   memset(&conn->external, 0, sizeof(_sasl_external_properties_t));
-  
+
   conn->secflags = secflags;
 
   if(!iplocalport ||
@@ -296,6 +282,7 @@ int _sasl_conn_init(sasl_conn_t *conn,
       conn->got_ip_remote = 1;
   }
   
+  conn->encode_buf = NULL;
   conn->context = NULL;
   conn->secret = NULL;
   conn->idle_hook = idle_hook;
@@ -304,9 +291,9 @@ int _sasl_conn_init(sasl_conn_t *conn,
 
   memset(&conn->props, 0, sizeof(conn->props));
 
-  conn->encode_buf = conn->decode_buf = 
+  conn->decode_buf = 
       conn->user_buf = conn->authid_buf = NULL;
-  conn->encode_buf_len = conn->decode_buf_len = 0;
+  conn->decode_buf_len = 0;
 
   if (serverFQDN==NULL) {
     char name[MAXHOSTNAMELEN];
@@ -363,8 +350,10 @@ void _sasl_conn_dispose(sasl_conn_t *conn) {
   if (conn->external.auth_id)
       sasl_FREE(conn->external.auth_id);
 
-  if(conn->encode_buf)
+  if(conn->encode_buf) {
+      if(conn->encode_buf->data) sasl_FREE(conn->encode_buf->data);
       sasl_FREE(conn->encode_buf);
+  }
   
   if(conn->decode_buf)
       sasl_FREE(conn->decode_buf);
@@ -1234,21 +1223,34 @@ int _buf_alloc(char **rwbuf, unsigned *curlen, unsigned newlen)
 }
 
 /* convert an iovec to a single buffer */
-int _iovec_to_buf(const struct iovec *vec, unsigned numiov,
-		  char **output, unsigned *outputlen) 
+int _iovec_to_buf(const struct iovec *vec,
+		  unsigned numiov, buffer_info_t **output) 
 {
     unsigned i;
+    int ret;
+    buffer_info_t *out;
     char *pos;
-    
-    *outputlen = 0;
-    for(i=0; i<numiov; i++)
-	*outputlen += vec[i].iov_len;
 
-    *output = sasl_ALLOC(*outputlen);
-    if(!output) return SASL_NOMEM;
+    if(!vec || !output) return SASL_BADPARAM;
+
+    if(!(*output)) {
+	*output = sasl_ALLOC(sizeof(buffer_info_t));
+	if(!*output) return SASL_NOMEM;
+	memset(*output,0,sizeof(buffer_info_t));
+    }
+
+    out = *output;
     
-    bzero(*output, *outputlen);
-    pos = *output;
+    out->curlen = 0;
+    for(i=0; i<numiov; i++)
+	out->curlen += vec[i].iov_len;
+
+    ret = _buf_alloc(&out->data, &out->reallen, out->curlen);
+
+    if(ret != SASL_OK) return SASL_NOMEM;
+    
+    bzero(out->data, out->reallen);
+    pos = out->data;
     
     for(i=0; i<numiov; i++) {
 	memcpy(pos, vec[i].iov_base, vec[i].iov_len);
