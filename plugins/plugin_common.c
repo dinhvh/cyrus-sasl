@@ -1,6 +1,6 @@
 /* Generic SASL plugin utility functions
  * Rob Siemborski
- * $Id: plugin_common.c,v 1.1.2.15 2001/07/23 21:23:42 rjs3 Exp $
+ * $Id: plugin_common.c,v 1.1.2.16 2001/07/26 23:11:34 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -64,6 +64,10 @@
 #include <ctype.h>
 #include <sys/uio.h>
 
+#ifdef HAVE_INTTYPES_H
+#include <inttypes.h>
+#endif
+
 #include "plugin_common.h"
 
 /* translate IPv4 mapped IPv6 address to IPv4 address */
@@ -79,7 +83,7 @@ static void sockaddr_unmapped(
 #ifdef IN6_IS_ADDR_V4MAPPED
     struct sockaddr_in6 *sin6;
     struct sockaddr_in *sin4;
-    u_int32_t addr;
+    uint32_t addr;
     int port;
 
     if (sa->sa_family != AF_INET6)
@@ -88,7 +92,7 @@ static void sockaddr_unmapped(
     if (!IN6_IS_ADDR_V4MAPPED(&sin6->sin6_addr))
 	return;
     sin4 = (struct sockaddr_in *)sa;
-    addr = *(u_int32_t *)&sin6->sin6_addr.s6_addr[12];
+    addr = *(uint32_t *)&sin6->sin6_addr.s6_addr[12];
     port = sin6->sin6_port;
     memset(sin4, 0, sizeof(struct sockaddr_in));
     sin4->sin_addr.s_addr = addr;

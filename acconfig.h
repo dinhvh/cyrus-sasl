@@ -142,9 +142,6 @@
 /* do we have a wierd location of db.h? */
 #undef HAVE_DB3_DB_H
 
-/* do we have a wierd location of db.h? */
-#undef HAVE_DB3_DB_H
-
 /* define if your compile has __attribute__ */
 #undef HAVE___ATTRIBUTE__
 
@@ -153,6 +150,9 @@
 
 /* define if your system has getpid() */
 #undef HAVE_GETPID
+
+/* do we have an inttypes.h? */
+#undef HAVE_INTTYPES_H
 
 @BOTTOM@
 

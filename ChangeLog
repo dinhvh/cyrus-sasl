@@ -25,6 +25,11 @@
 	* utils/saslpasswd.c: No longer have separate global_utils,
 		call sasl_dispose and sasl_done
 
+	* acconfig.h: check for inttypes.h
+	* configure.in: check for inttypes.h
+	* plugins/plugin_common.c: include, if necessary, inttypes.h,
+		reference uint32_t instead of u_int32_t
+
 2001-07-25  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* lib/saslint.h: changed "sasldb" verifier to "auxprop"
 	* lib/server.c: changed "sasldb" verifier to "auxprop"
