@@ -90,7 +90,6 @@ log(void *context __attribute__((unused)),
   jclass cls;
   jmethodID mid;
 
-
   if (! message)
     return SASL_BADPARAM;
 
@@ -120,7 +119,8 @@ log(void *context __attribute__((unused)),
     return SASL_BADPARAM;
   }
 
-  VL(("Trying to call password callback\n"));
+  VL(("I have message %s\n",message));
+  VL(("Trying to call log callback\n"));
   cls = (*globalenv)->GetObjectClass(globalenv, globalobj);
   mid = (*globalenv)->GetMethodID(globalenv, cls, "callback_log",
 				  "(Ljava/lang/String;Ljava/lang/String;)V");
@@ -143,6 +143,8 @@ log(void *context __attribute__((unused)),
 
   /* Now we are done with jmessage */
   (*globalenv)->ReleaseStringUTFChars(globalenv, jmessage, message);
+
+  VL(("done with log callback"));
 
   return SASL_OK;
 }
@@ -810,13 +812,13 @@ JNIEXPORT void JNICALL Java_CyrusSasl_GenericCommon_jni_1sasl_1set_1server
    jint ptr, jbyteArray jarr, jint jport)
 {
   sasl_conn_t *conn=(sasl_conn_t *) ptr;
-  char *ip = (*env)->GetByteArrayElements(env, jarr, 0);
+  unsigned char *ip = (*env)->GetByteArrayElements(env, jarr, 0);
   char out[52];
   int result;
 
   sprintf(out, "%d.%d.%d.%d;%d", ip[0], ip[1], ip[2], ip[3], (int)jport);
 
-  result=sasl_setprop(conn, SASL_IPREMOTEPORT, &out);  
+  result=sasl_setprop(conn, SASL_IPREMOTEPORT, out);  
 
   VL(("Set IP_REMOTE: %s: %d\n",out, result));
 
@@ -833,13 +835,13 @@ JNIEXPORT void JNICALL Java_CyrusSasl_GenericCommon_jni_1sasl_1set_1client
    jint ptr, jbyteArray jarr, jint jport)
 {
   sasl_conn_t *conn=(sasl_conn_t *) ptr;
-  char *ip = (*env)->GetByteArrayElements(env, jarr, 0);
+  unsigned char *ip = (*env)->GetByteArrayElements(env, jarr, 0);
   char out[52];
   int result;
 
   sprintf(out, "%d.%d.%d.%d;%d", ip[0], ip[1], ip[2], ip[3], (int)jport);
 
-  result=sasl_setprop(conn, SASL_IPLOCALPORT, &out);
+  result=sasl_setprop(conn, SASL_IPLOCALPORT, out);
 
   VL(("Set IP_LOCAL: %s: %d\n",out, result));
 
