@@ -2,6 +2,9 @@
 	* Fixed prototype of sasl_getpath_t to be in conformance with
 	  memory allocation rules
 	* Fixed up samples directory
+	* Try to dlopen using information in .la file if available
+	  (based on patch from
+	   Stoned Elipot <Stoned.Elipot@script.jussieu.fr>)
 
 2001-07-18  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Updated config.guess and config.sub

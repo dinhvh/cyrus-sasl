@@ -1,7 +1,7 @@
 /* dlopen.c--Unix dlopen() dynamic loader interface
  * Rob Siemborski
  * Rob Earhart
- * $Id: dlopen.c,v 1.32.2.10 2001/07/19 16:34:18 rjs3 Exp $
+ * $Id: dlopen.c,v 1.32.2.11 2001/07/19 18:44:44 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -48,6 +48,8 @@
 #include <dlfcn.h>
 #endif /* !__hpux */
 #include <stdlib.h>
+#include <errno.h>
+#include <stdio.h>
 #include <limits.h>
 #include <sys/param.h>
 #include <sasl.h>
@@ -140,6 +142,8 @@ char *dlerror()
 #define SO_SUFFIX	".so"
 #endif /* __hpux */
 
+#define LA_SUFFIX       ".la"
+
 typedef struct lib_list 
 {
     struct lib_list *next;
@@ -210,6 +214,88 @@ static int _sasl_plugin_load(char *plugin, void *library,
     }
 
     return result;
+}
+
+/* this returns the file to actually open.
+ *  out should be a buffer of size PATH_MAX
+ *  and may be the same as in. */
+
+/* We'll use a static buffer for speed unless someone complains */
+#define MAX_LINE 2048
+
+static int _parse_la(const char *prefix, const char *in, char *out) 
+{
+    FILE *file;
+    int length;
+    char line[MAX_LINE];
+    char *ntmp = NULL;
+
+    if(!in || !out || !prefix) return SASL_BADPARAM;
+
+    length = strlen(in);
+
+    if (strcmp(in + (length - strlen(LA_SUFFIX)), LA_SUFFIX)) {
+	if(!strcmp(in + (length - strlen(SO_SUFFIX)),SO_SUFFIX)) {
+	    /* check for a .la file */
+	    strcpy(line, prefix);
+	    strcat(line, in);
+	    length = strlen(line);
+	    *(line + (length - strlen(SO_SUFFIX))) = '\0';
+	    strcat(line, LA_SUFFIX);
+	    file = fopen(line, "r");
+	    if(file) {
+		/* We'll get it on the .la open */
+		fclose(file);
+		return SASL_FAIL;
+	    }
+	}
+	if(out != in) strncpy(out, in, PATH_MAX);
+	return SASL_OK;
+    }
+
+    strcpy(line, prefix);
+    strcat(line, in);
+
+    file = fopen(line, "r");
+    if(!file) {
+	_sasl_log(NULL, SASL_LOG_WARN,
+		  "unable to open LA file: %s", line);
+	return SASL_FAIL;
+    }
+    
+    while(!feof(file)) {
+	if(!fgets(line, MAX_LINE, file)) break;
+	if(line[strlen(line) - 1] != '\n') {
+	    _sasl_log(NULL, SASL_LOG_WARN,
+		      "LA file has too long of a line: %s", in);
+	    return SASL_BUFOVER;
+	}
+	if(line[0] == '\n' || line[0] == '#') continue;
+	if(!strncmp(line, "dlname=", sizeof("dlname=") - 1)) {
+	    /* We found the line with the name in it */
+	    char *end;
+	    char *start;
+	    int len;
+	    end = strrchr(line, '\'');
+	    start = &line[sizeof("dlname=")-1];
+	    len = strlen(start);
+	    if(len > 3 && start[0] == '\'') {
+		ntmp=&start[1];
+		*end='\0';
+		strcpy(out, prefix);
+		strcat(out, ntmp);
+	    }
+	    break;
+	}
+    }
+    if(ferror(file) || feof(file)) {
+	_sasl_log(NULL, SASL_LOG_WARN,
+		  "Error reading .la: %s\n", in);
+	fclose(file);
+	return SASL_FAIL;
+    }
+    fclose(file);
+    return SASL_OK;
 }
 
 /* loads a plugin library */
@@ -305,6 +391,7 @@ int _sasl_load_plugins(const add_plugin_list_t *entrypoints,
 	    {
 		size_t length;
 		void *library;
+		char *c;
 		char plugname[PATH_MAX];
 		char name[PATH_MAX];
 
@@ -315,18 +402,24 @@ int _sasl_load_plugins(const add_plugin_list_t *entrypoints,
 		if (length + pos>=PATH_MAX) continue; /* too big */
 
 		if (strcmp(dir->d_name + (length - strlen(SO_SUFFIX)),
-			   SO_SUFFIX)) continue;
+			   SO_SUFFIX)
+		    && strcmp(dir->d_name + (length - strlen(LA_SUFFIX)),
+			   LA_SUFFIX))
+		    continue;
 
 		memcpy(name,dir->d_name,length);
 		name[length]='\0';
-	
-		strcpy(tmp, prefix);
-		strcat(tmp, name);
 
-		/* skip "lib" and cut off ".so" */
+		result = _parse_la(prefix, name, tmp);
+		if(result != SASL_OK)
+		    continue;
+		
+		/* skip "lib" and cut off suffix --
+		   this only need be approximate */
 		strcpy(plugname, name + 3);
-		*(plugname + strlen(plugname) - strlen(SO_SUFFIX)) = '\0';
-	
+		c = strchr(plugname, (int)'.');
+		if(c) *c = '\0';
+
 		result = _sasl_get_plugin(tmp, verifyfile_cb, &library);
 
 		if(result != SASL_OK)
