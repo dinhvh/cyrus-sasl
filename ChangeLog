@@ -26,6 +26,8 @@
 	* lib/staticopen.c (_sasl_load_plugins): do not fail
 	  if a single plugin load fails
 
+	* include/sasl.h (SASL_CLIENT_FALLBACK): removed
+
 2001-07-27  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* configure.in: extracted SASLDB-related checking
 	* config/sasldb.m4: added
