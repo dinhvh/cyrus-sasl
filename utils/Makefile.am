@@ -44,14 +44,14 @@
 
 sbin_PROGRAMS = saslpasswd sasldblistusers
 man_MANS = saslpasswd.8 sasldblistusers.8
-saslpasswd_LDADD = ../lib/libsasl.la
+saslpasswd_LDADD = ../lib/libsasl2.la
 sasldblistusers_LDADD = $(SASL_DB_LIB)
 
 noinst_PROGRAMS = dbconverter-1.5.9
-dbconverter_1_5_9_LDADD = ../lib/libsasl.la $(SASL_DB_LIB)
+dbconverter_1_5_9_LDADD = ../lib/libsasl2.la $(SASL_DB_LIB)
 
 EXTRA_PROGRAMS = testsuite
-testsuite_LDADD = ../lib/libsasl.la $(SASL_DB_LIB) $(LIB_SOCKET)
+testsuite_LDADD = ../lib/libsasl2.la $(SASL_DB_LIB) $(LIB_SOCKET)
 
 include_HEADERS = @SASL_UTIL_HEADERS_EXTRA@
 EXTRA_HEADERS = sfsasl.h

@@ -53,8 +53,8 @@ sample_server_SOURCES = sample-server.c
 server_SOURCES = server.c common.c common.h
 client_SOURCES = client.c common.c common.h
 
-server_LDADD = ../lib/libsasl.la $(LIB_SOCKET)
-client_LDADD = ../lib/libsasl.la $(LIB_SOCKET)
+server_LDADD = ../lib/libsasl2.la $(LIB_SOCKET)
+client_LDADD = ../lib/libsasl2.la $(LIB_SOCKET)
 
-sample_client_LDADD = ../lib/libsasl.la $(LIB_SOCKET)
-sample_server_LDADD = ../lib/libsasl.la $(LIB_SOCKET)
+sample_client_LDADD = ../lib/libsasl2.la $(LIB_SOCKET)
+sample_server_LDADD = ../lib/libsasl2.la $(LIB_SOCKET)

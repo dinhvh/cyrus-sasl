@@ -45,16 +45,15 @@
 
 # Library version info - here at the top, for sanity
 # CURRENT:REVISION:AGE
-plain_version = 2:0:0
-anonymous_version = 2:0:0
-kerberos4_version = 2:0:0
-crammd5_version = 2:0:0
-scrammd5_version = 2:0:0
-gssapiv2_version = 2:0:0
-digestmd5_version = 2:0:0
-login_version = 2:0:0
-srp_version = 2:0:0
-# x509_version = 0:0:0
+plain_version = 1:0:0
+anonymous_version = 1:0:0
+kerberos4_version = 1:0:0
+crammd5_version = 1:0:0
+scrammd5_version = 1:0:0
+gssapiv2_version = 1:0:0
+digestmd5_version = 1:0:0
+login_version = 1:0:0
+srp_version = 1:0:0
 
 INCLUDES=-I$(top_srcdir)/include -I$(top_srcdir)/lib
 
@@ -62,7 +61,7 @@ LDFLAGS = @LDFLAGS@ -export-dynamic -rpath $(plugindir)
 
 plugindir = @plugindir@
 
-sasldir = $(prefix)/lib/sasl
+sasldir = $(prefix)/lib/sasl2
 sasl_LTLIBRARIES = @SASL_MECHS@
 EXTRA_LTLIBRARIES = libplain.la libanonymous.la libkerberos4.la libcrammd5.la libscrammd5.la libgssapiv2.la libdigestmd5.la liblogin.la libsrp.la
 
