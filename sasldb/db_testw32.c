@@ -1,7 +1,6 @@
 /* db_testw32.c--SASL win32 test/dummy interface
- * Rob Siemborski
  * G. Diskin    NOTE THIS IS FOR TEST PURPOSES ONLY FOR WIN32
- * $Id: db_testw32.c,v 1.1.2.2 2001/07/26 22:13:41 rjs3 Exp $
+ * $Id: db_testw32.c,v 1.1.2.3 2001/07/27 23:18:47 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -58,6 +57,8 @@
 #include "sasl.h"
 #include "saslint.h"
 #include <stdio.h>
+
+#error "db_testw32.c uses an obsolete sasldb interface that will need to be updated when we do the win32 port of SASLv2"
 
 /* This provides a version of _sasl_db_getsecret and
  * _sasl_db_putsecret which can be used to test the code on win32.

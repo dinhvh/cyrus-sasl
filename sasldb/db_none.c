@@ -1,7 +1,7 @@
 /* db_none.c--provides linkage for systems which lack a backend db lib
  * Rob Siemborski
  * Rob Earhart
- * $Id: db_none.c,v 1.1.2.2 2001/07/26 22:12:14 rjs3 Exp $
+ * $Id: db_none.c,v 1.1.2.3 2001/07/27 23:18:46 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -47,38 +47,43 @@
 #include "sasldb.h"
 
 /* This just exists to provide these symbols on systems where configure
- * couldn't find a database library. */
-
-static int getsecret(const sasl_utils_t *utils __attribute__((unused)),
-		     sasl_conn_t *context __attribute__((unused)),
-		     const char *auth_identity __attribute__((unused)),
-		     const char *realm __attribute__((unused)),
-		     sasl_secret_t ** secret __attribute__((unused))) 
+ * couldn't find a database library (or the user says we do not want one). */
+int _sasldb_getdata(const sasl_utils_t *utils,
+		    sasl_conn_t *conn,
+		    const char *authid __attribute__((unused)),
+		    const char *realm __attribute__((unused)),
+		    const char *propName __attribute__((unused)),
+		    char *out __attribute__((unused)),
+		    const size_t max_out __attribute__((unused)),
+		    size_t *out_len __attribute__((unused)))
 {
+    if(conn) utils->seterror(conn, 0, "No Database Driver");
     return SASL_FAIL;
 }
 
-static int putsecret(const sasl_utils_t *utils __attribute__((unused)),
-		     sasl_conn_t *context __attribute__((unused)),
-		     const char *auth_identity __attribute__((unused)),
-		     const char *realm __attribute__((unused)),
-		     const sasl_secret_t *secret __attribute__((unused))) 
+int _sasldb_putdata(const sasl_utils_t *utils,
+		    sasl_conn_t *conn,
+		    const char *authid __attribute__((unused)),
+		    const char *realm __attribute__((unused)),
+		    const char *propName __attribute__((unused)),
+		    const char *data __attribute__((unused)),
+		    size_t data_len __attribute__((unused)))
 {
+    if(conn) utils->seterror(conn, 0, "No Database Driver");
     return SASL_FAIL;
 }
 
-sasl_server_getsecret_t *_sasl_db_getsecret = &getsecret;
-sasl_server_putsecret_t *_sasl_db_putsecret = &putsecret;
-
-int _sasl_check_db(const sasl_utils_t *utils __attribute__((unused)),
-		   sasl_conn_t *conn __attribute__((unused)))
+int _sasl_check_db(const sasl_utils_t *utils,
+		   sasl_conn_t *conn)
 {
+    if(conn) utils->seterror(conn, 0, "No Database Driver");
     return SASL_FAIL;
 }
 
-sasldb_handle _sasldb_getkeyhandle(const sasl_utils_t *utils __attribute__((unused)),
-                                   sasl_conn_t *conn __attribute__((unused))) 
+sasldb_handle _sasldb_getkeyhandle(const sasl_utils_t *utils,
+                                   sasl_conn_t *conn) 
 {
+    if(conn) utils->seterror(conn, 0, "No Database Driver");
     return NULL;
 }
 

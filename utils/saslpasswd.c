@@ -261,8 +261,8 @@ int _sasl_sasldb_set_pass(sasl_conn_t *conn,
 	/* if SASL_SET_CREATE is set, we don't want to overwrite an
 	   existing account */
 	if (flags & SASL_SET_CREATE) {
-	    ret = _sasl_db_getsecret(sasl_global_utils,
-				     conn, userid, realm, &sec);
+	    ret = _sasldb_getsecret(sasl_global_utils,
+				    conn, userid, realm, &sec);
 	    if (ret == SASL_OK) {
 		memset(sec->data, 0, sec->len);
 		free(sec);
@@ -287,8 +287,8 @@ int _sasl_sasldb_set_pass(sasl_conn_t *conn,
 	    }
 	}
 	if (ret == SASL_OK) {
-	    ret = _sasl_db_putsecret(sasl_global_utils,
-				     conn, userid, realm, sec);
+	    ret = _sasldb_putsecret(sasl_global_utils,
+				    conn, userid, realm, sec);
 	}
 	if ( ret != SASL_OK ) {
 	    printf("Could not set secret for %s\n", userid);
@@ -300,7 +300,7 @@ int _sasl_sasldb_set_pass(sasl_conn_t *conn,
 	}
     } else { 
 	/* SASL_SET_DISABLE specified */
-	ret = _sasl_db_putsecret(sasl_global_utils, conn, userid, realm, NULL);
+	ret = _sasldb_putsecret(sasl_global_utils, conn, userid, realm, NULL);
 
 	if (ret != SASL_OK) {
 	    printf("failed to disable account for %s", userid);

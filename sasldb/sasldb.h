@@ -1,7 +1,7 @@
 /* sasldb.h - SASLdb library header
  * Rob Siemborski
  * Tim Martin
- * $Id: sasldb.h,v 1.1.2.4 2001/07/26 22:12:14 rjs3 Exp $
+ * $Id: sasldb.h,v 1.1.2.5 2001/07/27 23:18:47 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -57,24 +57,22 @@
  * to make use of this functionality.
  */
 
-/* Get a secret from sasldb for the given authid/realm */
-typedef int sasl_server_getsecret_t(const sasl_utils_t *utils,
-				    sasl_conn_t *context,
-				    const char *auth_identity,
-				    const char *realm,
-				    sasl_secret_t ** secret);
+int _sasldb_getdata(const sasl_utils_t *utils,
+		    sasl_conn_t *conn,
+		    const char *authid,
+		    const char *realm,
+		    const char *propName,
+		    char *out, const size_t max_out, size_t *out_len);
 
-/* Put a secret into sasldb for the given authid/realm */
-/* A NULL secret here means to delete the key */
-typedef int sasl_server_putsecret_t(const sasl_utils_t *utils,
-				    sasl_conn_t *context,
-				    const char *auth_identity,
-				    const char *realm,
-				    const sasl_secret_t * secret);
+/* pass NULL for data to delete it */
+int _sasldb_putdata(const sasl_utils_t *utils,
+		    sasl_conn_t *conn,
+		    const char *authid,
+		    const char *realm,
+		    const char *propName,
+		    const char *data, size_t data_len);
 
-extern sasl_server_getsecret_t *_sasl_db_getsecret;
-extern sasl_server_putsecret_t *_sasl_db_putsecret;
-
+/* Should be run before any db access is attempted */
 int _sasl_check_db(const sasl_utils_t *utils,
 		   sasl_conn_t *conn);
 
@@ -88,6 +86,21 @@ int _sasldb_getnextkey(const sasl_utils_t *utils,
 		       const size_t max_out, size_t *out_len);
 int _sasldb_releasekeyhandle(const sasl_utils_t *utils,
 			     sasldb_handle handle);
+
+/* The rest are implemented in allockey.c and individal drivers need not
+ * do so */
+/* These two are aliases for getdata/putdata */
+int _sasldb_getsecret(const sasl_utils_t *utils,
+		      sasl_conn_t *context,
+		      const char *auth_identity,
+		      const char *realm,
+		      sasl_secret_t ** secret);
+
+int _sasldb_putsecret(const sasl_utils_t *utils,
+		      sasl_conn_t *context,
+		      const char *auth_identity,
+		      const char *realm,
+		      const sasl_secret_t * secret);
 
 int _sasldb_parse_key(const char *key, const size_t key_len,
 		      char *authid, const size_t max_authid,

@@ -1,7 +1,7 @@
 /* db_ndbm.c--SASL ndbm interface
  * Rob Siemborski
  * Rob Earhart
- * $Id: db_ndbm.c,v 1.1.2.4 2001/07/26 22:12:14 rjs3 Exp $
+ * $Id: db_ndbm.c,v 1.1.2.5 2001/07/27 23:18:46 rjs3 Exp $
  */
 /*
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -56,12 +56,12 @@ static int db_ok = 0;
 
 /* This provides a version of _sasl_db_getsecret and
  * _sasl_db_putsecret which work with ndbm. */
-static int
-getsecret(const sasl_utils_t *utils,
-	  sasl_conn_t *conn,
-	  const char *auth_identity,
-	  const char *realm,
-	  sasl_secret_t ** secret)
+int _sasldb_getdata(const sasl_utils_t *utils,
+		    sasl_conn_t *conn,
+		    const char *authid,
+		    const char *realm,
+		    const char *propName,
+		    char *out, const size_t max_out, size_t *out_len)
 {
   int result = SASL_OK;
   char *key;
@@ -72,10 +72,12 @@ getsecret(const sasl_utils_t *utils,
   sasl_getopt_t *getopt;
   const char *path = SASL_DB_PATH;
 
-  if (!auth_identity || !secret || !realm || !db_ok)
-    return SASL_FAIL;
+  if (!authid || !propName || !realm || !out || !max_out)
+      return SASL_BADPARAM;
+  if (!db_ok)
+      return SASL_FAIL;
 
-  result = _sasldb_alloc_key(utils, auth_identity, realm, SASL_AUX_PASSWORD,
+  result = _sasldb_alloc_key(utils, authid, realm, propName,
 			     &key, &key_len);
   if (result != SASL_OK)
     return result;
@@ -99,19 +101,14 @@ getsecret(const sasl_utils_t *utils,
     result = SASL_NOUSER;
     goto cleanup;
   }
-  *secret = utils->malloc(sizeof(sasl_secret_t)
-			  + dvalue.dsize
-			  + 1);
-  if (! *secret) {
-    result = SASL_NOMEM;
-#if NDBM_FREE
-    free(dvalue.dptr);
-#endif
-    goto cleanup;
-  }
-  (*secret)->len = dvalue.dsize;
-  memcpy(&(*secret)->data, dvalue.dptr, dvalue.dsize);
-  (*secret)->data[(*secret)->len] = '\0'; /* sanity */
+
+  if((size_t)dvalue.dsize > max_out + 1)
+      return SASL_BUFOVER;
+
+  if(out_len) *out_len = dvalue.dsize;
+  memcpy(out, dvalue.dptr, dvalue.dsize); 
+  out[dvalue.dsize] = '\0';
+
   /* Note: not sasl_FREE!  This is memory allocated by ndbm,
    * which is using libc malloc/free. */
 #if NDBM_FREE
@@ -125,12 +122,12 @@ getsecret(const sasl_utils_t *utils,
   return result;
 }
 
-static int
-putsecret(const sasl_utils_t *utils,
-	  sasl_conn_t *conn,
-	  const char *auth_identity,
-	  const char *realm,
-	  const sasl_secret_t * secret)
+int _sasldb_putdata(const sasl_utils_t *utils,
+		    sasl_conn_t *conn,
+		    const char *authid,
+		    const char *realm,
+		    const char *propName,
+		    const char *data, size_t data_len)
 {
   int result = SASL_OK;
   char *key;
@@ -141,10 +138,10 @@ putsecret(const sasl_utils_t *utils,
   sasl_getopt_t *getopt;
   const char *path = SASL_DB_PATH;
 
-  if (!auth_identity || !realm)
+  if (!authid || !realm || !propName)
     return SASL_FAIL;
 
-  result = _sasldb_alloc_key(utils, auth_identity, realm, SASL_AUX_PASSWORD,
+  result = _sasldb_alloc_key(utils, authid, realm, propName,
 			     &key, &key_len);
   if (result != SASL_OK)
     return result;
@@ -167,10 +164,11 @@ putsecret(const sasl_utils_t *utils,
   }
   dkey.dptr = key;
   dkey.dsize = key_len;
-  if (secret) {
+  if (data) {
     datum dvalue;
-    dvalue.dptr = (void *)&secret->data;
-    dvalue.dsize = secret->len;
+    dvalue.dptr = (void *)data;
+    if(!data_len) data_len = strlen(data);
+    dvalue.dsize = data_len;
     if (dbm_store(db, dkey, dvalue, DBM_REPLACE))
       result = SASL_FAIL;
   } else
@@ -183,9 +181,6 @@ putsecret(const sasl_utils_t *utils,
 
   return result;
 }
-
-sasl_server_getsecret_t *_sasl_db_getsecret = &getsecret;
-sasl_server_putsecret_t *_sasl_db_putsecret = &putsecret;
 
 #ifdef DBM_SUFFIX
 #define SUFLEN (strlen(DBM_SUFFIX) + 1)

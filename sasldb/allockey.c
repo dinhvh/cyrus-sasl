@@ -1,7 +1,7 @@
 /* db_berkeley.c--SASL berkeley db interface
  * Rob Siemborski
  * Tim Martin
- * $Id: allockey.c,v 1.1.2.2 2001/07/26 22:12:14 rjs3 Exp $
+ * $Id: allockey.c,v 1.1.2.3 2001/07/27 23:18:46 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -131,3 +131,51 @@ int _sasldb_parse_key(const char *key, const size_t key_len,
 
     return SASL_OK;
 }
+
+/* These are more or less aliases to the correct functions */
+int _sasldb_getsecret(const sasl_utils_t *utils,
+		      sasl_conn_t *context,
+		      const char *authid,
+		      const char *realm,
+		      sasl_secret_t ** secret) 
+{
+    char buf[8192];
+    size_t len;
+    sasl_secret_t *out;
+    int ret;
+    
+    if(!secret) return SASL_BADPARAM;
+
+    ret = _sasldb_getdata(utils, context, authid, realm, SASL_AUX_PASSWORD,
+			  buf, 8192, &len);
+    
+    if(ret != SASL_OK) {
+	return ret;
+    }
+    
+    out = utils->malloc(sizeof(sasl_secret_t) + len);
+    if(!out) {
+	utils->seterror(context, 0, "Out of Memory in _sasldb_getsecret");
+	return SASL_NOMEM;
+    }
+
+    out->len = len;
+    memcpy(out->data, buf, len);
+    out->data[len]='\0';
+
+    *secret = out;
+
+    return SASL_OK;
+}
+
+int _sasldb_putsecret(const sasl_utils_t *utils,
+		      sasl_conn_t *context,
+		      const char *authid,
+		      const char *realm,
+		      const sasl_secret_t * secret) 
+{
+    return _sasldb_putdata(utils, context, authid, realm, SASL_AUX_PASSWORD,
+			   (secret ? secret->data : NULL),
+			   (secret ? secret->len : 0));
+}
+

@@ -1,7 +1,7 @@
 /* db_berkeley.c--SASL berkeley db interface
  * Rob Siemborski
  * Tim Martin
- * $Id: db_berkeley.c,v 1.1.2.5 2001/07/26 22:12:14 rjs3 Exp $
+ * $Id: db_berkeley.c,v 1.1.2.6 2001/07/27 23:18:46 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -58,12 +58,9 @@
 
 static int db_ok = 0;
 
-/* This provides a version of _sasl_db_getsecret and
- * _sasl_db_putsecret which work with berkeley db. */
 
 /*
  * Open the database
- *
  */
 static int berkeleydb_open(const sasl_utils_t *utils,
 			   sasl_conn_t *conn,
@@ -137,12 +134,12 @@ static void berkeleydb_close(const sasl_utils_t *utils, DB *mbdb)
  * Return SASL_NOUSER if entry doesn't exist
  *
  */
-static int
-getsecret(const sasl_utils_t *utils,
-	  sasl_conn_t *context,
-	  const char *auth_identity,
-	  const char *realm,
-	  sasl_secret_t ** secret)
+int _sasldb_getdata(const sasl_utils_t *utils,
+		    sasl_conn_t *context,
+		    const char *auth_identity,
+		    const char *realm,
+		    const char *propName,
+		    char *out, const size_t max_out, size_t *out_len)
 {
   int result = SASL_OK;
   char *key;
@@ -151,11 +148,14 @@ getsecret(const sasl_utils_t *utils,
   DB *mbdb = NULL;
 
   /* check parameters */
-  if (!auth_identity || !secret || !realm || !db_ok)
-    return SASL_FAIL;
+  if (!auth_identity || !realm || !propName || !out || !max_out)
+      return SASL_BADPARAM;
+
+  if (!db_ok)
+      return SASL_FAIL;
 
   /* allocate a key */
-  result = _sasldb_alloc_key(utils, auth_identity, realm, SASL_AUX_PASSWORD,
+  result = _sasldb_alloc_key(utils, auth_identity, realm, propName,
 			     &key, &key_len);
   if (result != SASL_OK)
     return result;
@@ -193,22 +193,16 @@ getsecret(const sasl_utils_t *utils,
     break;
   }
 
-  *secret = utils->malloc(sizeof(sasl_secret_t)
-			  + data.size
-			  + 1);
-  if (! *secret) {
-    result = SASL_NOMEM;
-    goto cleanup;
-  }
+  if(data.size > max_out + 1)
+      return SASL_BUFOVER;
 
-  (*secret)->len = data.size;
-  memcpy(&(*secret)->data, data.data, data.size);
-  (*secret)->data[(*secret)->len] = '\0'; /* sanity */
-
+  if(out_len) *out_len = data.size;
+  memcpy(out, data.data, data.size);
+  out[data.size] = '\0';
+  
  cleanup:
 
   if (mbdb != NULL) berkeleydb_close(utils, mbdb);
-
   utils->free(key);
 
   return result;
@@ -220,12 +214,12 @@ getsecret(const sasl_utils_t *utils,
  *
  */
 
-static int
-putsecret(const sasl_utils_t *utils,
-	  sasl_conn_t *context,
-	  const char *auth_identity,
-	  const char *realm,
-	  const sasl_secret_t * secret)
+int _sasldb_putdata(const sasl_utils_t *utils,
+		    sasl_conn_t *context,
+		    const char *authid,
+		    const char *realm,
+		    const char *propName,
+		    const char *data_in, size_t data_len)
 {
   int result = SASL_OK;
   char *key;
@@ -233,10 +227,13 @@ putsecret(const sasl_utils_t *utils,
   DBT dbkey;
   DB *mbdb = NULL;
 
-  if (!auth_identity || !realm || !db_ok)
+  if (!authid || !realm || !propName)
+      return SASL_BADPARAM;
+  
+  if (!db_ok)
       return SASL_FAIL;
 
-  result = _sasldb_alloc_key(utils, auth_identity, realm, SASL_AUX_PASSWORD,
+  result = _sasldb_alloc_key(utils, authid, realm, propName,
 			     &key, &key_len);
   if (result != SASL_OK)
     return result;
@@ -250,13 +247,14 @@ putsecret(const sasl_utils_t *utils,
   dbkey.data = key;
   dbkey.size = key_len;
 
-  if (secret) {   /* putting secret */
+  if (data_in) {   /* putting secret */
     DBT data;
 
     memset(&data, 0, sizeof(data));    
 
-    data.data = (char *)secret->data;
-    data.size = secret->len;
+    data.data = (char *)data_in;
+    if(!data_len) data_len = strlen(data_in);
+    data.size = data_len;
 
     result = mbdb->put(mbdb, NULL, &dbkey, &data, 0);
 
@@ -290,9 +288,6 @@ putsecret(const sasl_utils_t *utils,
 
   return result;
 }
-
-sasl_server_getsecret_t *_sasl_db_getsecret = &getsecret;
-sasl_server_putsecret_t *_sasl_db_putsecret = &putsecret;
 
 int _sasl_check_db(const sasl_utils_t *utils,
 		   sasl_conn_t *conn)

@@ -1,7 +1,7 @@
 /* db_gdbm.c--SASL gdbm interface
  * Rob Siemborski
  * Rob Earhart
- * $Id: db_gdbm.c,v 1.1.2.4 2001/07/26 22:12:14 rjs3 Exp $
+ * $Id: db_gdbm.c,v 1.1.2.5 2001/07/27 23:18:46 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -52,14 +52,12 @@
 
 static int db_ok = 0;
 
-/* This provides a version of _sasl_db_getsecret and
- * _sasl_db_putsecret which work with gdbm. */
-static int
-getsecret(const sasl_utils_t *utils,
-	  sasl_conn_t *conn,
-	  const char *auth_identity,
-	  const char *realm,
-	  sasl_secret_t ** secret)
+int _sasldb_getdata(const sasl_utils_t *utils,
+		    sasl_conn_t *conn,
+		    const char *authid,
+		    const char *realm,
+		    const char *propName,
+		    char *out, const size_t max_out, size_t *out_len)
 {
   int result = SASL_OK;
   char *key;
@@ -70,10 +68,12 @@ getsecret(const sasl_utils_t *utils,
   sasl_getopt_t *getopt;
   const char *path = SASL_DB_PATH;
 
-  if (!auth_identity || !secret || !realm || !db_ok)
-    return SASL_FAIL;
+  if (!authid || !propName || !realm || !out || !max_out)
+      return SASL_BADPARAM;
+  if (!db_ok)
+      return SASL_FAIL;
 
-  result = _sasldb_alloc_key(utils, auth_identity, realm, SASL_AUX_PASSWORD,
+  result = _sasldb_alloc_key(utils, authid, realm, propName,
 			     &key, &key_len);
   if (result != SASL_OK)
     return result;
@@ -99,17 +99,14 @@ getsecret(const sasl_utils_t *utils,
     result = SASL_NOUSER;
     goto cleanup;
   }
-  *secret = utils->malloc(sizeof(sasl_secret_t)
-			  + gvalue.dsize
-			  + 1);
-  if (! *secret) {
-    result = SASL_NOMEM;
-    free(gvalue.dptr);
-    goto cleanup;
-  }
-  (*secret)->len = gvalue.dsize;
-  memcpy(&(*secret)->data, gvalue.dptr, gvalue.dsize);
-  (*secret)->data[(*secret)->len] = '\0'; /* sanity */
+
+  if((size_t)gvalue.dsize > max_out + 1)
+      return SASL_BUFOVER;
+  
+  if(out_len) *out_len = gvalue.dsize;
+  memcpy(out, gvalue.dptr, gvalue.dsize);
+  out[gvalue.dsize] = '\0';
+
   /* Note: not sasl_FREE!  This is memory allocated by gdbm,
    * which is using libc malloc/free. */
   free(gvalue.dptr);
@@ -120,12 +117,12 @@ getsecret(const sasl_utils_t *utils,
   return result;
 }
 
-static int
-putsecret(const sasl_utils_t *utils,
-	  sasl_conn_t *conn,
-	  const char *auth_identity,
-	  const char *realm,
-	  const sasl_secret_t * secret)
+int _sasldb_putdata(const sasl_utils_t *utils,
+		    sasl_conn_t *conn,
+		    const char *authid,
+		    const char *realm,
+		    const char *propName,
+		    const char *data, size_t data_len)
 {
   int result = SASL_OK;
   char *key;
@@ -136,10 +133,10 @@ putsecret(const sasl_utils_t *utils,
   sasl_getopt_t *getopt;
   const char *path = SASL_DB_PATH;
 
-  if (!auth_identity || !realm)
-      return SASL_FAIL;
+  if (!authid || !realm || !propName)
+      return SASL_BADPARAM;
 
-  result = _sasldb_alloc_key(utils, auth_identity, realm, SASL_AUX_PASSWORD,
+  result = _sasldb_alloc_key(utils, authid, realm, propName,
 			     &key, &key_len);
   if (result != SASL_OK)
     return result;
@@ -155,16 +152,18 @@ putsecret(const sasl_utils_t *utils,
   db = gdbm_open((char *)path, 0, GDBM_WRCREAT, S_IRUSR | S_IWUSR, NULL);
   if (! db) {
       utils->log(NULL, SASL_LOG_ERR,
-		"SASL error opening password file. Do you have write permissions?\n");
+		 "SASL error opening password file. "
+		 "Do you have write permissions?\n");
     result = SASL_FAIL;
     goto cleanup;
   }
   gkey.dptr = key;
   gkey.dsize = key_len;
-  if (secret) {
+  if (data) {
     datum gvalue;
-    gvalue.dptr = (char *)&secret->data;
-    gvalue.dsize = secret->len;
+    gvalue.dptr = (char *)data;
+    if(!data_len) data_len = strlen(data);
+    gvalue.dsize = data_len;
     if (gdbm_store(db, gkey, gvalue, GDBM_REPLACE))
       result = SASL_FAIL;
   } else {
@@ -178,9 +177,6 @@ putsecret(const sasl_utils_t *utils,
 
   return result;
 }
-
-sasl_server_getsecret_t *_sasl_db_getsecret = &getsecret;
-sasl_server_putsecret_t *_sasl_db_putsecret = &putsecret;
 
 int _sasl_check_db(const sasl_utils_t *utils,
 		   sasl_conn_t *conn)

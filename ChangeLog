@@ -16,6 +16,16 @@
 	* plugins/kerberos.c: Function name standardization
 	* plugins/login.c: Function name standardization
 	* plugins/plain.c: Function name standardization	
+
+	* sasldb/allockey.c: Generalized SASLdb API
+	* sasldb/db_berkeley.c: Generalized SASLdb API
+	* sasldb/db_gdbm.c: Generalized SASLdb API
+	* sasldb/db_ndbm.c: Generalized SASLdb API
+	* sasldb/db_none.c: Generalized SASLdb API
+	* sasldb/db_testw32.c: Added #error to block compile so the API will
+		be fixed when we do the Win 32 port
+	* plugins/sasldb.c: Use new SASLdb API
+	* utils/saslpasswd.c: Use new SASLdb API
 	
 2001-07-26  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* lib/common.c (_sasl_getcallback): fixed reference to

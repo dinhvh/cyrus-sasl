@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: sasldb.c,v 1.1.2.4 2001/07/26 22:12:12 rjs3 Exp $
+ * $Id: sasldb.c,v 1.1.2.5 2001/07/27 23:18:45 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -130,8 +130,8 @@ static void sasldb_auxprop_lookup(void *glob_context __attribute__((unused)),
 		    sparams->serverFQDN, user);
     if(ret != SASL_OK) goto done;
 
-    ret = _sasl_db_getsecret(sparams->utils,
-			     sparams->utils->conn, userid, realm, &secret);
+    ret = _sasldb_getsecret(sparams->utils,
+			    sparams->utils->conn, userid, realm, &secret);
     if (ret != SASL_OK) {
 	/* error getting secret */
 	goto done;
