@@ -113,6 +113,9 @@
 /* where does saslauthd look for the communication socket? */
 #undef PATH_SASLAUTHD_RUNDIR
 
+/* should we support sasl_checkapop */
+#undef DO_SASL_CHECKAPOP
+
 /* do we pay attention to IP addresses in the kerberos 4 tickets? */
 #undef KRB4_IGNORE_IP_ADDRESS
 

@@ -1,7 +1,7 @@
 /* testsuite.c -- Stress the library a little
  * Rob Siemborski
  * Tim Martin
- * $Id: testsuite.c,v 1.13.2.16 2001/06/28 19:35:44 rjs3 Exp $
+ * $Id: testsuite.c,v 1.13.2.17 2001/06/28 21:51:28 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -1616,14 +1616,17 @@ void test_seclayer()
 void create_ids(void)
 {
     sasl_conn_t *saslconn;
-    int i,result;
+    int result;
     struct sockaddr_in addr;
     struct hostent *hp;
     char buf[8192];
+#ifdef DO_SASL_CHECKAPOP
+    int i;
     const char challenge[] = "<1896.697170952@cyrus.andrew.cmu.edu>";
     MD5_CTX ctx;
     unsigned char digest[16];
     char digeststr[32];
+#endif
 
     if (sasl_server_init(goodsasl_cb,"TestSuite")!=SASL_OK) fatal("");
 
@@ -1667,6 +1670,7 @@ void create_ids(void)
 	fatal("sasl_user_exists found nonexistant username");
 
     /* Test sasl_checkapop */
+#ifdef DO_SASL_CHECKAPOP
     _sasl_MD5Init(&ctx);
     _sasl_MD5Update(&ctx,challenge,strlen(challenge));
     _sasl_MD5Update(&ctx,password,strlen(password));
@@ -1684,25 +1688,30 @@ void create_ids(void)
     if(result != SASL_OK)
         fatal("Unable to checkapop password we just set");
     /* End checkapop test */
+#else /* Just check that checkapop is really turned off */
+    if(sasl_checkapop(saslconn, NULL, 0, NULL, 0) == SASL_OK)
+	fatal("sasl_checkapop seems to work but was disabled at compile time");
+#endif
 
     /* now delete user and make sure can't find him anymore */
     result = sasl_setpass(saslconn, username, password,
 			  strlen(password), NULL, 0, SASL_SET_DISABLE);
     if (result != SASL_OK)
 	fatal("Error disabling password. Do we have write access to sasldb?");
-    
+
     result = sasl_checkpass(saslconn, username, strlen(username),
 			    password, strlen(password));
     if (result == SASL_OK)
 	fatal("sasl_checkpass got SASL_OK after disableing");
 
+#ifdef DO_SASL_CHECKAPOP
     /* And checkapop... */
     result = sasl_checkapop(saslconn,
                             challenge, strlen(challenge), 
                             buf, strlen(buf));
     if(result == SASL_OK)
         fatal("Checkapop succeeded but should have failed");
-    /* End checkapop */
+#endif
 
     /* try bad params */
     if (sasl_setpass(NULL,username, password, strlen(password), NULL, 0, SASL_SET_CREATE)==SASL_OK)

@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: checkpw.c,v 1.41.2.12 2001/06/27 14:56:27 rjs3 Exp $
+ * $Id: checkpw.c,v 1.41.2.13 2001/06/28 21:51:25 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -205,6 +205,7 @@ static int sasldb_verify_password(sasl_conn_t *conn,
     return ret;
 }
 
+#ifdef DO_SASL_CHECKAPOP
 int _sasl_sasldb_verify_apop(sasl_conn_t *conn,
 			     const char *userstr,
 			     const char *challenge,
@@ -260,7 +261,7 @@ int _sasl_sasldb_verify_apop(sasl_conn_t *conn,
     if (secret) _sasl_free_secret(&secret);
     return ret;
 }
-
+#endif /* DO_SASL_CHECKAPOP */
 
 /* this routine sets the sasldb password given a user/pass */
 int _sasl_sasldb_set_pass(sasl_conn_t *conn,

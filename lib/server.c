@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: server.c,v 1.84.2.32 2001/06/27 15:55:44 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.33 2001/06/28 21:51:25 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -1372,11 +1372,19 @@ int sasl_user_exists(sasl_conn_t *conn,
  *  SASL_NOUSER   -- user not found
  */
 int sasl_checkapop(sasl_conn_t *conn,
+#ifdef DO_SASL_CHECKAPOP
  		   const char *challenge,
  		   unsigned challen __attribute__((unused)),
  		   const char *response,
  		   unsigned resplen __attribute__((unused)))
+#else
+ 		   const char *challenge __attribute__((unused)),
+ 		   unsigned challen __attribute__((unused)),
+ 		   const char *response __attribute__((unused)),
+ 		   unsigned resplen __attribute__((unused)))
+#endif
 {
+#ifdef DO_SASL_CHECKAPOP
     sasl_server_conn_t *s_conn = (sasl_server_conn_t *) conn;
     char *user, *user_end;
     size_t user_len;
@@ -1422,5 +1430,10 @@ int sasl_checkapop(sasl_conn_t *conn,
     }
 
     return result;
+#else /* sasl_checkapop was disabled at compile time */
+    _sasl_log(conn, SASL_LOG_NOTE,
+	      "sasl_checkapop called, but was disabled at compile time");
+    return SASL_FAIL;
+#endif /* DO_SASL_CHECKAPOP */
 }
  

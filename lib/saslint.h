@@ -1,7 +1,7 @@
 /* saslint.h - internal SASL library definitions
  * Rob Siemborski
  * Tim Martin
- * $Id: saslint.h,v 1.33.2.24 2001/06/27 14:59:21 rjs3 Exp $
+ * $Id: saslint.h,v 1.33.2.25 2001/06/28 21:51:25 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -348,11 +348,13 @@ extern int _sasl_sasldb_set_pass(sasl_conn_t *conn,
 				 const char *user_realm,
 				 int flags);
 
+#ifdef DO_SASL_CHECKAPOP
 int _sasl_sasldb_verify_apop(sasl_conn_t *conn,
 			     const char *userstr,
 			     const char *challenge,
 			     const char *response,
 			     const char *user_realm);
+#endif /* DO_SASL_CHECKAPOP */
 
 /* auxprop.c */
 void _sasl_auxprop_free();
