@@ -9,11 +9,13 @@
 
 	* utils/Makefile.am (CLEANFILES): added
 
-	* sasldb/allockey.c: single place for alloc_key()
+	* sasldb/allockey.c (alloc_key): single place for alloc_key()
 	  Removed alloc_key from other source files.
 	* sasldb/sasldb.h: added declaration of alloc_key()	
 
 	* configure.in: added checks for db-3.3 and db3.3
+
+	* plugins/digestmd5.c (get_realm): now error on empty user_realm
 	
 2001-07-24  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* plugins/sasldb.c: Cleaned up calls into the glue code

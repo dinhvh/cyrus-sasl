@@ -2,7 +2,7 @@
  * Rob Siemborski
  * Tim Martin
  * Alexey Melnikov 
- * $Id: digestmd5.c,v 1.97.2.22 2001/07/23 14:41:26 rjs3 Exp $
+ * $Id: digestmd5.c,v 1.97.2.23 2001/07/25 18:56:45 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -2043,10 +2043,13 @@ get_realm(sasl_server_params_t * params,
 {
   /* look at user realm first */
   if (params->user_realm != NULL) {
-      if (*(params->user_realm) != '\0') {
-	  *realm = (char *) params->user_realm;
+      if(params->user_realm[0] != '\0') {
+          *realm = (char *) params->user_realm;
       } else {
-	  *realm = NULL;
+	  /* Catch improperly converted apps */
+	  params->utils->seterror(params->utils->conn, 0,
+				  "user_realm is an empty string!");
+	  return SASL_BADPARAM;
       }
   } else if (params->serverFQDN != NULL) {
       *realm = (char *) params->serverFQDN;
