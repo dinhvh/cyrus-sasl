@@ -1,6 +1,6 @@
 /* Kerberos4 SASL plugin
  * Tim Martin 
- * $Id: kerberos4.c,v 1.65.2.3 2001/05/31 21:32:10 rjs3 Exp $
+ * $Id: kerberos4.c,v 1.65.2.4 2001/06/01 17:59:15 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
@@ -66,6 +66,8 @@
 #include <ctype.h>
 #include <sys/uio.h>
 
+#include "plugin_common.h"
+
 #ifdef WIN32
 /* This must be after sasl.h, saslutil.h */
 # include "saslKERBEROSV4.h"
@@ -96,8 +98,6 @@ static const char rcsid[] = "$Implementation: Carnegie Mellon SASL " VERSION " $
 /* gotta define gethostname ourselves on suns */
 extern int gethostname(char *, int);
 #endif
-
-#define KERBEROS_VERSION (SASL_CLIENT_PLUG_VERSION)
 
 #define KRB_SECFLAG_NONE (1)
 #define KRB_SECFLAG_INTEGRITY (2)
@@ -138,9 +138,7 @@ typedef struct context {
   struct sockaddr_in ip_remote;    /* remote ip address and port.
 				       needed for layers */
 
-  sasl_malloc_t *malloc;           /* encode and decode need these */
-  sasl_realloc_t *realloc;       
-  sasl_free_t *free;
+  const sasl_utils_t *utils;       /* this is useful to have around */
 
   char *encode_buf;                /* For encoding/decoding mem management */
   char *decode_buf;
@@ -164,106 +162,10 @@ typedef struct context {
 
 } context_t;
 
-
 /* FIXME: A *GLOBAL VARIABLE*? Don't we want the POSSIBILITY of this being
  * thread-safe? */
 static char *srvtab = NULL;
 static unsigned refcount = 0;
-
-/* FIXME: These shouldn't really be needed on a per-plugin basis! */
-/* FIXME: This only parses IPV4 addresses */
-int _sasl_ipfromstring(const char *addr, struct sockaddr_in *out) 
-{
-    int i;
-    unsigned int val = 0;
-    unsigned int port;
-    
-    if(!addr || !out) return SASL_BADPARAM;
-
-    /* Parse the address */
-    for(i=0; i<4 && *addr && *addr != ';'; i++) {
-	int inval;
-	
-	inval = atoi(addr);
-	if(inval < 0 || inval > 255) return SASL_BADPARAM;
-
-	val = val << 8;
-	val |= inval;
-	
-        for(;*addr && *addr != '.' && *addr != ';'; addr++)
-	    if(!isdigit(*addr)) return SASL_BADPARAM;
-
-	/* skip the separator */
-	addr++;
-    }
-    
-    /* We have a bad ip address if we have less than 4 octets, or
-     * if we didn't just skip a semicolon */
-    if(i!=4 || *(addr-1) != ';') return SASL_BADPARAM;
-    
-    port = atoi(addr);
-
-    /* Ports can only be 16 bits in IPV4 */
-    if((port & 0xFFFF) != port) return SASL_BADPARAM;
-        
-    for(;*addr;addr++)
-	if(!isdigit(*addr)) return SASL_BADPARAM;
-    
-    bzero(out, sizeof(struct sockaddr_in));
-    out->sin_addr.s_addr = val;
-    out->sin_port = port;
-
-    return SASL_OK;
-}
-
-static int
-_iovec_to_buf(context_t *text, const struct iovec *vec, unsigned numiov,
-	      char **output, unsigned *outputlen) 
-{
-    unsigned i;
-    char *pos;
-    
-    *outputlen = 0;
-    for(i=0; i<numiov; i++)
-	*outputlen += vec[i].iov_len;
-
-    *output = text->malloc(*outputlen);
-    if(!output) return SASL_NOMEM;
-    
-    bzero(*output, *outputlen);
-    pos = *output;
-    
-    for(i=0; i<numiov; i++) {
-	memcpy(pos, vec[i].iov_base, vec[i].iov_len);
-	pos += vec[i].iov_len;
-    }
-
-    return SASL_OK;
-}
-
-/* Basically a conditional call to realloc(), if we need more */
-static int _buf_alloc(context_t *text, char **rwbuf,
-		      unsigned *curlen, unsigned newlen) 
-{
-    if(!(*rwbuf)) {
-	*rwbuf = text->malloc(newlen);
-	if (*rwbuf == NULL) {
-	    *curlen = 0;
-	    return SASL_NOMEM;
-	}
-	*curlen = newlen;
-    } else if(*rwbuf && *curlen < newlen) {
-	*rwbuf = text->realloc(*rwbuf, newlen);
-	if (*rwbuf == NULL) {
-	    *curlen = 0;
-	    return SASL_NOMEM;
-	}
-	*curlen = newlen;
-    } 
-
-    return SASL_OK;
-}
-
 
 static int privacy_encode(void *context,
 			  const struct iovec *invec,
@@ -277,13 +179,13 @@ static int privacy_encode(void *context,
   context_t *text;
   text=context;
 
-  ret = _iovec_to_buf(text, invec, numiov, &input, &inputlen);
+  ret = _iovec_to_buf(text->utils, invec, numiov, &input, &inputlen);
   if(ret != SASL_OK) return ret;
 
-  ret = _buf_alloc(text, &(text->encode_buf), &text->encode_buf_len,
+  ret = _buf_alloc(text->utils, &(text->encode_buf), &text->encode_buf_len,
 		   inputlen+40);
   if(ret != SASL_OK) {
-      text->free(input);
+      text->utils->free(input);
       return ret;
   }
 
@@ -295,7 +197,7 @@ static int privacy_encode(void *context,
   /* returns -1 on error */
   if (len==-1) return SASL_FAIL;
 
-  text->free(input);
+  text->utils->free(input);
 
   /* now copy in the len of the buffer in network byte order */
   *outputlen=len+4;
@@ -344,7 +246,7 @@ static int privacy_decode_once(void *context,
 	    if ((text->size>0xFFFF) || (text->size < 0)) return SASL_FAIL;
 	    
 	    if (text->bufsize < text->size + 5) {
-		text->buffer = text->realloc(text->buffer, text->size + 5);
+		text->buffer = text->utils->realloc(text->buffer, text->size + 5);
 		text->bufsize = text->size + 5;
 	    }
 	    if (text->buffer == NULL) return SASL_NOMEM;
@@ -395,7 +297,7 @@ static int privacy_decode_once(void *context,
     text->time_sec = data.time_sec;
     text->time_5ms = data.time_5ms;
 
-    *output = text->malloc(data.app_length + 1);
+    *output = text->utils->malloc(data.app_length + 1);
     if ((*output) == NULL) {
 	return SASL_NOMEM;
     }
@@ -430,14 +332,14 @@ static int privacy_decode(void *context,
 
       if (tmp!=NULL) /* if received 2 packets merge them together */
       {
-	  ret = _buf_alloc(text, &text->decode_buf, &text->decode_buf_len,
-			   *outputlen + tmplen);
+	  ret = _buf_alloc(text->utils, &text->decode_buf,
+			   &text->decode_buf_len, *outputlen + tmplen);
 	  if(ret != SASL_OK) return ret;
 
 	  *output = text->decode_buf;
 	  memcpy(text->decode_buf + *outputlen, tmp, tmplen);
 	  *outputlen+=tmplen;
-	  text->free(tmp);
+	  text->utils->free(tmp);
       }
     }
 
@@ -457,14 +359,14 @@ integrity_encode(void *context,
   context_t *text;
   text=context;
 
-  ret = _iovec_to_buf(text, invec, numiov, &input, &inputlen);
+  ret = _iovec_to_buf(text->utils, invec, numiov, &input, &inputlen);
   if(ret != SASL_OK) return ret;
 
-  ret = _buf_alloc(text, &text->encode_buf, &text->encode_buf_len,
+  ret = _buf_alloc(text->utils, &text->encode_buf, &text->encode_buf_len,
 		   inputlen+40);
 
   if(ret != SASL_OK) {
-      text->free(input);
+      text->utils->free(input);
       return ret;
   }
   
@@ -474,7 +376,7 @@ integrity_encode(void *context,
   /* returns -1 on error */
   if (len==-1) return SASL_FAIL;
 
-  text->free(input);
+  text->utils->free(input);
 
   /* now copy in the len of the buffer in network byte order */
   *outputlen=len+4;
@@ -521,7 +423,7 @@ static int integrity_decode_once(void *context,
 	if ((text->size>0xFFFF) || (text->size < 0)) return SASL_FAIL; /* too big probably error */
 
 	if (text->bufsize < text->size) {
-	    text->buffer = text->realloc(text->buffer, text->size);
+	    text->buffer = text->utils->realloc(text->buffer, text->size);
 	    text->bufsize = text->size;
 	}
 	if (text->buffer == NULL) return SASL_NOMEM;
@@ -572,7 +474,7 @@ static int integrity_decode_once(void *context,
     text->time_sec = data.time_sec;
     text->time_5ms = data.time_5ms;
 
-    *output=text->malloc(data.app_length+1);
+    *output=text->utils->malloc(data.app_length+1);
     if ((*output) == NULL) return SASL_NOMEM;
  
     *outputlen=data.app_length;
@@ -604,13 +506,13 @@ static int integrity_decode(void *context,
 
       if (tmp!=NULL) /* if received 2 packets merge them together */
       {
-	  ret = _buf_alloc(text, &text->decode_buf, &text->decode_buf_len,
-			   *outputlen + tmplen);
+	  ret = _buf_alloc(text->utils, &text->decode_buf,
+			   &text->decode_buf_len, *outputlen + tmplen);
 
 	  *output = text->decode_buf;
 	  memcpy(text->decode_buf + *outputlen, tmp, tmplen);
 	  *outputlen+=tmplen;
-	  text->free(tmp);
+	  text->utils->free(tmp);
       }
     }
 
@@ -625,9 +527,7 @@ new_text(const sasl_utils_t *utils, context_t **text)
 
     if (ret==NULL) return SASL_NOMEM;
 
-    ret->malloc = utils->malloc;
-    ret->realloc = utils->realloc;
-    ret->free = utils->free;
+    ret->utils = utils;
 
     ret->encode_buf = NULL;
     ret->decode_buf = NULL;
@@ -737,7 +637,7 @@ static int server_continue_step (void *conn_context,
     text->challenge=randocts; 
     nchal=htonl(text->challenge);
 
-    result = _buf_alloc(text, &text->out_buf, &text->out_buf_len, 5);
+    result = _buf_alloc(text->utils, &text->out_buf, &text->out_buf_len, 5);
     if(result != SASL_OK)
 	return result;
 
@@ -837,7 +737,7 @@ static int server_continue_step (void *conn_context,
 		    text->init_keysched,
 		    DES_ENCRYPT);
    
-    result = _buf_alloc(text, &text->out_buf, &text->out_buf_len, 9);
+    result = _buf_alloc(text->utils, &text->out_buf, &text->out_buf_len, 9);
     if(result != SASL_OK)
 	return result;
 
@@ -920,9 +820,6 @@ static int server_continue_step (void *conn_context,
 	/* couldn't get remote IP address */
 	return result;
     }
-
-    text->malloc=sparams->utils->malloc;        
-    text->free=sparams->utils->free;
 
     /* fill in oparams */
     oparams->maxoutbuf = (in[5] << 16) + (in[6] << 8) + in[7];
@@ -1024,7 +921,7 @@ int sasl_server_plug_init(sasl_utils_t *utils,
     const char *ret;
     unsigned int rl;
     
-    if (maxversion < KERBEROS_VERSION) {
+    if (maxversion < SASL_SERVER_PLUG_VERSION) {
 	return SASL_BADVERS;
     }
 
@@ -1055,7 +952,7 @@ int sasl_server_plug_init(sasl_utils_t *utils,
     *pluglist = plugins;
 
     *plugcount = 1;
-    *out_version = KERBEROS_VERSION;
+    *out_version = SASL_SERVER_PLUG_VERSION;
     
     return SASL_OK;
 }
@@ -1158,7 +1055,7 @@ static int client_continue_step (void *conn_context,
 	    return SASL_FAIL;
 	}
 
-	ret = _buf_alloc(text, &(text->out_buf), &(text->out_buf_len),
+	ret = _buf_alloc(text->utils, &(text->out_buf), &(text->out_buf_len),
 			 ticket.length);
 	if(ret != SASL_OK) return ret;
 	
@@ -1392,7 +1289,7 @@ static int client_continue_step (void *conn_context,
 			 (des_cblock *)text->session,
 			 DES_ENCRYPT);
 
-	_buf_alloc(text, &text->out_buf, &text->out_buf_len, len);
+	_buf_alloc(text->utils, &text->out_buf, &text->out_buf_len, len);
 
 	memcpy(text->out_buf, sout, len);
 
@@ -1497,13 +1394,13 @@ int sasl_client_plug_init(sasl_utils_t *utils __attribute__((unused)),
 			  const sasl_client_plug_t **pluglist,
 			  int *plugcount)
 {
-  if (maxversion<KERBEROS_VERSION)
+  if (maxversion < SASL_CLIENT_PLUG_VERSION)
     return SASL_BADVERS;
 
   *pluglist=client_plugins;
 
   *plugcount=1;
-  *out_version=KERBEROS_VERSION;
+  *out_version=SASL_CLIENT_PLUG_VERSION;
 
   refcount++;
 

@@ -55,11 +55,11 @@
 # include "saslANONYMOUS.h"
 #endif
 
+#include "plugin_common.h"
+
 static const char rcsid[] = "$Implementation: Carnegie Mellon SASL " VERSION " $";
 
 static const char anonymous_id[] = "anonymous";
-
-#define ANONYMOUS_VERSION (SASL_CLIENT_PLUG_VERSION)
 
 #ifdef L_DEFAULT_GUARD
 # undef L_DEFAULT_GUARD
@@ -72,29 +72,6 @@ typedef struct context {
   char *out_buf;
   unsigned out_buf_len;
 } context_t;
-
-/* Basically a conditional call to realloc(), if we need more */
-static int _buf_alloc(const sasl_utils_t *utils, char **rwbuf,
-		      unsigned *curlen, unsigned newlen) 
-{
-    if(!(*rwbuf)) {
-	*rwbuf = utils->malloc(newlen);
-	if (*rwbuf == NULL) {
-	    *curlen = 0;
-	    return SASL_NOMEM;
-	}
-	*curlen = newlen;
-    } else if(*rwbuf && *curlen < newlen) {
-	*rwbuf = utils->realloc(*rwbuf, newlen);
-	if (*rwbuf == NULL) {
-	    *curlen = 0;
-	    return SASL_NOMEM;
-	}
-	*curlen = newlen;
-    } 
-
-    return SASL_OK;
-}
 
 static int
 server_start(void *glob_context __attribute__((unused)),
@@ -195,13 +172,13 @@ int sasl_server_plug_init(sasl_utils_t *utils __attribute__((unused)),
 			  const sasl_server_plug_t **pluglist,
 			  int *plugcount)
 {
-  if (maxversion<ANONYMOUS_VERSION)
+  if (maxversion<SASL_SERVER_PLUG_VERSION)
     return SASL_BADVERS;
 
   *pluglist=plugins;
 
   *plugcount=1;  
-  *out_version=ANONYMOUS_VERSION;
+  *out_version=SASL_SERVER_PLUG_VERSION;
 
   return SASL_OK;
 }
@@ -419,13 +396,13 @@ int sasl_client_plug_init(sasl_utils_t *utils __attribute__((unused)),
 			  const sasl_client_plug_t **pluglist,
 			  int *plugcount)
 {
-  if (maxversion < ANONYMOUS_VERSION)
+  if (maxversion < SASL_CLIENT_PLUG_VERSION)
     return SASL_BADVERS;
 
   *pluglist=client_plugins;
 
   *plugcount=1;
-  *out_version=ANONYMOUS_VERSION;
+  *out_version=SASL_CLIENT_PLUG_VERSION;
 
   return SASL_OK;
 }

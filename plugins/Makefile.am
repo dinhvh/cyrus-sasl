@@ -70,14 +70,14 @@ libplain_la_SOURCES = plain.c
 libplain_la_LDFLAGS = -version-info $(plain_version)
 libplain_la_LIBADD = $(PLAIN_LIBS)
 
-libanonymous_la_SOURCES = anonymous.c
+libanonymous_la_SOURCES = anonymous.c plugin_common.c
 libanonymous_la_LDFLAGS = -version-info $(anonymous_version)
 
-libkerberos4_la_SOURCES = kerberos4.c
+libkerberos4_la_SOURCES = kerberos4.c plugin_common.c
 libkerberos4_la_LDFLAGS = -version-info $(kerberos4_version)
 libkerberos4_la_LIBADD = $(SASL_KRB_LIB) $(LIB_SOCKET)
 
-libgssapiv2_la_SOURCES = gssapi.c
+libgssapiv2_la_SOURCES = gssapi.c plugin_common.c
 libgssapiv2_la_LDFLAGS = -version-info $(gssapiv2_version)
 libgssapiv2_la_LIBADD = $(GSSAPIBASE_LIBS) $(GSSAPI_LIBS) $(LIB_SOCKET)
 
