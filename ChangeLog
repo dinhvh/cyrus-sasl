@@ -1,34 +1,34 @@
-2000-07-13  Rob Siemborski <rjs3+@andrew.cmu.edu>
+2001-07-13  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Fixed buffer overrun problem in sasldb auxprop plugin
 	* Removed severe memory leak from testsuite
 	* Version 2.0.2-ALPHA Released
 
-2000-07-11  Rob Siemborski <rjs3+@andrew.cmu.edu>
+2001-07-11  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* error reporting in KERBEROS_V4 plugin
 	* vague handling of SASL_AUTHSOURCE for getprop
 	* random misc error reporting bugs
 	* basic error messages for GSSAPI plugin
 
-2000-07-10  Rob Siemborski <rjs3+@andrew.cmu.edu>
+2001-07-10  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* added client-send-first logic in glue code
 	* removed some client-send-first logic in mechanisms
 	* removed IPv4 specifics from sasl_conn_t
 	* Much gluecode error revamping (store the error code
 	  in sasl_conn_t)
 
-2000-07-09  Rob Siemborski <rjs3+@andrew.cmu.edu>
+2001-07-09  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Removed dependency on "name" in canonuser plugin structure
 	* Update configure.in from a new configure.scan
 	* Update copyright info in man pages, finished all API man pages
 	* Added auxprop tests to testsuite
 	* Added userdb callback support
 
-2000-07-09  Rob Siemborski <rjs3+@andrew.cmu.edu>
+2001-07-09  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* First attempt at making the java code work again
 	* Minor memory and byte order bugfixes
 	* Added testing support for dmalloc (--with-dmalloc)
 
-2000-07-06  Rob Siemborski <rjs3+@andrew.cmu.edu>
+2001-07-06  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Loading of auxprop and canonuser plugins from DSOs
 	  (This still sucks performance wise, and will be fixed soon)
 	* Fixed some lack of indirection in the plugins
@@ -39,13 +39,13 @@
 	* Added SASL_IPREMOTEPORT and SASL_IPLOCALPORT to setprop,
 	  and now _sasl_conn_init calls it to do the same work.
 
-2000-07-05  Rob Siemborski <rjs3+@andrew.cmu.edu>
+2001-07-05  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Working libsfsasl and smtptest program (--with-sfio)
 	* Fixed sasldblistusers (atleast for Berkeley DB)
 	* seterror() calls in ANONYMOUS, CRAM, PLAIN and LOGIN
 	* Some new manpages
 
-2000-07-03  Rob Siemborski <rjs3+@andrew.cmu.edu>
+2001-07-03  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Static library compilation now optional (--with-staticsasl)
 	  Note that this is different from --enable-static, which causes
 	  libtool to build static versions of everything is is almost
@@ -53,7 +53,7 @@
 	* Removed all references to the ancient NANA code.
 	* Updated some documentation.
 
-2000-07-02  Rob Siemborski <rjs3+@andrew.cmu.edu>
+2001-07-02  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Improved allocation efficiency of KERBEROS_V4, DIGEST-MD5,
 	  and GSSAPI security layers.
 	* Fixed a decode bug in DIGEST-MD5 (and testsuite improvements to
@@ -61,24 +61,24 @@
 	* Fixed a number of solaris compiler warnings
 	* Static Library Build Support
 
-2000-06-30  Rob Siemborski <rjs3+@andrew.cmu.edu>
+2001-06-30  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Cleanup of some man pages (added sasl_errors.3)
 
-2000-06-29  Rob Siemborski <rjs3+@andrew.cmu.edu>
+2001-06-29  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Cleanup of APOP Code + new man page (Ken Murchison <ken@oceana.com>)
 	* Cleanup of comments in some files (Ken Murchison <ken@oceana.com>)
 	* Fixed some compiler errors on Solaris using /opt/SUNWspro/bin/cc
 	  (Reported by Mei-Hui Su <mei@ISI.EDU>
 
-2000-06-28  Rob Siemborski <rjs3+@andrew.cmu.edu>
+2001-06-28  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Improved memory allocation in default sasl_decode handler
 	* Added ability to disable sasl_checkapop (--disable-checkapop)
 	* Re-initialized kerberos mutex to NULL after it was freed
 
-2000-06-28  Rob Siemborski <rjs3+@andrew.cmu.edu>
+2001-06-28  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Fixed a severe bug in DIGEST-MD5 Plugin
 	* KERBEROS_V4 plugin now thread safe
 	* Version 2.0.1-ALPHA Released (due to DIGEST-MD5 problem)
 
-2000-06-27  Rob Siemborski <rjs3+@andrew.cmu.edu>
+2001-06-27  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Version 2.0.0-ALPHA Released
