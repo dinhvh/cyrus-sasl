@@ -1,6 +1,6 @@
 /* Plain SASL plugin
  * Tim Martin 
- * $Id: plain.c,v 1.43.2.1 2001/06/19 14:26:26 rjs3 Exp $
+ * $Id: plain.c,v 1.43.2.2 2001/06/19 15:38:17 rjs3 Exp $
  */
 
 /* 
@@ -67,7 +67,6 @@ typedef struct context {
     unsigned out_buf_len;
 } context_t;
 
-
 static int start(void *glob_context __attribute__((unused)), 
 		 sasl_server_params_t *sparams,
 		 const char *challenge __attribute__((unused)),
@@ -119,12 +118,8 @@ static
 int verify_password(sasl_server_params_t *params, 
 		    const char *user, const char *pass)
 {
-    const char *mech = NULL;
     int result;
     
-    params->utils->getopt(params->utils->getopt_context, "PLAIN",
-			  "pwcheck_method", &mech, NULL);
-
     /* if it's null, checkpass will default */
     result = params->utils->checkpass(params->utils->conn,
 				      user, 0, pass, 0);
@@ -156,7 +151,6 @@ server_continue_step (void *conn_context,
     oparams->authid = NULL;
 
     oparams->param_version = 0;
-
 
   if (text->state == 1 && clientin == NULL && clientinlen == 0)
   {
@@ -241,8 +235,9 @@ server_continue_step (void *conn_context,
     if (! author || !*author)
       author = authen;
 
-    params->canon_user(params->utils->conn,
-		       author, 0, authen, 0, 0, oparams);
+    result = params->canon_user(params->utils->conn,
+				author, 0, authen, 0, 0, oparams);
+    if(result != SASL_OK) return result;
 
     if (params->transition)
     {
@@ -423,8 +418,6 @@ static int get_authid(sasl_client_params_t *params,
 
   return result;
 }
-
-
 
 static int get_password(sasl_client_params_t *params,
 		      sasl_secret_t **password,
