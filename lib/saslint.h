@@ -88,8 +88,16 @@ struct sasl_conn {
   char *service;
 
   int secflags;  /* security layer flags passed to sasl_*_new */
+
+    /* IP information.  A buffer of size 52 is adequate for this in its
+       longest format (see sasl.h) */
+    /* We keep this in 2 formats, because in verifying the format
+       of what is passed ot us, we might as well just convert it all the
+       way to a sockaddr_in. */
   int got_ip_local, got_ip_remote;
+  char iplocalport[52], ipremoteport[52];
   struct sockaddr_in ip_local, ip_remote;
+    
 
   void *context;
   sasl_out_params_t oparams;
@@ -115,7 +123,9 @@ extern int _sasl_conn_init(sasl_conn_t *conn,
 			   const char *service,
 			   int secflags,
 			   int (*idle_hook)(sasl_conn_t *conn),
-			   const char *local_domain,
+			   const char *serverFQDN,
+			   const char *iplocalport,
+			   const char *ipremoteport,
 			   const sasl_callback_t *callbacks,
 			   const sasl_global_callbacks_t * global_callbacks);
 

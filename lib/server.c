@@ -1,6 +1,6 @@
 /* SASL server API implementation
  * Tim Martin
- * $Id: server.c,v 1.84.2.1 2001/05/29 19:27:43 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.2 2001/05/30 19:17:25 rjs3 Exp $
  */
 
 /* 
@@ -257,7 +257,7 @@ static void server_dispose(sasl_conn_t *pconn)
 
   if (s_conn->mech
       && s_conn->mech->plug->mech_dispose)
-    s_conn->mech->plug->mech_dispose(pconn->context,
+    s_conn->mech->plug->mech_dispose(&pconn->context,
 				     s_conn->sparams->utils);
 
   _sasl_free_utils(&s_conn->sparams->utils);
@@ -308,17 +308,17 @@ static int add_plugin(void *p, void *library)
     result = entry_point(mechlist->utils, SASL_SERVER_PLUG_VERSION, &version,
 			 &pluglist, &plugcount);
 
-    if ((result != SASL_OK) && (result != SASL_NOUSER)) {
-	VL(("entry_point error %i\n",result));
-	return result;
-    }
-
     /* Make sure plugin is using the same SASL version as us */
-    if (version > SASL_SERVER_PLUG_VERSION)
+    if (version != SASL_SERVER_PLUG_VERSION)
     {
 	_sasl_log(NULL, SASL_LOG_ERR,
 		  "version mismatch on plugin");
-	result = SASL_FAIL;
+	result = SASL_BADVERS;
+    }
+
+    if ((result != SASL_OK) && (result != SASL_NOUSER)) {
+	VL(("entry_point error %i\n",result));
+	return result;
     }
 
     for (lupe=0;lupe < plugcount ;lupe++)
@@ -365,6 +365,9 @@ static void server_done(void) {
 	  prevm=m;
 	  m=m->next;
     
+	  if (prevm->plug->mech_free)
+	      prevm->plug->mech_free(prevm->plug->glob_context,
+				     mechlist->utils);
 	  if (prevm->plug->glob_context!=NULL)
 	      sasl_FREE(prevm->plug->glob_context);
 	  if (prevm->condition == SASL_OK && prevm->u.library != NULL)
@@ -633,6 +636,7 @@ int sasl_server_init(const sasl_callback_t *callbacks,
     /* check db */
     ret = _sasl_server_check_db(vf);
 #endif
+
     /* load plugins */
     /* FIXME: need to load the external plugin as well! */
     /* add_plugin((void *)&external_server_init, NULL); */
@@ -741,8 +745,8 @@ _sasl_transition(sasl_conn_t * conn,
 int sasl_server_new(const char *service,
 		    const char *serverFQDN,
 		    const char *user_realm,
-		    const char *iplocalport __attribute__((unused)),
-		    const char *ipremoteport __attribute__((unused)),
+		    const char *iplocalport,
+		    const char *ipremoteport,
 		    const sasl_callback_t *callbacks,
 		    unsigned secflags,
 		    sasl_conn_t **pconn)
@@ -759,8 +763,8 @@ int sasl_server_new(const char *service,
 
   (*pconn)->destroy_conn = &server_dispose;
   result = _sasl_conn_init(*pconn, service, secflags,
-			   &server_idle,
-			   serverFQDN,
+			   &server_idle, serverFQDN,
+			   iplocalport, ipremoteport,
 			   callbacks, &global_callbacks);
   if (result != SASL_OK) return result;
 
@@ -788,18 +792,30 @@ int sasl_server_new(const char *service,
   serverconn->sparams->props = serverconn->base.props;
 
   /* set some variables */
-  if (user_realm==NULL) {
-    serverconn->user_realm = NULL;
+
+  if((*pconn)->got_ip_local) {      
+     serverconn->sparams->iplocalport = (*pconn)->iplocalport;
   } else {
+     serverconn->sparams->iplocalport = NULL;
+  }
+
+  if((*pconn)->got_ip_remote) {
+      serverconn->sparams->ipremoteport = (*pconn)->ipremoteport;
+  } else {
+      serverconn->sparams->ipremoteport = NULL;
+  }
+
+  if (user_realm) {
     result = _sasl_strdup(user_realm, &serverconn->user_realm, NULL);
+  } else {
+    serverconn->user_realm = NULL;
   }
 
-  if (result!=SASL_OK) {
-      _sasl_conn_dispose(*pconn);
-      sasl_FREE(*pconn);
-      *pconn = NULL;
-  }
+  if(result == SASL_OK) return SASL_OK;
 
+  _sasl_conn_dispose(*pconn);
+  sasl_FREE(*pconn);
+  *pconn = NULL;
   return result;
 }
 
@@ -1038,7 +1054,7 @@ int sasl_server_start(sasl_conn_t *conn,
  *                    a lower level mechanism on failure
  *
  * returns:
-_OK        -- exchange is complete.
+ *  SASL_OK        -- exchange is complete.
  *  SASL_CONTINUE  -- indicates another step is necessary.
  *  SASL_TRANS     -- entry for user exists, but not for mechanism
  *                    and transition is possible

@@ -256,6 +256,8 @@ int _sasl_conn_init(sasl_conn_t *conn,
 		    int secflags,
 		    int (*idle_hook)(sasl_conn_t *conn),
 		    const char *serverFQDN,
+		    const char *iplocalport,
+		    const char *ipremoteport,
 		    const sasl_callback_t *callbacks,
 		    const sasl_global_callbacks_t *global_callbacks) {
   int result = SASL_OK;
@@ -264,14 +266,31 @@ int _sasl_conn_init(sasl_conn_t *conn,
   I(service);
 
   result = _sasl_strdup(service, &conn->service, NULL);
-  if (result != SASL_OK) goto done;
+  if (result != SASL_OK) return result;
 
   memset(&conn->oparams, 0, sizeof(conn->oparams));
   conn->secflags = secflags;
-  conn->got_ip_local = 0;
-  memset(&conn->ip_local, 0, sizeof(conn->ip_local));
-  conn->got_ip_remote = 0;
-  memset(&conn->ip_remote, 0, sizeof(conn->ip_remote));
+
+  if(!iplocalport ||
+     _sasl_ipfromstring(iplocalport, &conn->ip_local) != SASL_OK) {
+      memset(&conn->ip_local, 0, sizeof(conn->ip_local));
+      conn->got_ip_local = 0;
+  } else {
+      /* It checks out OK */
+      strcpy(conn->iplocalport, iplocalport);
+      conn->got_ip_local = 1;
+  }
+  
+  if(!ipremoteport ||
+     _sasl_ipfromstring(ipremoteport, &conn->ip_remote) != SASL_OK) {
+      memset(&conn->ip_remote, 0, sizeof(conn->ip_remote));
+      conn->got_ip_remote = 0;
+  } else {
+      /* It checks out OK */
+      strcpy(conn->ipremoteport, ipremoteport);
+      conn->got_ip_remote = 1;
+  }
+  
   conn->context = NULL;
   conn->secret = NULL;
   conn->idle_hook = idle_hook;
@@ -290,17 +309,9 @@ int _sasl_conn_init(sasl_conn_t *conn,
     gethostname(name, MAXHOSTNAMELEN);
 
     result = _sasl_strdup(name, &conn->serverFQDN, NULL);
-    if (result != SASL_OK)
-      goto done;
   } else {
     result = _sasl_strdup(serverFQDN, &conn->serverFQDN, NULL);
-    if (result != SASL_OK)
-      goto done;
   }
-
- done:
-
-  fprintf(stderr, "CALL TO OLD _sasl_conn_init\n");
 
   return result;
 }

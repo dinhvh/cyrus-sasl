@@ -420,7 +420,6 @@ int _sasl_iptostring(const struct sockaddr_in *addr,
 
     for(i=3; i>=0; i--) {
 	a[i] = (addr->sin_addr.s_addr & (0xFF << (8*i))) >> (i*8);
-	printf("%d:%d\n",i,(int)a[i]);
     }
     
     snprintf(out,outlen,"%d.%d.%d.%d;%d",(int)a[3],(int)a[2],
@@ -535,7 +534,7 @@ int _sasl_canon_user(sasl_conn_t *conn,
     oparams->ulen = ulen;
     oparams->authid = conn->authid_buf;
     oparams->alen = alen;
-    
+
     return SASL_OK;
 }
 

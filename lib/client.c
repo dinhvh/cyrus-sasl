@@ -104,6 +104,9 @@ static void client_done(void) {
   {
     cprevm=cm;
     cm=cm->next;
+    if (cprevm->plug->mech_free)
+      cprevm->plug->mech_free(cprevm->plug->glob_context,
+			      cmechlist->utils);
     if (cprevm->library!=NULL)
       _sasl_done_with_plugin(cprevm->library);
     sasl_FREE(cprevm);    
@@ -128,11 +131,13 @@ static int add_plugin(void *p, void *library) {
 
   result = entry_point(cmechlist->utils, SASL_CLIENT_PLUG_VERSION, &version,
 		       &pluglist, &plugcount);
+
   if (version != SASL_CLIENT_PLUG_VERSION)
   {
     VL(("Version conflict\n"));
-    result = SASL_FAIL;
+    result = SASL_BADVERS;
   }
+
   if (result != SASL_OK)
   {
     VL(("entry_point failed\n"));
@@ -269,8 +274,8 @@ static void client_dispose(sasl_conn_t *pconn)
 
 int sasl_client_new(const char *service,
 		    const char *serverFQDN,
-		    const char *iplocalport __attribute__((unused)),
-		    const char *ipremoteport __attribute__((unused)),
+		    const char *iplocalport,
+		    const char *ipremoteport,
 		    const sasl_callback_t *prompt_supp,
 		    unsigned secflags,
 		    sasl_conn_t **pconn)
@@ -289,7 +294,8 @@ int sasl_client_new(const char *service,
 
   (*pconn)->destroy_conn = &client_dispose;
   result = _sasl_conn_init(*pconn, service, secflags,
-			   &client_idle, NULL,
+			   &client_idle, serverFQDN,
+			   iplocalport, ipremoteport,
 			   prompt_supp, &global_callbacks);
   if (result != SASL_OK) return result;
   
@@ -310,12 +316,22 @@ int sasl_client_new(const char *service,
   /* canon_user FIXME this needs to support plugins! */
   conn->cparams->canon_user = &_sasl_canon_user;
   
-  result = _sasl_strdup(serverFQDN, &conn->serverFQDN, NULL);
+  if((*pconn)->got_ip_local) {      
+      conn->cparams->iplocalport = (*pconn)->iplocalport;
+  } else {
+      conn->cparams->iplocalport = NULL;
+  }
 
-  if (result == SASL_OK) return SASL_OK;
+  if((*pconn)->got_ip_remote) {
+      conn->cparams->ipremoteport = (*pconn)->ipremoteport;
+  } else {
+      conn->cparams->ipremoteport = NULL;
+  }
+  
+  result = _sasl_strdup(serverFQDN, &conn->serverFQDN, NULL);
+  if(result == SASL_OK) return SASL_OK;
 
   /* result isn't SASL_OK */
-
   _sasl_conn_dispose(*pconn);
   sasl_FREE(*pconn);
   *pconn = NULL;
