@@ -1,3 +1,93 @@
+2001-08-24  Rolf Braun <rbraun+@andrew.cmu.edu>
+
+	* Mac OS 9 and X support, including Carbon
+	  Mac OS 9 Classic support based on the SASL v1 code
+	  by Aaron Wohl <n3liw+@andrew.cmu.edu>
+
+	* updated ltconfig and ltmain.sh
+	* acconfig.h:
+	* configure.in:
+	* lib/saslutil.c: use random() when jrand48() isn't available
+
+	* dlcompat-20010505:
+	  dlcompat included for OS X support, compiles separately
+	* lib/dlopen.c: prefix symbols with underscore on OS X, as on OpenBSD
+	  note that this is also detected automatically by configure,
+	  this only helps when cross-compiling (for OS X?)
+
+	* acconfig.h:
+	* configure.in:
+	* config/kerberos_v4.m4
+	  look for libdes524 when libdes doesn't exist.
+	  look for libkrb4 when libkrb doesn't exist.
+
+	* lib/saslint.h:
+	* lib/common.c:
+	* lib/seterror.c:
+	* lib/Makefile.am:
+	  split sasl_seterror() into a new file.
+	  add_string -> _sasl_add_string and made this non-static
+	  so seterror can use it.
+	  added _sasl_get_errorbuf to go into the conn_t struct
+	  so we don't have to know the format of that struct when
+	  seterror.c is linked from glue code (i.e., the Mac OS X CFM glue)
+
+	* acconfig.h:
+	  fix the order of the fake iovec struct for systems that
+	  don't have it (like Mac OS 9) so it's the same order as
+	  most Unixes that do (like Mac OS X) -- the CFM glue needs this
+
+	* acconfig.h:
+	  include <sys/types.h> before we include <sys/uio.h>
+
+	* plugins/kerberos4.c:
+	* lib/checkpw.c:
+	* acconfig.h:
+	* configure.in:
+	  check for krb_get_err_txt in the kerberos 4 library,
+	  and use it instead of the krb_err_txt[] array if available
+
+	* plugins/kerberos4.c:
+	  define KEYFILE to "/etc/srvtab" if not already defined
+	  by the kerberos 4 headers (needed for MIT KfM 4.0)
+
+	* doc/macosx.html: added this
+	* README: point Mac OS X users to doc/macosx.html
+	* doc/Makefile.am: add doc/macosx.html to distfiles
+
+	* Makefile.am:
+	* lib/Makefile.am:
+	* include/Makefile.am:
+	* config/Info.plist:
+	* configure.in:
+	  when building on Mac OS X, install a framework
+	  in /Library/Frameworks
+
+	* mac/*:
+	  projects and support files for Mac OS 9, classic and Carbon
+	* mac/osx_cfm_glue:
+	  the glue to allow CFM Carbon applications under Mac OS X
+	  call the Unix-layer SASL library
+
+	* lib/common.c:
+	* lib/canonusr.c:
+	  don't do the auxprop stuff on Mac OS 9
+
+	* lib/getaddrinfo.c:
+	  don't look up hostnames on Mac OS 9 (we only officially
+	  support passing IP address strings anyway)
+
+	* lib/getaddrinfo.c:
+	* plugins/plugin_common.c:
+	* plugins/plugin_common.h:
+	  don't include headers on Mac OS 9 that we don't have.
+
+	* sample/sample-client.c:
+	  add a cast for Mac OS 9 (different type handling of char)
+
+	* plugins/makeinit.sh:
+	  include the stub header to export the right symbols on Mac OS 9
+
 2001-08-20  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* plugins/gssapi.c (gssapi_server_mech_step): fixed accidental
 	  back link into glue code

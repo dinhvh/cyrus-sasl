@@ -1,7 +1,7 @@
 /* Kerberos4 SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: kerberos4.c,v 1.65.2.41 2001/08/15 20:08:12 rjs3 Exp $
+ * $Id: kerberos4.c,v 1.65.2.42 2001/08/24 23:26:49 rbraun Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -110,6 +110,10 @@ static const char rcsid[] = "$Implementation: Carnegie Mellon SASL " VERSION " $
 #ifdef sun
 /* gotta define gethostname ourselves on suns */
 extern int gethostname(char *, int);
+#endif
+
+#ifndef KEYFILE
+#define KEYFILE "/etc/srvtab";
 #endif
 
 #define KRB_SECFLAG_NONE (1)
@@ -341,7 +345,7 @@ static int kerberosv4_decode_once(void *context,
 
     /* see if the krb library gave us a failure */
     if (result != 0) {
-	text->utils->seterror(text->utils->conn, 0, krb_err_txt[result]);
+	text->utils->seterror(text->utils->conn, 0, get_krb_err_txt(result));
 	return SASL_FAIL;
     }
 
@@ -622,7 +626,7 @@ static int kerberosv4_server_mech_step (void *conn_context,
     if (result) { /* if fails mechanism fails */
 	text->utils->seterror(text->utils->conn,0,
 	"krb_rd_req failed service=%s instance=%s error code=%s (%i)",
-	    sparams->service, text->instance,krb_err_txt[result],result);
+	    sparams->service, text->instance,get_krb_err_txt(result),result);
 	return SASL_BADAUTH;
     }
 
@@ -1011,7 +1015,7 @@ static int kerberosv4_client_mech_step(void *conn_context,
 	memset(&text->credentials,0,sizeof(text->credentials));
 	if(kcglue_krb_mk_req(ticket.dat,
 			     &ticket.length,
-			     params->service,
+			     cparams->service,
 			     text->instance,
 			     text->realm,
 			     text->challenge,
@@ -1027,7 +1031,7 @@ static int kerberosv4_client_mech_step(void *conn_context,
 	    
 	    cparams->utils->log(NULL, SASL_LOG_ERR, 
 			       "krb_mk_req() failed: %s (%d)",
-			       krb_err_txt[result], result);
+			       get_krb_err_txt(result), result);
 	    return SASL_FAIL;
 	}
 
@@ -1178,7 +1182,7 @@ static int kerberosv4_client_mech_step(void *conn_context,
 	if(result != 0) {
 	    cparams->utils->log(NULL, SASL_LOG_ERR,
 				"krb_get_cred() failed: %s (%d)",
-				krb_err_txt[result], result);
+				get_krb_err_txt(result), result);
 	    SETERROR(cparams->utils, "krb_get_cred() failed");
 	    return SASL_BADAUTH;
 	}

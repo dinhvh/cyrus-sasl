@@ -1,7 +1,7 @@
 /* common.c - Functions that are common to server and clinet
  * Rob Siemborski
  * Tim Martin
- * $Id: common.c,v 1.64.2.56 2001/08/17 16:49:16 rjs3 Exp $
+ * $Id: common.c,v 1.64.2.57 2001/08/24 23:24:36 rbraun Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -135,7 +135,7 @@ int _sasl_strdup(const char *in, char **out, int *outlen)
 }
 
 /* adds a string to the buffer; reallocing if need be */
-static int add_string(char **out, int *alloclen, int *outlen, const char *add)
+int _sasl_add_string(char **out, int *alloclen, int *outlen, const char *add)
 {
   int addlen;
 
@@ -768,176 +768,6 @@ const char *sasl_errdetail(sasl_conn_t *conn)
 }
 
 
-/* set the error string which will be returned by sasl_errdetail() using  
- *  syslog()-style formatting (e.g. printf-style with %m as most recent
- *  errno error)
- * 
- *  primarily for use by server callbacks such as the sasl_authorize_t
- *  callback and internally to plug-ins
- *
- * This will also trigger a call to the SASL logging callback (if any)
- * with a level of SASL_LOG_FAIL unless the SASL_NOLOG flag is set.
- *
- * Messages should be sensitive to the current language setting.  If there
- * is no SASL_CB_LANGUAGE callback messages MUST be US-ASCII otherwise UTF-8
- * is used and use of RFC 2482 for mixed-language text is encouraged.
- * 
- * if conn is NULL, function does nothing
- */
-void sasl_seterror(sasl_conn_t *conn,
-		   unsigned flags,
-		   const char *fmt, ...) 
-{
-  int outlen=0; /* current length of output buffer */
-  int pos=0; /* current position in format string */
-  int formatlen;
-  int result;
-  sasl_log_t *log_cb;
-  void *log_ctx;
-  int ival;
-  char *cval;
-  va_list ap; /* varargs thing */
-
-  if(!conn) {
-      if(!(flags & SASL_NOLOG)) {
-	  /* See if we have a logging callback... */
-	  result = _sasl_getcallback(NULL, SASL_CB_LOG, &log_cb, &log_ctx);
-	  if (result == SASL_OK && ! log_cb)
-	      result = SASL_FAIL;
-	  if (result != SASL_OK)
-	      return;
-	  
-	  log_cb(log_ctx, SASL_LOG_FAIL,
-		 "No sasl_conn_t passed to sasl_seterror");
-      }  
-      return;
-  } else if(!fmt) return;    
-
-  formatlen = strlen(fmt);
-
-  va_start(ap, fmt); /* start varargs */
-
-  while(pos<formatlen)
-  {
-    if (fmt[pos]!='%') /* regular character */
-    {
-      result = _buf_alloc(&conn->error_buf, &conn->error_buf_len, outlen+1);
-      if (result != SASL_OK)
-	return;
-      conn->error_buf[outlen]=fmt[pos];
-      outlen++;
-      pos++;
-    } else { /* formating thing */
-      int done=0;
-      char frmt[10];
-      int frmtpos=1;
-      char tempbuf[21];
-      frmt[0]='%';
-      pos++;
-
-      while (done==0)
-      {
-	switch(fmt[pos])
-	  {
-	  case 's': /* need to handle this */
-	    cval = va_arg(ap, char *); /* get the next arg */
-	    result = add_string(&conn->error_buf, &conn->error_buf_len,
-				&outlen, cval);
-	      
-	    if (result != SASL_OK) /* add the string */
-	      return;
-
-	    done=1;
-	    break;
-
-	  case '%': /* double % output the '%' character */
-	    result = _buf_alloc(&conn->error_buf,&conn->error_buf_len,
-				outlen+1);
-	    if (result != SASL_OK)
-	      return;
-	    conn->error_buf[outlen]='%';
-	    outlen++;
-	    done=1;
-	    break;
-
-	  case 'm': /* insert the errno string */
-	    result = add_string(&conn->error_buf, &conn->error_buf_len,
-				&outlen, strerror(va_arg(ap, int)));
-	    if (result != SASL_OK)
-	      return;
-	    done=1;
-	    break;
-
-	  case 'z': /* insert the sasl error string */
-	    result = add_string(&conn->error_buf, &conn->error_buf_len,
-				&outlen,
-				(char *)sasl_errstring(sasl_usererr(
-				    va_arg(ap, int)),NULL,NULL));
-	    if (result != SASL_OK)
-	      return;
-	    done=1;
-	    break;
-
-	  case 'c':
-	    frmt[frmtpos++]=fmt[pos];
-	    frmt[frmtpos]=0;
-	    tempbuf[0] = (char) va_arg(ap, int); /* get the next arg */
-	    tempbuf[1]='\0';
-	    
-	    /* now add the character */
-	    result = add_string(&conn->error_buf, &conn->error_buf_len,
-				&outlen, tempbuf);
-	    if (result != SASL_OK)
-	      return;
-	    done=1;
-	    break;
-
-	  case 'd':
-	  case 'i':
-	    frmt[frmtpos++]=fmt[pos];
-	    frmt[frmtpos]=0;
-	    ival = va_arg(ap, int); /* get the next arg */
-
-	    snprintf(tempbuf,20,frmt,ival); /* have snprintf do the work */
-	    /* now add the string */
-	    result = add_string(&conn->error_buf, &conn->error_buf_len,
-				&outlen, tempbuf);
-	    if (result != SASL_OK)
-	      return;
-	    done=1;
-
-	    break;
-	  default: 
-	    frmt[frmtpos++]=fmt[pos]; /* add to the formating */
-	    frmt[frmtpos]=0;	    
-	    if (frmtpos>9) 
-	      done=1;
-	  }
-	pos++;
-	if (pos>formatlen)
-	  done=1;
-      }
-
-    }
-  }
-
-  conn->error_buf[outlen]='\0'; /* put 0 at end */
-
-  va_end(ap);  
-  
-  if(!(flags & SASL_NOLOG)) {
-      /* See if we have a logging callback... */
-      result = _sasl_getcallback(conn, SASL_CB_LOG, &log_cb, &log_ctx);
-      if (result == SASL_OK && ! log_cb)
-	  result = SASL_FAIL;
-      if (result != SASL_OK)
-	  return;
-      
-      result = log_cb(log_ctx, SASL_LOG_FAIL, conn->error_buf);
-  }
-}
-
-
 static int
 _sasl_global_getopt(void *context,
 		    const char *plugin_name,
@@ -1310,7 +1140,7 @@ _sasl_log (sasl_conn_t *conn,
 	  {
 	  case 's': /* need to handle this */
 	    cval = va_arg(ap, char *); /* get the next arg */
-	    result = add_string(&out, &alloclen,
+	    result = _sasl_add_string(&out, &alloclen,
 				&outlen, cval);
 	      
 	    if (result != SASL_OK) /* add the string */
@@ -1330,7 +1160,7 @@ _sasl_log (sasl_conn_t *conn,
 	    break;
 
 	  case 'm': /* insert the errno string */
-	    result = add_string(&out, &alloclen, &outlen,
+	    result = _sasl_add_string(&out, &alloclen, &outlen,
 				strerror(va_arg(ap, int)));
 	    if (result != SASL_OK)
 		goto done;
@@ -1339,7 +1169,7 @@ _sasl_log (sasl_conn_t *conn,
 	    break;
 
 	  case 'z': /* insert the sasl error string */
-	    result = add_string(&out, &alloclen, &outlen,
+	    result = _sasl_add_string(&out, &alloclen, &outlen,
 				(char *) sasl_errstring(va_arg(ap, int),NULL,NULL));
 	    if (result != SASL_OK)
 		goto done;
@@ -1354,7 +1184,7 @@ _sasl_log (sasl_conn_t *conn,
 	    tempbuf[1]='\0';
 	    
 	    /* now add the character */
-	    result = add_string(&out, &alloclen, &outlen, tempbuf);
+	    result = _sasl_add_string(&out, &alloclen, &outlen, tempbuf);
 	    if (result != SASL_OK)
 		goto done;
 		
@@ -1369,7 +1199,7 @@ _sasl_log (sasl_conn_t *conn,
 
 	    snprintf(tempbuf,20,frmt,ival); /* have snprintf do the work */
 	    /* now add the string */
-	    result = add_string(&out, &alloclen, &outlen, tempbuf);
+	    result = _sasl_add_string(&out, &alloclen, &outlen, tempbuf);
 	    if (result != SASL_OK)
 		goto done;
 
@@ -1464,6 +1294,7 @@ _sasl_alloc_utils(sasl_conn_t *conn,
 
   utils->seterror=&sasl_seterror;
 
+#ifndef macintosh
   /* Aux Property Utilities */
   utils->prop_new=&prop_new;
   utils->prop_dup=&prop_dup;
@@ -1476,6 +1307,7 @@ _sasl_alloc_utils(sasl_conn_t *conn,
   utils->prop_set=&prop_set;
   utils->prop_setvals=&prop_setvals;
   utils->prop_erase=&prop_erase;
+#endif
 
   /* Spares */
   utils->spare_fptr = NULL;
@@ -1594,6 +1426,14 @@ int _buf_alloc(char **rwbuf, unsigned *curlen, unsigned newlen)
     } 
 
     return SASL_OK;
+}
+
+/* for the mac os x cfm glue: this lets the calling function
+   get pointers to the error buffer without having to touch the sasl_conn_t struct */
+void _sasl_get_errorbuf(sasl_conn_t *conn, char ***bufhdl, unsigned **lenhdl)
+{
+	*bufhdl = &conn->error_buf;
+	*lenhdl = &conn->error_buf_len;
 }
 
 /* convert an iovec to a single buffer */

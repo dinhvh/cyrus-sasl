@@ -80,19 +80,33 @@ AC_DEFUN(SASL_KERBEROS_V4_CHK, [
     if test "$with_des" != no; then
       AC_CHECK_HEADER(krb.h,
         AC_CHECK_LIB(com_err, com_err,
-	  AC_CHECK_LIB(krb, krb_mk_priv, COM_ERR="-lcom_err",
-                     krb4=no, -ldes -lcom_err), 
-    	  AC_CHECK_LIB(krb, krb_mk_priv, COM_ERR="", krb4=no, -ldes)))
+	  AC_CHECK_LIB(krb, krb_mk_priv,
+                     [COM_ERR="-lcom_err"; SASL_KRB_LIB="-lkrb"],
+                     krb4=no, $LIB_DES -lcom_err), 
+    	  AC_CHECK_LIB(krb, krb_mk_priv,
+                     [COM_ERR=""; SASL_KRB_LIB="-lkrb"],
+                     krb4=no, $LIB_DES)))
 
       if test "$krb4" = no; then
-        AC_WARN(No Kerberos V4 found)
-      else
-	SASL_KRB_LIB="-lkrb"
+        AC_CHECK_HEADER(krb.h,
+	  AC_CHECK_LIB(krb4, krb_mk_priv,
+                     [COM_ERR=""; SASL_KRB_LIB="-lkrb4"; krb4=yes],
+                     krb4=no, $LIB_DES))
+        if test "$krb4" = no; then
+          AC_WARN(No Kerberos V4 found)
+        fi
       fi
     else
       AC_WARN(No DES library found for Kerberos V4 support)
       krb4=no
     fi
+  fi
+
+  if test "$krb4" != no; then
+    cmu_save_LIBS="$LIBS"
+    LIBS="$LIBS $SASL_KRB_LIB"
+    AC_CHECK_FUNCS(krb_get_err_text)
+    LIBS="$cmu_save_LIBS"
   fi
 
   AC_MSG_CHECKING(KERBEROS_V4)

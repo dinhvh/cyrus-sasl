@@ -18,6 +18,10 @@ echo "
 
 #include \"plugin_common.h\"
 
+#ifdef macintosh
+#include <sasl_${mech}_plugin_decl.h>
+#endif
+
 SASL_CLIENT_PLUG_INIT( $mech )
 SASL_SERVER_PLUG_INIT( $mech )
 " > ${mech}_init.c

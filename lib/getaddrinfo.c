@@ -1,6 +1,6 @@
 /*
  * Mar  8, 2000 by Hajimu UMEMOTO <ume@mahoroba.org>
- * $Id: getaddrinfo.c,v 1.1.2.3 2001/08/06 18:05:37 rjs3 Exp $
+ * $Id: getaddrinfo.c,v 1.1.2.4 2001/08/24 23:24:37 rbraun Exp $
  *
  * This module is besed on ssh-1.2.27-IPv6-1.5 written by
  * KIKUCHI Takahiro <kick@kyoto.wide.ad.jp>
@@ -59,8 +59,10 @@
  */
 
 #include "config.h"
+#ifndef macintosh
 #include <sys/param.h>
 #include <arpa/inet.h>
+#endif
 #include <ctype.h>
 
 static struct addrinfo *
@@ -194,6 +196,7 @@ getaddrinfo(const char *hostname, const char *servname,
     }
     if (hints && hints->ai_flags & AI_NUMERICHOST)
 	return EAI_NODATA;
+#ifndef macintosh
     if ((hp = gethostbyname(hostname)) &&
 	hp->h_name && hp->h_name[0] && hp->h_addr_list[0]) {
 	for (i = 0; hp->h_addr_list[i]; i++) {
@@ -219,5 +222,6 @@ getaddrinfo(const char *hostname, const char *servname,
 	}
 	return 0;
     }
+#endif
     return EAI_NODATA;
 }

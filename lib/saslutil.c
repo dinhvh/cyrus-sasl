@@ -1,7 +1,7 @@
 /* saslutil.c
  * Rob Siemborski
  * Tim Martin
- * $Id: saslutil.c,v 1.30.2.10 2001/08/13 19:01:23 rjs3 Exp $
+ * $Id: saslutil.c,v 1.30.2.11 2001/08/24 23:24:37 rbraun Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -364,7 +364,16 @@ static void randinit(sasl_rand_t *rpool)
     if (!rpool->initialized) {
 	getranddata(rpool->pool);
 	rpool->initialized = 1;
+#if !(defined(WIN32)||defined(macintosh))
+#ifndef HAVE_JRAND48
+    {
+	long *foo = (long *)rpool->pool;
+	srandom(*foo);
     }
+#endif /* HAVE_JRAND48 */
+#endif /* WIN32 */
+    }
+
 }
 
 void sasl_rand (sasl_rand_t *rpool, char *buf, unsigned len)
@@ -375,13 +384,18 @@ void sasl_rand (sasl_rand_t *rpool, char *buf, unsigned len)
     
     /* init if necessary */
     randinit(rpool);
-    
+ 
 #if (defined(WIN32)||defined(macintosh))
     for (lup=0;lup<len;lup++)
 	buf[lup] = (char) (rand() >> 8);
 #else /* WIN32 */
+#ifdef HAVE_JRAND48
     for (lup=0; lup<len; lup++)
 	buf[lup] = (char) (jrand48(rpool->pool) >> 8);
+#else
+    for (lup=0;lup<len;lup++)
+	buf[lup] = (char) (random() >> 8);
+#endif /* HAVE_JRAND48 */
 #endif /* WIN32 */
 }
 

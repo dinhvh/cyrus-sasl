@@ -54,3 +54,10 @@ makemd5_SOURCES = makemd5.c
 md5global.h: makemd5
 	-rm -f md5global.h
 	./makemd5 md5global.h
+
+if MACOSX
+framedir = /Library/Frameworks/SASL2.framework
+frameheaderdir = $(framedir)/Versions/A/Headers
+frameheader_DATA = $(saslinclude_HEADERS)
+endif
+

@@ -182,16 +182,27 @@
 #if !defined(_WIN32) && !defined(HAVE_SYS_UIO_H)
 /* (win32 is handled in sasl.h) */
 struct iovec {
-    long iov_len;
     char *iov_base;
+    long iov_len;
 };
 #else
+#include <sys/types.h>
 #include <sys/uio.h>
 #endif
 
 /* location of the random number generator */
 #ifndef DEV_RANDOM
 #define DEV_RANDOM "/dev/random"
+#endif
+
+/* if we've got get_krb_err_txt, we might as well use it;
+   especially since krb_err_txt isn't in some newer distributions
+   (MIT Kerb for Mac 4 being a notable example). If we don't have
+   it, we fall back to the krb_err_txt array */
+#ifdef HAVE_KRB_GET_ERR_TEXT
+#define get_krb_err_txt krb_get_err_text
+#else
+#define get_krb_err_txt(X) (krb_err_txt[(X)])
 #endif
 
 /* Make Solaris happy... */

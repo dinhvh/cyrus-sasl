@@ -1,7 +1,7 @@
 /* saslint.h - internal SASL library definitions
  * Rob Siemborski
  * Tim Martin
- * $Id: saslint.h,v 1.33.2.43 2001/08/07 16:33:04 rjs3 Exp $
+ * $Id: saslint.h,v 1.33.2.44 2001/08/24 23:24:37 rbraun Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -375,6 +375,9 @@ _sasl_log(sasl_conn_t *conn,
 	  int level,
 	  const char *fmt,
 	  ...);
+
+void _sasl_get_errorbuf(sasl_conn_t *conn, char ***bufhdl, unsigned **lenhdl);
+int _sasl_add_string(char **out, int *alloclen, int *outlen, const char *add);
 
 /* More Generic Utilities in common.c */
 extern int _sasl_strdup(const char *in, char **out, int *outlen);

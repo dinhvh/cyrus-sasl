@@ -1,6 +1,6 @@
 /* sample-client.c -- sample SASL client
  * Rob Earhart
- * $Id: sample-client.c,v 1.23.4.5 2001/07/19 22:50:03 rjs3 Exp $
+ * $Id: sample-client.c,v 1.23.4.6 2001/08/24 23:26:52 rbraun Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -278,7 +278,7 @@ getsecret(sasl_conn_t *conn,
   }
 
   (*psecret)->len = len;
-  strcpy((*psecret)->data, password);
+  strcpy((char *)(*psecret)->data, password);
   memset(password, 0, len);
     
   return SASL_OK;

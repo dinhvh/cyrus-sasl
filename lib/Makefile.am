@@ -1,6 +1,6 @@
 # Makefile.am for the SASL library
 # Rob Earhart
-# $Id: Makefile.am,v 1.41.2.11 2001/07/30 20:14:01 rjs3 Exp $
+# $Id: Makefile.am,v 1.41.2.12 2001/08/24 23:24:36 rbraun Exp $
 # Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -48,7 +48,7 @@ INCLUDES=-I$(top_srcdir)/include
 EXTRA_DIST = windlopen.c
 
 common_headers = saslint.h
-common_sources = auxprop.c canonusr.c checkpw.c client.c common.c config.c external.c md5.c saslutil.c server.c
+common_sources = auxprop.c canonusr.c checkpw.c client.c common.c config.c external.c md5.c saslutil.c server.c seterror.c
 
 lib_LTLIBRARIES = libsasl2.la
 
@@ -63,3 +63,14 @@ EXTRA_LIBRARIES = libsasl2.a
 libsasl2_a_SOURCES = $(common_sources) staticopen.c $(common_headers) staticopen.h
 libsasl2_a_DEPENDENCIES = @SASL_STATIC_OBJS@ ../sasldb/libsasldb.a
 libsasl2_a_LIBADD = @SASL_STATIC_OBJS@ $(SASL_DB_BACKEND_STATIC)
+
+if MACOSX
+framedir = /Library/Frameworks/SASL2.framework
+install-exec-hook:
+	$(mkinstalldirs) $(framedir)/Versions/A
+	ln -fs $(libdir)/libsasl2.dylib $(framedir)/Versions/A/SASL2
+	cd $(framedir) ; ln -fs Versions/A/SASL2 .
+else
+install-exec-hook:
+endif
+
