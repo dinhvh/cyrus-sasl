@@ -150,6 +150,22 @@
 
 @BOTTOM@
 
+/* define if your system has getnameinfo() */
+#undef HAVE_GETADDRINFO
+
+/* define if your system has getnameinfo() */
+#undef HAVE_GETNAMEINFO
+
+/* define if your system has struct sockaddr_storage */
+#undef HAVE_STRUCT_SOCKADDR_STORAGE
+
+/* Define if you have ss_family in struct sockaddr_storage. */
+#undef HAVE_SS_FAMILY
+
+/* do we have socklen_t? */
+#undef HAVE_SOCKLEN_T
+#undef HAVE_SOCKADDR_SA_LEN
+
 /* location of the random number generator */
 #ifndef DEV_RANDOM
 #define DEV_RANDOM "/dev/random"
@@ -172,6 +188,7 @@
 
 #include <stdlib.h>
 #include <sys/types.h>
+#include <sys/socket.h>
 #ifndef WIN32
 # include <netdb.h>
 # include <sys/param.h>
@@ -181,5 +198,37 @@
 #include <string.h>
 
 #include <netinet/in.h>
+
+#ifndef HAVE_SOCKLEN_T
+typedef unsigned int socklen_t;
+#endif /* HAVE_SOCKLEN_T */
+
+#ifndef HAVE_STRUCT_SOCKADDR_STORAGE
+#define	_SS_MAXSIZE	128	/* Implementation specific max size */
+#define	_SS_PADSIZE	(_SS_MAXSIZE - sizeof (struct sockaddr))
+
+struct sockaddr_storage {
+	struct	sockaddr ss_sa;
+	char		__ss_pad2[_SS_PADSIZE];
+};
+# define ss_family ss_sa.sa_family
+#endif /* !HAVE_STRUCT_SOCKADDR_STORAGE */
+
+#ifndef AF_INET6
+/* Define it to something that should never appear */
+#define	AF_INET6	AF_MAX
+#endif
+
+#ifndef HAVE_GETADDRINFO
+#define	getaddrinfo	sasl_getaddrinfo
+#define	freeaddrinfo	sasl_freeaddrinfo
+#define	getnameinfo	sasl_getnameinfo
+#define	gai_strerror	sasl_gai_strerror
+#include "gai.h"
+#endif
+
+#ifndef	NI_WITHSCOPEID
+#define	NI_WITHSCOPEID	0
+#endif
 
 #endif /* CONFIG_H */

@@ -1,7 +1,7 @@
 /* saslint.h - internal SASL library definitions
  * Rob Siemborski
  * Tim Martin
- * $Id: saslint.h,v 1.33.2.36 2001/07/18 16:28:43 rjs3 Exp $
+ * $Id: saslint.h,v 1.33.2.37 2001/07/18 21:27:31 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -134,7 +134,8 @@ struct sasl_conn {
   /* IP information.  A buffer of size 52 is adequate for this in its
      longest format (see sasl.h) */
   int got_ip_local, got_ip_remote;
-  char iplocalport[52], ipremoteport[52];
+  char iplocalport[NI_MAXHOST + NI_MAXSERV];
+  char ipremoteport[NI_MAXHOST + NI_MAXSERV];
 
   void *context;
   sasl_out_params_t oparams;
@@ -372,9 +373,10 @@ int _iovec_to_buf(const struct iovec *vec,
 		  unsigned numiov, buffer_info_t **output);
 
 /* Convert between string formats and sockaddr formats */
-int _sasl_iptostring(const struct sockaddr_in *addr,
+int _sasl_iptostring(const struct sockaddr *addr, socklen_t addrlen,
 		     char *out, unsigned outlen);
-int _sasl_ipfromstring(const char *addr, struct sockaddr_in *out);
+int _sasl_ipfromstring(const char *addr, struct sockaddr *out,
+		       socklen_t outlen);
 
 /*
  * external plugin (external.c)

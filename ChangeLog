@@ -4,6 +4,7 @@
 	* Resolved possible global_utils namespace collision
 	* Updated sasldb library to be expandable to multiple properties
 	  if the need arises in the future.
+	* IPv6 support from Hajimu UMEMOTO <ume@mahoroba.org>
 
 2001-07-17  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Extricated sasldb support to an auxprop plugin only.

@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.1.2.3 2001/06/25 18:44:43 rjs3 Exp $ */
+/* $Id: client.c,v 1.1.2.4 2001/07/18 21:27:34 rjs3 Exp $ */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
  *
@@ -195,43 +195,30 @@ static sasl_callback_t callbacks[] = {
 
 int getconn(const char *host, const char *port)
 {
-    char servername[1024];
-    struct servent *serv;
-    struct sockaddr_in sin;
-    struct hostent *hp;
-    int sock;
+    struct addrinfo hints, *ai, *r;
+    int err, sock = -1;
 
-    strncpy(servername, host, sizeof(servername) - 1);
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = PF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
 
-    /* map hostname -> IP */
-    if ((hp = gethostbyname(servername)) == NULL) {
-	perror("gethostbyname");
+    if ((err = getaddrinfo(host, port, &hints, &ai)) != 0) {
+	fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(err));
 	exit(EX_UNAVAILABLE);
     }
 
-    /* map port -> num */
-    serv = getservbyname(port, "tcp");
-    if (serv) {
-	sin.sin_port = serv->s_port;
-    } else {
-	sin.sin_port = htons(atoi(port));
-	if (sin.sin_port == 0) {
-	    fprintf(stderr, "port '%s' unknown\n", port);
-	    exit(EX_USAGE);
-	}
+    for (r = ai; r; r = r->ai_next) {
+	sock = socket(r->ai_family, r->ai_socktype, r->ai_protocol);
+	if (sock < 0)
+	    continue;
+	if (connect(sock, r->ai_addr, r->ai_addrlen) >= 0)
+	    break;
+	close(sock);
+	sock = -1;
     }
 
-    sin.sin_family = AF_INET;
-    memcpy(&sin.sin_addr, hp->h_addr, hp->h_length);
-
-    /* connect */
-    sock = socket(AF_INET, SOCK_STREAM, 0);
+    freeaddrinfo(ai);
     if (sock < 0) {
-	perror("socket");
-	exit(EX_OSERR);
-    }
-    
-    if (connect(sock, (struct sockaddr *) &sin, sizeof (sin)) < 0) {
 	perror("connect");
 	exit(EX_UNAVAILABLE);
     }
@@ -331,14 +318,16 @@ int main(int argc, char *argv[])
     int c;
     char *host = "localhost";
     char *port = "12345";
-    char localaddr[55], remoteaddr[55];
+    char localaddr[NI_MAXHOST + NI_MAXSERV],
+	remoteaddr[NI_MAXHOST + NI_MAXSERV];
     char *service = "rcmd";
+    char hbuf[NI_MAXHOST], pbuf[NI_MAXSERV];
     int r;
     sasl_conn_t *conn;
     FILE *in, *out;
     int fd;
     int salen;
-    struct sockaddr_in local_ip, remote_ip;
+    struct sockaddr_storage local_ip, remote_ip;
 
     while ((c = getopt(argc, argv, "p:s:m:")) != EOF) {
 	switch(c) {
@@ -379,13 +368,21 @@ int main(int argc, char *argv[])
     if (getsockname(fd, (struct sockaddr *)&local_ip, &salen) < 0) {
 	perror("getsockname");
     }
+
+    getnameinfo((struct sockaddr *)&local_ip, salen,
+		hbuf, sizeof(hbuf), pbuf, sizeof(pbuf),
+		NI_NUMERICHOST | NI_WITHSCOPEID | NI_NUMERICSERV);
+    snprintf(localaddr, sizeof(localaddr), "%s;%s", hbuf, pbuf);
+
     salen = sizeof(remote_ip);
     if (getpeername(fd, (struct sockaddr *)&remote_ip, &salen) < 0) {
 	perror("getpeername");
     }
 
-    snprintf(localaddr, 55, "%s;%s", inet_ntoa(local_ip.sin_addr), port);
-    snprintf(remoteaddr, 55, "%s;%s", inet_ntoa(remote_ip.sin_addr), port);
+    getnameinfo((struct sockaddr *)&remote_ip, salen,
+		hbuf, sizeof(hbuf), pbuf, sizeof(pbuf),
+		NI_NUMERICHOST | NI_WITHSCOPEID | NI_NUMERICSERV);
+    snprintf(remoteaddr, sizeof(remoteaddr), "%s;%s", hbuf, pbuf);
 
     /* client new connection */
     r = sasl_client_new(service, host, localaddr, remoteaddr, NULL, 0, &conn);

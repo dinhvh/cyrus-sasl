@@ -1,7 +1,7 @@
 /* Kerberos4 SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: kerberos4.c,v 1.65.2.28 2001/07/12 17:42:55 rjs3 Exp $
+ * $Id: kerberos4.c,v 1.65.2.29 2001/07/18 21:27:33 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -509,6 +509,26 @@ static int cando_sec(sasl_security_properties_t *props,
   return 0;
 }
 
+static int ipv4_ipfromstring(const sasl_utils_t *utils, const char *addr,
+			     struct sockaddr_in *out) 
+{
+    struct sockaddr_storage ss;
+    int result;
+
+    result = _plug_ipfromstring(utils, addr,
+				(struct sockaddr *)&ss, sizeof(ss));
+    if (result != SASL_OK) {
+       /* couldn't get local IP address */
+	return result;
+    }
+    /* Kerberos_V4 supports only IPv4 */
+    if (((struct sockaddr *)&ss)->sa_family != AF_INET)
+	return SASL_FAIL;
+    memcpy(out, &ss, sizeof(struct sockaddr_in));
+
+    return SASL_OK;
+}
+
 #ifndef macintosh
 static int server_continue_step (void *conn_context,
 	      sasl_server_params_t *sparams,
@@ -585,7 +605,7 @@ static int server_continue_step (void *conn_context,
         from machine to machine) */
 
     /* get ip number in addr*/
-    result = _plug_ipfromstring(sparams->utils, sparams->ipremoteport, &addr);
+    result = ipv4_ipfromstring(sparams->utils, sparams->ipremoteport, &addr);
     if (result != SASL_OK || !sparams->ipremoteport) {
 	SETERROR(text->utils, "couldn't get remote IP address");
 	return result;
@@ -726,16 +746,16 @@ static int server_continue_step (void *conn_context,
 
     /* get ip data */
     /* get ip number in addr*/
-    result = _plug_ipfromstring(sparams->utils,
-				sparams->iplocalport, &(text->ip_local));
+    result = ipv4_ipfromstring(sparams->utils,
+			       sparams->iplocalport, &(text->ip_local));
     if (result != SASL_OK) {
         SETERROR(sparams->utils, "couldn't get local ip address");
 	/* couldn't get local IP address */
 	return result;
     }
 
-    result = _plug_ipfromstring(sparams->utils,
-				sparams->ipremoteport, &(text->ip_remote));
+    result = ipv4_ipfromstring(sparams->utils,
+			       sparams->ipremoteport, &(text->ip_remote));
     if (result != SASL_OK) {
         SETERROR(sparams->utils, "couldn't get remote ip address");
 	/* couldn't get remote IP address */
@@ -1276,9 +1296,9 @@ static int client_continue_step (void *conn_context,
 
 	/* nothing more to do; should be authenticated */
 	if(cparams->iplocalport) {   
-	    result = _plug_ipfromstring(cparams->utils,
-					cparams->iplocalport,
-					&(text->ip_local));
+	    result = ipv4_ipfromstring(cparams->utils,
+				       cparams->iplocalport,
+				       &(text->ip_local));
 	    if (result != SASL_OK) {
 		/* couldn't get local IP address */
 		return result;
@@ -1286,9 +1306,9 @@ static int client_continue_step (void *conn_context,
 	}
 	
 	if(cparams->ipremoteport) {
-	    result = _plug_ipfromstring(cparams->utils,
-					cparams->ipremoteport,
-					&(text->ip_remote));
+	    result = ipv4_ipfromstring(cparams->utils,
+				       cparams->ipremoteport,
+				       &(text->ip_remote));
 	    if (result != SASL_OK) {
 		/* couldn't get local IP address */
 		return result;

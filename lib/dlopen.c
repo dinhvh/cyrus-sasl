@@ -1,7 +1,7 @@
 /* dlopen.c--Unix dlopen() dynamic loader interface
  * Rob Siemborski
  * Rob Earhart
- * $Id: dlopen.c,v 1.32.2.8 2001/07/18 15:55:01 rjs3 Exp $
+ * $Id: dlopen.c,v 1.32.2.9 2001/07/18 21:27:31 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -329,6 +329,9 @@ int _sasl_load_plugins(const add_plugin_list_t *entrypoints,
 		*(plugname + strlen(plugname) - strlen(SO_SUFFIX)) = '\0';
 	
 		result = _sasl_get_plugin(tmp, verifyfile_cb, &library);
+
+		if(result != SASL_OK)
+		    continue;
 
 		for(cur_ep = entrypoints; cur_ep->entryname; cur_ep++) {
 			_sasl_plugin_load(plugname, library, cur_ep->entryname,

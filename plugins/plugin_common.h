@@ -1,6 +1,6 @@
 /* Generic SASL plugin utility functions
  * Rob Siemborski
- * $Id: plugin_common.h,v 1.1.2.10 2001/07/17 21:48:46 rjs3 Exp $
+ * $Id: plugin_common.h,v 1.1.2.11 2001/07/18 21:27:33 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -112,7 +112,7 @@ typedef struct buffer_info
 } buffer_info_t;
 
 int _plug_ipfromstring(const sasl_utils_t *utils, const char *addr,
-		       struct sockaddr_in *out);
+		       struct sockaddr *out, socklen_t outlen);
 int _plug_iovec_to_buf(const sasl_utils_t *utils, const struct iovec *vec,
 		       unsigned numiov, buffer_info_t **output);
 int _plug_buf_alloc(const sasl_utils_t *utils, char **rwbuf,

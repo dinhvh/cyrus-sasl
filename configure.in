@@ -1,6 +1,6 @@
 dnl configure.in for the SASL library
 dnl Rob Earhart
-dnl $Id: configure.in,v 1.106.2.18 2001/07/18 16:20:24 rjs3 Exp $
+dnl $Id: configure.in,v 1.106.2.19 2001/07/18 21:27:24 rjs3 Exp $
 dnl
 dnl Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
 dnl
@@ -51,6 +51,9 @@ dnl the values in win32/include/config.h and include/sasl.h as well.
 dnl
 AM_INIT_AUTOMAKE(cyrus-sasl, 2.0.2-ALPHA)
 CMU_INIT_AUTOMAKE
+
+# and include our config dir scripts
+ACLOCAL="$ACLOCAL -I \$(top_srcdir)/config"
 
 DIRS=""
 
@@ -835,6 +838,28 @@ if test $sasl_cv_snprintf = yes; then
 fi
 AC_SUBST(SNPRINTFOBJS)
 
+dnl Check for getaddrinfo
+GETADDRINFOOBJS=""
+sasl_cv_getaddrinfo=no
+IPv6_CHECK_FUNC(getaddrinfo,
+		[AC_DEFINE(HAVE_GETADDRINFO)], [sasl_cv_getaddrinfo=yes])
+if test $sasl_cv_getaddrinfo = yes; then
+    LIBOBJS="$LIBOBJS getaddrinfo.o"
+    GETADDRINFOOBJS="getaddrinfo.o"
+fi
+AC_SUBST(GETADDRINFOOBJS)
+
+dnl Check for getnameinfo
+GETNAMEINFOOBJS=""
+sasl_cv_getnameinfo=no
+IPv6_CHECK_FUNC(getnameinfo,
+		[AC_DEFINE(HAVE_GETNAMEINFO)], [sasl_cv_getnameinfo=yes])
+if test $sasl_cv_getnameinfo = yes; then
+	LIBOBJS="$LIBOBJS getnameinfo.o"
+        GETNAMEINFOOBJS="getnameinfo.o"
+fi
+AC_SUBST(GETNAMEINFOOBJS)
+
 LTLIBOBJS=`echo "$LIBOBJS" | sed 's/\.o/.lo/g'`
 AC_SUBST(LTLIBOBJS)
 
@@ -859,6 +884,12 @@ if test $enable_cmulocal = yes; then
     AC_DEFINE(KRB4_IGNORE_IP_ADDRESS)
     AC_DEFINE_UNQUOTED(PREFER_MECH, "KERBEROS_V4")
 fi
+
+AC_EGREP_HEADER(sockaddr_storage, sys/socket.h,
+		AC_DEFINE(HAVE_STRUCT_SOCKADDR_STORAGE))
+IPv6_CHECK_SS_FAMILY()
+IPv6_CHECK_SA_LEN()
+IPv6_CHECK_SOCKLEN_T()
 
 AC_SUBST(DIRS)
 

@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.1.2.3 2001/07/03 14:35:08 rjs3 Exp $ */
+/* $Id: server.c,v 1.1.2.4 2001/07/18 21:27:34 rjs3 Exp $ */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
  *
@@ -62,51 +62,88 @@
 
 #include "common.h"
 
+#if !defined(IPV6_V6ONLY) && defined(IPV6_BINDV6ONLY)
+#define	IPV6_V6ONLY	IPV6_BINDV6ONLY
+#endif
+
 /* create a socket listening on port 'port' */
-int listensock(const char *port)
+/* if af is PF_UNSPEC more than one socket may be returned */
+/* the returned list is dynamically allocated, so caller needs to free it */
+int *listensock(const char *port, const int af)
 {
-    struct sockaddr_in sin;
-    struct servent *serv;
-    int salen = sizeof(sin);
-    int sock;
-    int on = 1;
+    struct addrinfo hints, *ai, *r;
+    int err, maxs, *sock, *socks;
+    const int on = 1;
 
-    memset(&sin, 0, sizeof(sin));
-    
-    serv = getservbyname(port, "tcp");
-    if (serv) {
-	sin.sin_port = serv->s_port;
-    } else {
-	sin.sin_port = htons(atoi(port));
-	if (sin.sin_port == 0) {
-	    fprintf(stderr, "port '%s' unknown\n", port);
-	    exit(EX_USAGE);
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_flags = AI_PASSIVE;
+    hints.ai_family = af;
+    hints.ai_socktype = SOCK_STREAM;
+    err = getaddrinfo(NULL, port, &hints, &ai);
+    if (err) {
+	fprintf(stderr, "%s\n", gai_strerror(err));
+	exit(EX_USAGE);
+    }
+
+    /* Count max number of sockets we may open */
+    for (maxs = 0, r = ai; r; r = r->ai_next, maxs++)
+	;
+    socks = malloc((maxs + 1) * sizeof(int));
+    if (!socks) {
+	fprintf(stderr, "couldn't allocate memory for sockets\n");
+	freeaddrinfo(ai);
+	exit(EX_OSERR);
+    }
+
+    socks[0] = 0;	/* num of sockets counter at start of array */
+    sock = socks + 1;
+    for (r = ai; r; r = r->ai_next) {
+	*sock = socket(r->ai_family, r->ai_socktype, r->ai_protocol);
+	if (*sock < 0) {
+	    perror("socket");
+	    continue;
 	}
+	if (setsockopt(*sock, SOL_SOCKET, SO_REUSEADDR, 
+		       (void *) &on, sizeof(on)) < 0) {
+	    perror("setsockopt(SO_REUSEADDR)");
+	    close(*sock);
+	    continue;
+	}
+#if defined(IPV6_V6ONLY) && !(defined(__FreeBSD__) && __FreeBSD__ < 3)
+	if (r->ai_family == AF_INET6) {
+	    if (setsockopt(*sock, IPPROTO_IPV6, IPV6_BINDV6ONLY,
+			   (void *) &on, sizeof(on)) < 0) {
+		perror("setsockopt (IPV6_BINDV6ONLY)");
+		close(*sock);
+		continue;
+	    }
+	}
+#endif
+	if (bind(*sock, r->ai_addr, r->ai_addrlen) < 0) {
+	    perror("bind");
+	    close(*sock);
+	    continue;
+ 	}
+
+ 	if (listen(*sock, 5) < 0) {
+ 	    perror("listen");
+ 	    close(*sock);
+ 	    continue;
+ 	}
+
+ 	socks[0]++;
+ 	sock++;
     }
-    
-    sock = socket(AF_INET, SOCK_STREAM, 0);
-    if (sock < 0) {
-	perror("socket");
-	exit(EX_OSERR);
-    }
-    
-    if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, 
-		   (void *) &on, sizeof(on)) < 0) {
-	perror("setsockopt");
+
+    freeaddrinfo(ai);
+
+    if (socks[0] == 0) {
+ 	fprintf(stderr, "Couldn't bind to any socket\n");
+ 	free(socks);
 	exit(EX_OSERR);
     }
 
-    if (bind(sock, (struct sockaddr *)&sin, salen) < 0) {
-	perror("bind");
-	exit(EX_OSERR);
-    }
-
-    if (listen(sock, 5) < 0) {
-	perror("listen");
-	exit(EX_OSERR);
-    }
-
-    return sock;
+    return socks;
 }
 
 void usage(void)
@@ -223,8 +260,8 @@ int main(int argc, char *argv[])
     int c;
     char *port = "12345";
     char *service = "rcmd";
-    int l;
-    int r;
+    int *l, maxfd=0;
+    int r, i;
     sasl_conn_t *conn;
 
     while ((c = getopt(argc, argv, "p:s:m:")) != EOF) {
@@ -252,34 +289,59 @@ int main(int argc, char *argv[])
     if (r != SASL_OK) saslfail(r, "initializing libsasl");
 
     /* get a listening socket */
-    l = listensock(port);
-    for (;;) {
-	char localaddr[55], remoteaddr[55];
-	struct sockaddr_in local_ip, remote_ip;
-	int salen;
-	int fd = -1;
-	FILE *in, *out;
+    if ((l = listensock(port, PF_UNSPEC)) == NULL) {
+	saslfail(SASL_FAIL, "allocating listensock");
+    }
 
-	fd = accept(l, NULL, NULL);
+    for (;;) {
+	char localaddr[NI_MAXHOST | NI_MAXSERV],
+	     remoteaddr[NI_MAXHOST | NI_MAXSERV];
+	char hbuf[NI_MAXHOST], pbuf[NI_MAXSERV];
+	struct sockaddr_storage local_ip, remote_ip;
+	int salen;
+	int nfds, fd = -1;
+	FILE *in, *out;
+	fd_set readfds;
+
+	for (i = 1; i <= l[0]; i++) {
+	    FD_SET(l[i], &readfds);
+	    if (l[i] > maxfd)
+		maxfd = l[i];
+	}
+	nfds = select(maxfd + 1, &readfds, 0, 0, 0);
+	if (nfds <= 0) {
+	    if (nfds < 0 && errno != EINTR)
+		perror("select");
+	    continue;
+	}
+
 	if (fd < 0) {
-	    perror("accept");
-	    exit(0);
+	    if (errno != EINTR)
+		perror("accept");
+	    continue;
 	}
 
 	printf("accepted new connection\n");
 
 	/* set ip addresses */
-	salen = sizeof(localaddr);
-	if (getsockname(fd, (struct sockaddr *)&localaddr, &salen) < 0) {
+	salen = sizeof(local_ip);
+	if (getsockname(fd, (struct sockaddr *)&local_ip, &salen) < 0) {
 	    perror("getsockname");
 	}
-	salen = sizeof(remoteaddr);
-	if (getpeername(fd, (struct sockaddr *)&remoteaddr, &salen) < 0) {
+	getnameinfo((struct sockaddr *)&local_ip, salen,
+		    hbuf, sizeof(hbuf), pbuf, sizeof(pbuf),
+		    NI_NUMERICHOST | NI_WITHSCOPEID | NI_NUMERICSERV);
+	snprintf(localaddr, sizeof(localaddr), "%s;%s", hbuf, pbuf);
+
+	salen = sizeof(remote_ip);
+	if (getpeername(fd, (struct sockaddr *)&remote_ip, &salen) < 0) {
 	    perror("getpeername");
 	}
 
-	snprintf(localaddr, 55, "%s;%s", inet_ntoa(local_ip.sin_addr), port);
-	snprintf(remoteaddr, 55, "%s;%s", inet_ntoa(remote_ip.sin_addr), port);
+	getnameinfo((struct sockaddr *)&remote_ip, salen,
+		    hbuf, sizeof(hbuf), pbuf, sizeof(pbuf),
+		    NI_NUMERICHOST | NI_WITHSCOPEID | NI_NUMERICSERV);
+	snprintf(remoteaddr, sizeof(remoteaddr), "%s;%s", hbuf, pbuf);
 
 	r = sasl_server_new(service, NULL, NULL, localaddr, remoteaddr,
 			    NULL, 0, &conn);

@@ -1,6 +1,6 @@
 /* Generic SASL plugin utility functions
  * Rob Siemborski
- * $Id: plugin_common.c,v 1.1.2.11 2001/07/05 21:30:33 rjs3 Exp $
+ * $Id: plugin_common.c,v 1.1.2.12 2001/07/18 21:27:33 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -66,13 +66,44 @@
 
 #include "plugin_common.h"
 
-/* FIXME: This only parses IPV4 addresses */
-int _plug_ipfromstring(const sasl_utils_t *utils, const char *addr,
-		       struct sockaddr_in *out) 
+/* translate IPv4 mapped IPv6 address to IPv4 address */
+static void sockaddr_unmapped(struct sockaddr *sa, socklen_t *len)
 {
-    int i;
-    unsigned int val = 0;
-    unsigned int port;
+#ifdef IN6_IS_ADDR_V4MAPPED
+    struct sockaddr_in6 *sin6;
+    struct sockaddr_in *sin4;
+    u_int32_t addr;
+    int port;
+
+    if (sa->sa_family != AF_INET6)
+	return;
+    sin6 = (struct sockaddr_in6 *)sa;
+    if (!IN6_IS_ADDR_V4MAPPED(&sin6->sin6_addr))
+	return;
+    sin4 = (struct sockaddr_in *)sa;
+    addr = *(u_int32_t *)&sin6->sin6_addr.s6_addr[12];
+    port = sin6->sin6_port;
+    memset(sin4, 0, sizeof(struct sockaddr_in));
+    sin4->sin_addr.s_addr = addr;
+    sin4->sin_port = port;
+    sin4->sin_family = AF_INET;
+#ifdef HAVE_SOCKADDR_SA_LEN
+    sin4->sin_len = sizeof(struct sockaddr_in);
+#endif
+    *len = sizeof(struct sockaddr_in);
+#else
+    return;
+#endif
+}
+
+int _plug_ipfromstring(const sasl_utils_t *utils, const char *addr,
+		       struct sockaddr *out, socklen_t outlen) 
+{
+    int i, j;
+    socklen_t len;
+    struct sockaddr_storage ss;
+    struct addrinfo hints, *ai;
+    char hbuf[NI_MAXHOST];
     
     if(!utils || !addr || !out) {
 	if(utils) PARAMERROR( utils );
@@ -80,54 +111,44 @@ int _plug_ipfromstring(const sasl_utils_t *utils, const char *addr,
     }
 
     /* Parse the address */
-    for(i=0; i<4 && *addr && *addr != ';'; i++) {
-	int inval;
-	
-	inval = atoi(addr);
-	if(inval < 0 || inval > 255) {
+    for (i = 0; addr[i] != '\0' && addr[i] != ';'; i++) {
+	if (i >= NI_MAXHOST) {
+	    if(utils) PARAMERROR( utils );
+	    return SASL_BADPARAM;
+	}
+	hbuf[i] = addr[i];
+    }
+    hbuf[i] = '\0';
+
+    if (addr[i] == ';')
+	i++;
+    /* XXX/FIXME: Do we need this check? */
+    for (j = i; addr[j] != '\0'; j++)
+	if (!isdigit((int)(addr[j]))) {
 	    PARAMERROR( utils );
 	    return SASL_BADPARAM;
 	}
-	
-	val = val << 8;
-	val |= inval;
-	
-        for(;*addr && *addr != '.' && *addr != ';'; addr++)
-	    if(!isdigit((int)(*addr))) {
-		PARAMERROR( utils );
-		return SASL_BADPARAM;
-	    }
-	
 
-	/* skip the separator */
-	addr++;
-    }
-    
-    /* We have a bad ip address if we have less than 4 octets, or
-     * if we didn't just skip a semicolon */
-    if(i!=4 || *(addr-1) != ';') {
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = PF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_PASSIVE | AI_NUMERICHOST;
+
+    if (getaddrinfo(hbuf, &addr[i], &hints, &ai) != 0) {	
 	PARAMERROR( utils );
 	return SASL_BADPARAM;
     }
-    
-    port = atoi(addr);
 
-    /* Ports can only be 16 bits in IPV4 */
-    if((port & 0xFFFF) != port) {
+    len = ai->ai_addrlen;
+    memcpy(&ss, ai->ai_addr, len);
+    freeaddrinfo(ai);
+    sockaddr_unmapped((struct sockaddr *)&ss, &len);
+    if (outlen < len) {
 	PARAMERROR( utils );
-	return SASL_BADPARAM;
+	return SASL_BUFOVER;
     }
-    
-    for(;*addr;addr++)
-	if(!isdigit((int)(*addr))) {
-	    PARAMERROR( utils );
-	    return SASL_BADPARAM;
-	}
-    
-    
-    memset(out, 0, sizeof(struct sockaddr_in));
-    out->sin_addr.s_addr = val;
-    out->sin_port = port;
+
+    memcpy(out, &ss, len);
 
     return SASL_OK;
 }

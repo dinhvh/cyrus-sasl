@@ -1,7 +1,7 @@
 /* common.c - Functions that are common to server and clinet
  * Rob Siemborski
  * Tim Martin
- * $Id: common.c,v 1.64.2.39 2001/07/18 16:28:43 rjs3 Exp $
+ * $Id: common.c,v 1.64.2.40 2001/07/18 21:27:31 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -593,7 +593,7 @@ int sasl_setprop(sasl_conn_t *conn, int propnum, const void *value)
       const char *ipremoteport = (const char *)value;
       if(!value) {
 	  conn->got_ip_remote = 0; 
-      } else if (_sasl_ipfromstring(ipremoteport, NULL)
+      } else if (_sasl_ipfromstring(ipremoteport, NULL, 0)
 		 != SASL_OK) {
 	  sasl_seterror(conn, 0, "Bad IPREMOTEPORT value");
 	  RETURN(conn, SASL_BADPARAM);
@@ -609,7 +609,7 @@ int sasl_setprop(sasl_conn_t *conn, int propnum, const void *value)
       const char *iplocalport = (const char *)value;
       if(!value) {
 	  conn->got_ip_local = 0;	  
-      } else if (_sasl_ipfromstring(iplocalport, NULL)
+      } else if (_sasl_ipfromstring(iplocalport, NULL, 0)
 		 != SASL_OK) {
 	  sasl_seterror(conn, 0, "Bad IPLOCALPORT value");
 	  RETURN(conn, SASL_BADPARAM);
@@ -1563,75 +1563,63 @@ int _iovec_to_buf(const struct iovec *vec,
     return SASL_OK;
 }
 
-/* FIXME: This only parses IPV4 addresses */
-int _sasl_iptostring(const struct sockaddr_in *addr,
+int _sasl_iptostring(const struct sockaddr *addr, socklen_t addrlen,
 		     char *out, unsigned outlen) {
-    unsigned char a[4];
-    int i;
+    char hbuf[NI_MAXHOST], pbuf[NI_MAXSERV];
     
-    /* FIXME: Weak bounds check, are we less than the largest possible size? */
-    /* (21 = 4*3 for address + 3 periods + 1 semicolon + 5 port digits */
-    if(outlen <= 21) return SASL_BUFOVER;
     if(!addr || !out) return SASL_BADPARAM;
 
-    memset(out, 0, outlen);
+    getnameinfo(addr, addrlen, hbuf, sizeof(hbuf), pbuf, sizeof(pbuf),
+		NI_NUMERICHOST | NI_WITHSCOPEID | NI_NUMERICSERV);
 
-    for(i=3; i>=0; i--) {
-	a[i] = (addr->sin_addr.s_addr & (0xFF << (8*i))) >> (i*8);
-    }
-    
-    snprintf(out,outlen,"%d.%d.%d.%d;%d",(int)a[3],(int)a[2],
-	                                 (int)a[1],(int)a[0],
-	                                 (int)ntohs(addr->sin_port));
+    if(outlen < strlen(hbuf) + strlen(pbuf) + 2)
+	return SASL_BUFOVER;
+
+    snprintf(out, outlen, "%s;%s", hbuf, pbuf);
 
     return SASL_OK;
 }
 
-/* FIXME: This only parses IPV4 addresses */
-int _sasl_ipfromstring(const char *addr, struct sockaddr_in *out) 
+int _sasl_ipfromstring(const char *addr,
+		       struct sockaddr *out, socklen_t outlen) 
 {
-    int i;
-    unsigned int val = 0;
-    unsigned int port;
+    int i, j;
+    struct addrinfo hints, *ai;
+    char hbuf[NI_MAXHOST];
     
     /* A NULL out pointer just implies we don't do a copy, just verify it */
 
     if(!addr) return SASL_BADPARAM;
 
     /* Parse the address */
-    for(i=0; i<4 && *addr && *addr != ';'; i++) {
-	int inval;
-	
-	inval = atoi(addr);
-	if(inval < 0 || inval > 255) return SASL_BADPARAM;
-
-	val = val << 8;
-	val |= inval;
-	
-        for(;*addr && *addr != '.' && *addr != ';'; addr++)
-	    if(!isdigit((int)(*addr))) return SASL_BADPARAM;
-
-	/* skip the separator */
-	addr++;
+    for (i = 0; addr[i] != '\0' && addr[i] != ';'; i++) {
+	if (i >= NI_MAXHOST)
+	    return SASL_BADPARAM;
+	hbuf[i] = addr[i];
     }
-    
-    /* We have a bad ip address if we have less than 4 octets, or
-     * if we didn't just skip a semicolon */
-    if(i!=4 || *(addr-1) != ';') return SASL_BADPARAM;
-    
-    port = atoi(addr);
+    hbuf[i] = '\0';
 
-    /* Ports can only be 16 bits in IPV4 */
-    if((port & 0xFFFF) != port) return SASL_BADPARAM;
-        
-    for(;*addr;addr++)
-	if(!isdigit((int)(*addr))) return SASL_BADPARAM;
+    if (addr[i] == ';')
+	i++;
+    /* XXX: Do we need this check? */
+    for (j = i; addr[j] != '\0'; j++)
+	if (!isdigit((int)(addr[j])))
+	    return SASL_BADPARAM;
 
-    if(out) {
-	memset(out, 0, sizeof(struct sockaddr_in));
-	out->sin_addr.s_addr = val;
-	out->sin_port = htons(port);
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = PF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_PASSIVE | AI_NUMERICHOST;
+    if (getaddrinfo(hbuf, &addr[i], &hints, &ai) != 0)
+	return SASL_BADPARAM;
+
+    if (out) {
+	if (outlen < (unsigned)ai->ai_addrlen)
+	    return SASL_BUFOVER;
+	memcpy(out, ai->ai_addr, ai->ai_addrlen);
     }
-    
+
+    freeaddrinfo(ai);
+
     return SASL_OK;
 }
