@@ -1,7 +1,7 @@
 /* common.c - Functions that are common to server and clinet
  * Rob Siemborski
  * Tim Martin
- * $Id: common.c,v 1.64.2.36 2001/07/12 15:41:13 rjs3 Exp $
+ * $Id: common.c,v 1.64.2.37 2001/07/12 21:04:37 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -700,8 +700,10 @@ const char *sasl_errdetail(sasl_conn_t *conn)
     need_len = strlen(leader) + strlen(conn->error_buf) + 12;
     _buf_alloc(&conn->errdetail_buf, &conn->errdetail_buf_len, need_len);
 
-    snprintf(conn->errdetail_buf, need_len, "%s%s", errstr, conn->error_buf);
+    snprintf(conn->errdetail_buf, need_len, "%s%s", leader, conn->error_buf);
    
+	printf("I HAVE %s\n", conn->errdetail_buf);
+
     return conn->errdetail_buf;
 }
 
@@ -1170,7 +1172,7 @@ int _sasl_getcallback(sasl_conn_t * conn,
   /* Unable to find a callback... */
   *pproc = NULL;
   *pcontext = NULL;
-  sasl_seterror(conn, SASL_NOLOG, "Unable to find a callback");
+  sasl_seterror(conn, SASL_NOLOG, "Unable to find a callback: %d", callbackid);
   RETURN(conn,SASL_FAIL);
 }
 

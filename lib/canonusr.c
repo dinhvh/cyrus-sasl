@@ -1,6 +1,6 @@
 /* canonusr.c - user canonicalization support
  * Rob Siemborski
- * $Id: canonusr.c,v 1.1.2.14 2001/07/10 14:48:28 rjs3 Exp $
+ * $Id: canonusr.c,v 1.1.2.15 2001/07/12 21:04:37 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -166,7 +166,7 @@ int _sasl_canon_user(sasl_conn_t *conn,
     oparams->authid = conn->authid_buf;
     oparams->alen = alen;
 
-    return SASL_OK;
+    RETURN(conn, SASL_OK);
 }
 
 void _sasl_canonuser_free() 
