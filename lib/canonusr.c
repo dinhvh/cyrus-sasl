@@ -1,6 +1,6 @@
 /* canonusr.c - user canonicalization support
  * Rob Siemborski
- * $Id: canonusr.c,v 1.1.2.6 2001/06/27 14:56:27 rjs3 Exp $
+ * $Id: canonusr.c,v 1.1.2.7 2001/06/27 14:59:21 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -175,7 +175,7 @@ int sasl_canonuser_add_plugin(const char *plugname,
 {
     int result, out_version;
     canonuser_plug_list_t *new_item;
-    const sasl_canonuser_plug_t *plug;
+    sasl_canonuser_plug_t *plug;
     
     result = canonuserfunc(global_utils, SASL_AUXPROP_PLUG_VERSION,
 			   &out_version, &plug, plugname);
@@ -315,7 +315,7 @@ static int _cu_internal_client(void *glob_context __attribute__((unused)),
 			       out_authid, out_amax, out_alen);
 }
 
-static const sasl_canonuser_plug_t canonuser_internal_plugin = {
+static sasl_canonuser_plug_t canonuser_internal_plugin = {
         0, /* features */
 	0, /* spare */
 	NULL, /* glob_context */
@@ -331,7 +331,7 @@ static const sasl_canonuser_plug_t canonuser_internal_plugin = {
 int internal_canonuser_init(const sasl_utils_t *utils __attribute__((unused)),
                             int max_version,
                             int *out_version,
-                            const sasl_canonuser_plug_t **plug,
+                            sasl_canonuser_plug_t **plug,
                             const char *plugname) 
 {
     if(!out_version || !plug || !plugname) return SASL_BADPARAM;

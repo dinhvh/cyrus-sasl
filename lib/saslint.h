@@ -1,7 +1,7 @@
 /* saslint.h - internal SASL library definitions
  * Rob Siemborski
  * Tim Martin
- * $Id: saslint.h,v 1.33.2.23 2001/06/27 14:56:28 rjs3 Exp $
+ * $Id: saslint.h,v 1.33.2.24 2001/06/27 14:59:21 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -372,7 +372,7 @@ void _sasl_canonuser_free();
 int internal_canonuser_init(const sasl_utils_t *utils,
 			    int max_version,
 			    int *out_version,
-			    const sasl_canonuser_plug_t **plug,
+			    sasl_canonuser_plug_t **plug,
 			    const char *plugname);
 
 /* The following is defined in common.c */

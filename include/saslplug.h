@@ -778,8 +778,7 @@ typedef struct sasl_canonuser {
 typedef int sasl_canonuser_init_t(const sasl_utils_t *utils,
 				  int max_version,
 				  int *out_version,
-	/* the following is not const for chris newman */
-				  const sasl_canonuser_plug_t **plug,
+				  sasl_canonuser_plug_t **plug,
 				  const char *plugname);
 
 /* add a canonuser plugin
