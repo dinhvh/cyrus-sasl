@@ -1,7 +1,7 @@
 /* SASL Config file API
  * Rob Siemborski
  * Tim Martin (originally in Cyrus distribution)
- * $Id: config.c,v 1.10.2.2 2001/06/25 18:44:38 rjs3 Exp $
+ * $Id: config.c,v 1.10.2.3 2001/06/27 15:55:44 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -46,6 +46,7 @@
 /*
  * Current Valid keys:
  *
+ * canon_user_plugin: <string>
  * pwcheck_method: <string>
  * auto_transition: <boolean>
  * plugin_list: <string>
@@ -69,7 +70,7 @@ struct configlist {
 static struct configlist *configlist;
 static int nconfiglist;
 
-#define CONFIGLISTGROWSIZE 10 /* 100 */
+#define CONFIGLISTGROWSIZE 100
 
 int sasl_config_init(const char *filename)
 {

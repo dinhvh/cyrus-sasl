@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: server.c,v 1.84.2.31 2001/06/27 14:56:28 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.32 2001/06/27 15:55:44 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -67,6 +67,8 @@
 /* gotta define gethostname ourselves on suns */
 extern int gethostname(char *, int);
 #endif
+
+#define DEFAULT_CHECKPASS_MECH "sasldb"
 
 #ifndef PATH_MAX
 # ifdef _POSIX_PATH_MAX
@@ -1226,23 +1228,42 @@ int sasl_listmech(sasl_conn_t *conn,
   
 }
 
+#define EOSTR(s,n) (((s)[n] == '\0') || ((s)[n] == ' ') || ((s)[n] == '\t'))
+static int is_mech(const char *t, const char *m)
+{
+    int sl = strlen(m);
+    return ((!strncasecmp(m, t, sl)) && EOSTR(t, sl));
+}
+
 /* returns OK if it's valid */
 static int _sasl_checkpass(sasl_conn_t *conn, const char *service,
 			   const char *user, const char *pass)
 {
     sasl_server_conn_t *s_conn = (sasl_server_conn_t *) conn;
     int result = SASL_NOMECH;
+    sasl_getopt_t *getopt;
+    void *context;
+    const char *mech;
     struct sasl_verify_password_s *v;
 
-    /* FIXME: How to deal with differing results from different mechs? */
+    /* figure out how to check (i.e. sasldb or saslauthd or pwcheck) */
+    if (_sasl_getcallback(conn, SASL_CB_GETOPT, &getopt, &context)
+            == SASL_OK) {
+        getopt(context, NULL, "pwcheck_method", &mech, NULL);
+    }
+
+    if(!mech) mech = DEFAULT_CHECKPASS_MECH;
+
     for (v = _sasl_verify_password; v->name; v++) {
-	result = v->verify(conn, user, pass, service, s_conn->user_realm);
-	if(result == SASL_OK) break;
+	if(is_mech(mech, v->name)) {
+	    result = v->verify(conn, user, pass, service, s_conn->user_realm);
+	    break;
+	}
     }
 
     if (result == SASL_NOMECH) {
 	/* no mechanism available ?!? */
-	_sasl_log(conn, SASL_LOG_ERR, "no password verifiers available");
+	_sasl_log(conn, SASL_LOG_ERR, "unkwnown password verifier %s", mech);
     }
 
     return result;
