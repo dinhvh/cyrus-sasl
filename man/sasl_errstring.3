@@ -62,6 +62,10 @@ english written by programmers (aka gobldygoop).
 Note that a server should call sasl_usererr on a return code first if
 the string is going to be sent to the client.
 
+It should be noted that this function is not the recommended means of
+extracting error code information from SASL, instead application should
+use sasl_errdetail(3), which contains this information (and more)
+
 .PP
 
 .SH "RETURN VALUE"
@@ -70,4 +74,5 @@ Returns the string.
 .SH "CONFORMING TO"
 RFC 2222
 .SH "SEE ALSO"
-sasl(3), sasl_usererr(3)
+sasl(3), sasl_errdetail(3), sasl_errors(3)
+
