@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.1.2.2 2001/06/25 18:44:43 rjs3 Exp $ */
+/* $Id: server.c,v 1.1.2.3 2001/07/03 14:35:08 rjs3 Exp $ */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
  *
@@ -96,7 +96,7 @@ int listensock(const char *port)
 	exit(EX_OSERR);
     }
 
-    if (bind(sock, &sin, salen) < 0) {
+    if (bind(sock, (struct sockaddr *)&sin, salen) < 0) {
 	perror("bind");
 	exit(EX_OSERR);
     }
