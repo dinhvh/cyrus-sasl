@@ -15,43 +15,42 @@
 .\" the source, must acknowledge the copyright and authors of this work.
 .\"
 .\"
-.TH sasl_verifyfile_t "26 March 2000" SASL "SASL man pages"
+.TH sasl_getrealm_t "26 March 2000" SASL "SASL man pages"
 .SH NAME
-sasl_verifyfile_t \- The SASL file verification
-
+sasl_getrealm_t \- Realm Acquisition Callback
 
 .SH SYNOPSIS
 .nf
 .B #include <sasl/sasl.h>
 
 .sp
-.BI "typedef enum {"
-    SASL_VRFY_PLUGIN, /* a DLL/shared library plugin */
-    SASL_VRFY_CONF,   /* a configuration file */
-    SASL_VRFY_PASSWD, /* a password storage file */
-    SASL_VRFY_OTHER   /* some other file type */
-.BI "} sasl_verify_type_t"
-
-.BI "int sasl_verifyfile_t(void " *context ", "
-.BI "			   const char " *file ","
-.BI "                      sasl_verify_type_t " type ")"
+.BI "int sasl_getrealm_t(void " *context ", int " id ", "
+.BI "			 const char " **availrealms ","
+.BI "                    const char " **result ")"
 
 .fi
 .SH DESCRIPTION
 
-.B sasl_verifyfile_t
-is used to check whether a given file is okay for use by the SASL library.
-this is intended to allow applications to sanity check the enviornment to
-ensure that plugins or the config file cannot be written to, etc.
+.B sasl_getrealm_t
+is used when there is an interaction with SASL_CB_GETREALM as the type.
+The challenge of the sasl_interact_t will be of the format {realm1, realm2, ...}.
+That is a list of possible realms seperated by comma spaces
+enclosed by brackets.  It will be "{}" if the client is expected to select
+the realm.
+
+If a mechanism would use this callback, but it is not present, then the first
+realm listed is automatically selected.  (Note that a mechanism may still
+force the existance of a getrealm callback by SASL_CB_GETREALM to its
+required_prompts list).
 
 .I context
 context from the callback record
 
-.I file
-full path of the file to verify
+.I availrealms
+The challenge string in the format {realm1, realm2, ....}
 
-.I type
-type of the file.
+.I result
+The chosen realm.
 
 .SH "RETURN VALUE"
 SASL callback functions should return SASL return codes. See sasl.h for a complete list. SASL_OK indicates success.
