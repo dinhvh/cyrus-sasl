@@ -1,6 +1,6 @@
 /* Generic SASL plugin utility functions
  * Rob Siemborski
- * $Id: plugin_common.c,v 1.1.2.13 2001/07/18 21:35:39 rjs3 Exp $
+ * $Id: plugin_common.c,v 1.1.2.14 2001/07/23 19:16:52 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -118,7 +118,7 @@ int _plug_ipfromstring(const sasl_utils_t *utils, const char *addr,
     }
 
     /* Parse the address */
-    for (i = 0; addr[i] != '\0' && addr[i] != ';'; i++) {
+    for (i = 0; addr[i] != '\0' && addr[i] != ';' && addr[i] != ':'; i++) {
 	if (i >= NI_MAXHOST) {
 	    if(utils) PARAMERROR( utils );
 	    return SASL_BADPARAM;
@@ -127,7 +127,7 @@ int _plug_ipfromstring(const sasl_utils_t *utils, const char *addr,
     }
     hbuf[i] = '\0';
 
-    if (addr[i] == ';')
+    if (addr[i] == ';' || addr[i] == ':')
 	i++;
     /* XXX/FIXME: Do we need this check? */
     for (j = i; addr[j] != '\0'; j++)
