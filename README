@@ -1,4 +1,4 @@
-$Id: README,v 1.25.4.2 2001/06/27 20:13:29 rjs3 Exp $
+$Id: README,v 1.25.4.3 2001/07/20 21:29:00 rjs3 Exp $
 
 This is the Cyrus SASL API implentation. It can be used on the client
 or server side to provide authentication. See RFC 2222 for more
@@ -53,13 +53,6 @@ Please see the file "INSTALL" to install this package.  We hope it to
 be relatively straightforward; if you try it on systems that we
 haven't, please contact us with your experiences.
 
-In order to get RC4 encryption under DIGEST-MD5, you'll need an
-implementation of RC4.  This might be export controlled (which is why
-it's a seperate package); if you think you have an export license,
-know that don't need one, or aren't planning to export it, it's
-available under <http://andrew2.andrew.cmu.edu/dist/>.  SASL can also
-use the OpenSSL version of RC4, available from <http://www.openssl.org/>.
-
 The library uses the environment variable SASL_PATH to locate the
 directory where the mechanisms are; this should be a colon-seperated
 list of directories containing plugins.
@@ -97,6 +90,24 @@ of libraries correct.
 
 * Also see the "TODO" file.
 
+UPGRADING
+---------
+SASLv2 is completely incompatible with SASLv1.  That means applications are
+unable to link both versions of the library, and applications built to
+use one version cannot use the other (atleast not without serious pain
+and suffering on the part of the developer).
+
+Likewise, "sasldb" is incompatible between SASLv1 and SASLv2. As of this time
+there is no migration utility because the passwords in the SASLv1 database
+are all encrypted, so there is no easy way to extract them.
+
+Note that all passwords in the SASLv2 version of sasldb are stored in plain
+text format.  That means that a comprimized sasldb comprimizes all services
+that rely upon it.  Note also that this situation is not significantly worse,
+cryptographicly speaking, than the old method, and allows the database
+to be easy to transition to another format, should the need arise.  Mechanisms
+wishing a more secure password database backend should implement their own.
+
 AUTHORS
 -------
 For any comments/suggestions/bug reports, please contact
@@ -115,13 +126,13 @@ REFERENCES
 for Simple Challenge/Response", RFC 2195, September 1997.
 
 [DIGEST-MD5] Leach, Newman, "Using Digest Authentication as a SASL
-Mechanism", draft-leach-digest-sasl-03.txt, work in progress.
+Mechanism", RFC 2831, May 2000
 
 [KEYED-MD5] Krawczyk, Bellare, Canetti, "HMAC: Keyed-Hashing for Message
 Authentication", RFC 2104, February 1997. 
 
 [PLAIN] Newman, C., "Using TLS with IMAP4, POP3 and ACAP",
-draft-newman-tls-imappop-xx.txt, work in progress.
+RFC 2595, June 1999
 
 [SASL] Myers, J., "Simple Authentication and Security Layer (SASL)",
 RFC 2222, October 1997.
