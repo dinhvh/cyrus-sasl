@@ -1,6 +1,6 @@
 /* Generic SASL plugin utility functions
  * Rob Siemborski
- * $Id: plugin_common.h,v 1.1.2.4 2001/06/20 16:28:14 rjs3 Exp $
+ * $Id: plugin_common.h,v 1.1.2.5 2001/06/20 20:33:52 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
@@ -66,8 +66,8 @@
 typedef struct buffer_info 
 {
     char *data;
-    unsigned curlen;
-    unsigned reallen;
+    unsigned curlen;   /* Current length of data in buffer */
+    unsigned reallen;  /* total length of buffer (>= curlen) */
 } buffer_info_t;
 
 int _plug_ipfromstring(const char *addr, struct sockaddr_in *out);
