@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: sasldb.c,v 1.1.2.5 2001/07/27 23:18:45 rjs3 Exp $
+ * $Id: sasldb.c,v 1.1.2.6 2001/07/30 17:40:14 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -106,10 +106,10 @@ static void sasldb_auxprop_lookup(void *glob_context __attribute__((unused)),
     char *userid = NULL;
     char *realm = NULL;
     const char *user_realm = NULL;
-    sasl_secret_t *secret = NULL;
     int ret;
-    const char *proplookup[] = { SASL_AUX_PASSWORD, NULL };
-    struct propval values[2];
+    const struct propval *to_fetch, *cur;
+    char value[8192];
+    size_t value_len;
     char *user_buf;
     
     if(!sparams || !user) return;
@@ -120,43 +120,44 @@ static void sasldb_auxprop_lookup(void *glob_context __attribute__((unused)),
 
     memcpy(user_buf, user, ulen);
     user_buf[ulen] = '\0';
-    user = user_buf;
 
-    ret = sparams->utils->getprop(sparams->utils->conn, SASL_DEFUSERREALM,
-				  (const void **)&user_realm);
-    if(ret != SASL_OK) goto done;
+    if(sparams->user_realm) {
+	user_realm = sparams->user_realm;
+    } else {
+	user_realm = sparams->serverFQDN;
+    }
 
     ret = parseuser(sparams->utils, &userid, &realm, user_realm,
-		    sparams->serverFQDN, user);
+		    sparams->serverFQDN, user_buf);
     if(ret != SASL_OK) goto done;
 
-    ret = _sasldb_getsecret(sparams->utils,
-			    sparams->utils->conn, userid, realm, &secret);
-    if (ret != SASL_OK) {
-	/* error getting secret */
-	goto done;
-    }
+    to_fetch = sparams->utils->prop_get(sparams->propctx);
+    if(!to_fetch) goto done;
 
-    ret = sparams->utils->prop_getnames(sparams->propctx, proplookup, values);
-    /* did we get the one we were looking for? */
-    if(ret == 1 && values[0].values && values[0].valsize) {
-	if(flags & SASL_AUXPROP_OVERRIDE) {
-	    sparams->utils->prop_erase(sparams->propctx, SASL_AUX_PASSWORD);
-	} else {
-	    /* We aren't going to override it... */
-	    goto done;
+    for(cur = to_fetch; cur->name; cur++) {
+	/* If it's there already, we want to see if it needs to be
+	 * overridden */
+	if(cur->values && !(flags & SASL_AUXPROP_OVERRIDE))
+	    continue;
+	else if(cur->values)
+	    sparams->utils->prop_erase(sparams->propctx, cur->name);
+	    
+	ret = _sasldb_getdata(sparams->utils,
+			      sparams->utils->conn, userid, realm,
+			      cur->name, value, 8192, &value_len);
+	if(ret != SASL_OK) {
+	    /* We didn't find it, leave it as not found */
+	    continue;
 	}
+
+	sparams->utils->prop_set(sparams->propctx, cur->name,
+				 value, value_len);
     }
-    
-    /* Set the auxprop (the only one we support) */
-    sparams->utils->prop_set(sparams->propctx, SASL_AUX_PASSWORD, secret->data, secret->len);
 
  done:
     if (userid) sparams->utils->free(userid);
     if (realm)  sparams->utils->free(realm);
     if (user_buf) sparams->utils->free(user_buf);
-
-    if (secret) _plug_free_secret(sparams->utils, &secret);
 }
 
 static sasl_auxprop_plug_t sasldb_auxprop_plugin = {

@@ -6,6 +6,9 @@
 
 	* lib/common.c (sasl_seterror): still call logging callback with a
 	  null sasl_conn_t
+
+	* plugins/sasldb.c (sasldb_auxprop_lookup): support for multiple
+	  properties
 	
 2001-07-27  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* configure.in: extracted SASLDB-related checking
