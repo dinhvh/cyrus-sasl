@@ -65,7 +65,7 @@ sasldir = $(prefix)/lib/sasl2
 sasl_LTLIBRARIES = @SASL_MECHS@
 EXTRA_LTLIBRARIES = libplain.la libanonymous.la libkerberos4.la libcrammd5.la libscrammd5.la libgssapiv2.la libdigestmd5.la liblogin.la libsrp.la
 
-libplain_la_SOURCES = plain.c
+libplain_la_SOURCES = plain.c plugin_common.c
 libplain_la_LDFLAGS = -version-info $(plain_version)
 libplain_la_LIBADD = $(PLAIN_LIBS)
 
