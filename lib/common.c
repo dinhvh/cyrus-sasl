@@ -1,7 +1,7 @@
 /* common.c - Functions that are common to server and clinet
  * Rob Siemborski
  * Tim Martin
- * $Id: common.c,v 1.64.2.38 2001/07/17 21:48:44 rjs3 Exp $
+ * $Id: common.c,v 1.64.2.39 2001/07/18 16:28:43 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -285,7 +285,7 @@ void sasl_done(void)
   sasl_MUTEX_FREE(free_mutex);
   free_mutex = NULL;
 
-  _sasl_free_utils(&global_utils);
+  _sasl_free_utils(&sasl_global_utils);
 
   /* in case of another init/done */
   _sasl_server_cleanup_hook = NULL;
@@ -368,16 +368,16 @@ int _sasl_conn_init(sasl_conn_t *conn,
 }
 
 /* It turns out to be conveinent to have a shared sasl_utils_t */
-const sasl_utils_t *global_utils = NULL;
+const sasl_utils_t *sasl_global_utils = NULL;
 
 int _sasl_common_init(void)
 {
     int result;
     
     /* Setup the global utilities */
-    if(!global_utils) {
-	global_utils = _sasl_alloc_utils(NULL, NULL);
-	if(global_utils == NULL) return SASL_NOMEM;
+    if(!sasl_global_utils) {
+	sasl_global_utils = _sasl_alloc_utils(NULL, NULL);
+	if(sasl_global_utils == NULL) return SASL_NOMEM;
     }
 
     /* Init the canon_user plugin */

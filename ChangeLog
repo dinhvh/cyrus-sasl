@@ -1,6 +1,7 @@
 2001-07-18  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Updated config.guess and config.sub
 	* Better underscore checking for dlsym
+	* Resolved possible global_utils namespace collision
 
 2001-07-17  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Extricated sasldb support to an auxprop plugin only.

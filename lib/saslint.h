@@ -1,7 +1,7 @@
 /* saslint.h - internal SASL library definitions
  * Rob Siemborski
  * Tim Martin
- * $Id: saslint.h,v 1.33.2.35 2001/07/17 21:48:44 rjs3 Exp $
+ * $Id: saslint.h,v 1.33.2.36 2001/07/18 16:28:43 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -258,7 +258,7 @@ struct sasl_verify_password_s {
 /*
  * common.c
  */
-extern const sasl_utils_t *global_utils;
+extern const sasl_utils_t *sasl_global_utils;
 
 extern void (*_sasl_client_cleanup_hook)(void);
 extern void (*_sasl_server_cleanup_hook)(void);

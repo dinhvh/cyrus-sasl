@@ -1,6 +1,6 @@
 /* canonusr.c - user canonicalization support
  * Rob Siemborski
- * $Id: canonusr.c,v 1.1.2.16 2001/07/13 20:00:21 rjs3 Exp $
+ * $Id: canonusr.c,v 1.1.2.17 2001/07/18 16:28:43 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -176,7 +176,8 @@ void _sasl_canonuser_free()
     for(ptr = canonuser_head; ptr; ptr = ptr_next) {
 	ptr_next = ptr->next;
 	if(ptr->plug->canon_user_free)
-	    ptr->plug->canon_user_free(ptr->plug->glob_context, global_utils);
+	    ptr->plug->canon_user_free(ptr->plug->glob_context,
+				       sasl_global_utils);
 	sasl_FREE(ptr);
     }
 
@@ -196,7 +197,7 @@ int sasl_canonuser_add_plugin(const char *plugname,
 	return SASL_BADPARAM;
     }
     
-    result = canonuserfunc(global_utils, SASL_AUXPROP_PLUG_VERSION,
+    result = canonuserfunc(sasl_global_utils, SASL_AUXPROP_PLUG_VERSION,
 			   &out_version, &plug, plugname);
 
     if(result != SASL_OK) {

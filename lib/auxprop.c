@@ -1,6 +1,6 @@
 /* auxprop.c - auxilliary property support
  * Rob Siemborski
- * $Id: auxprop.c,v 1.1.2.16 2001/07/12 14:10:11 rjs3 Exp $
+ * $Id: auxprop.c,v 1.1.2.17 2001/07/18 16:28:43 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -772,7 +772,7 @@ int sasl_auxprop_add_plugin(const char *plugname,
     auxprop_plug_list_t *new_item;
     sasl_auxprop_plug_t *plug;
     
-    result = auxpropfunc(global_utils, SASL_AUXPROP_PLUG_VERSION,
+    result = auxpropfunc(sasl_global_utils, SASL_AUXPROP_PLUG_VERSION,
 			 &out_version, &plug, plugname);
 
     if(result != SASL_OK) {
@@ -801,7 +801,8 @@ void _sasl_auxprop_free()
     for(ptr = auxprop_head; ptr; ptr = ptr_next) {
 	ptr_next = ptr->next;
 	if(ptr->plug->auxprop_free)
-	    ptr->plug->auxprop_free(ptr->plug->glob_context, global_utils);
+	    ptr->plug->auxprop_free(ptr->plug->glob_context,
+				    sasl_global_utils);
 	sasl_FREE(ptr);
     }
 
