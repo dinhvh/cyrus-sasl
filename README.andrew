@@ -1,6 +1,4 @@
 #!/bin/sh
-rm -f configure
-sh SMakefile
 smake -gnu init install
 exit 0
 
