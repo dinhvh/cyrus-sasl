@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: sasldb.c,v 1.1.2.1 2001/07/17 21:48:46 rjs3 Exp $
+ * $Id: sasldb.c,v 1.1.2.2 2001/07/20 20:39:16 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -67,39 +67,31 @@ static int parseuser(const sasl_utils_t *utils,
 
     assert(user && serverFQDN);
 
-    if (!user_realm) {
-	ret = _plug_strdup(utils, serverFQDN, realm, NULL);
-	if (ret == SASL_OK) {
-	    ret = _plug_strdup(utils, input, user, NULL);
+    r = strchr(input, '@');
+    if (!r) {
+	/* hmmm, the user didn't specify a realm */
+	if(user_realm && user_realm[0]) {
+	    ret = _plug_strdup(utils, user_realm, realm, NULL);
+	} else {
+	    /* Default to serverFQDN */
+	    ret = _plug_strdup(utils, serverFQDN, realm, NULL);
 	}
-    } else if (user_realm[0]) {
-	ret = _plug_strdup(utils, user_realm, realm, NULL);
+	
 	if (ret == SASL_OK) {
 	    ret = _plug_strdup(utils, input, user, NULL);
 	}
     } else {
-	/* otherwise, we gotta get it from the user */
-	r = strchr(input, '@');
-	if (!r) {
-	    /* hmmm, the user didn't specify a realm */
-	    /* we'll default to the serverFQDN */
-	    ret = _plug_strdup(utils, serverFQDN, realm, NULL);
-	    if (ret == SASL_OK) {
-		ret = _plug_strdup(utils, input, user, NULL);
-	    }
+	r++;
+	ret = _plug_strdup(utils, r, realm, NULL);
+	*--r = '\0';
+	*user = utils->malloc(r - input + 1);
+	if (*user) {
+	    strncpy(*user, input, r - input +1);
 	} else {
-	    r++;
-	    ret = _plug_strdup(utils, r, realm, NULL);
-	    *--r = '\0';
-	    *user = utils->malloc(r - input + 1);
-	    if (*user) {
-		strncpy(*user, input, r - input +1);
-	    } else {
-		MEMERROR( utils );
-		ret = SASL_NOMEM;
-	    }
-	    *r = '@';
+	    MEMERROR( utils );
+	    ret = SASL_NOMEM;
 	}
+	*r = '@';
     }
 
     return ret;

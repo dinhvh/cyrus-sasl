@@ -1,6 +1,10 @@
 2001-07-20  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Can now deal with variable client-first mechs such as
 	  DIGEST-MD5, though this interface is subject to change
+	* Modified parseuser to deal better with default realms
+	* Simplified realm handling in DIGEST-MD5 (getrealm callback
+	  is no longer required).
+	* Cleaned up some memory management issues in DIGEST-MD5
 
 2001-07-19  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Fixed prototype of sasl_getpath_t to be in conformance with

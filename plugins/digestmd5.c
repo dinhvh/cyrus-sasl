@@ -2,7 +2,7 @@
  * Rob Siemborski
  * Tim Martin
  * Alexey Melnikov 
- * $Id: digestmd5.c,v 1.97.2.20 2001/07/20 16:43:08 rjs3 Exp $
+ * $Id: digestmd5.c,v 1.97.2.21 2001/07/20 20:39:15 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -764,28 +764,23 @@ create_nonce(const sasl_utils_t * utils)
 }
 
 static int
-add_to_challenge(const sasl_utils_t * utils,
-		 char **str,
+add_to_challenge(const sasl_utils_t *utils,
+		 char **str, unsigned *buflen, unsigned *curlen,
 		 char *name,
 		 unsigned char *value,
 		 bool need_quotes)
 {
   int             namesize = strlen(name);
   int             valuesize = strlen((char *) value);
+  int             ret;
 
-  if (*str == NULL) {
-    *str = utils->malloc(namesize + 2 + valuesize + 2);
-    if (*str == NULL)
-      return SASL_FAIL;
-    *str[0] = 0;
-  } else {
-    int             curlen = strlen(*str);
-    *str = utils->realloc(*str, curlen + 1 + namesize + 2 + valuesize + 2);
-    if (*str == NULL)
-      return SASL_FAIL;
-    strcat(*str, ",");
-  }
+  ret = _plug_buf_alloc(utils, str, buflen,
+			*curlen + 1 + namesize + 2 + valuesize + 2);
+  if(ret != SASL_OK) return ret;
 
+  *curlen = *curlen + 1 + namesize + 2 + valuesize + 2;
+    
+  strcat(*str, ",");
   strcat(*str, name);
 
   if (need_quotes) {
@@ -2083,11 +2078,11 @@ server_continue_step(void *conn_context,
   result = get_realm(sparams, &realm);
 
   if (text->state == 1) {
-    char           *challenge = NULL;
     unsigned char  *nonce;
     char           *charset = "utf-8";
     char qop[1024], cipheropts[1024];
     struct digest_cipher *cipher;
+    unsigned       resplen;
     int added_conf = 0;
 
     /* We don't implement fast-reauth, so we just ignore whatever they sent */
@@ -2141,22 +2136,27 @@ server_continue_step(void *conn_context,
      * charset | cipher-opts | auth-param )
      */
 
-    /* add to challenge; if we chose not to specify a realm, we won't
-     * end one to the client */
-    if (realm && add_to_challenge(sparams->utils, &challenge, "realm", (unsigned char *) realm, TRUE) != SASL_OK) {
-	SETERROR(sparams->utils, "internal error: add_to_challenge failed");
-	return SASL_FAIL;
-    }
-    /* get nonce XXX have to clean up after self if fail */
+    /* FIXME: get nonce XXX have to clean up after self if fail */
     nonce = create_nonce(sparams->utils);
     if (nonce == NULL) {
 	SETERROR(sparams->utils, "internal erorr: failed creating a nonce");
 	return SASL_FAIL;
     }
-    /* add to challenge */
-    if (add_to_challenge(sparams->utils, &challenge, "nonce", nonce, TRUE) != SASL_OK) {
-	SETERROR(sparams->utils,
-		 "internal error: add_to_challenge 2 failed");
+
+    resplen = strlen(nonce) + strlen("nonce") + 5;
+    result = _plug_buf_alloc(sparams->utils, &(text->out_buf),
+			     &(text->out_buf_len), resplen);
+    if(result != SASL_OK) return result;
+
+    sprintf(text->out_buf, "nonce=\"%s\"", nonce);
+
+    /* add to challenge; if we chose not to specify a realm, we won't
+     * end one to the client */
+    if (realm && add_to_challenge(sparams->utils,
+				  &text->out_buf, &text->out_buf_len, &resplen,
+				  "realm", (unsigned char *) realm,
+				  TRUE) != SASL_OK) {
+	SETERROR(sparams->utils, "internal error: add_to_challenge failed");
 	return SASL_FAIL;
     }
     /*
@@ -2168,7 +2168,9 @@ server_continue_step(void *conn_context,
      */
 
     /* add qop to challenge */
-    if (add_to_challenge(sparams->utils, &challenge, "qop", 
+    if (add_to_challenge(sparams->utils,
+			 &text->out_buf, &text->out_buf_len, &resplen,
+			 "qop", 
 			 (unsigned char *) qop, TRUE) != SASL_OK) {
 	SETERROR(sparams->utils, "internal error: add_to_challenge 3 failed");
 	return SASL_FAIL;
@@ -2180,7 +2182,8 @@ server_continue_step(void *conn_context,
     /* add cipher-opts to challenge; only add if there are some */
     if (strcmp(cipheropts,"")!=0)
     {
-      if (add_to_challenge(sparams->utils, &challenge, 
+      if (add_to_challenge(sparams->utils,
+			   &text->out_buf, &text->out_buf_len, &resplen,
 			   "cipher", (unsigned char *) cipheropts, 
 			   TRUE) != SASL_OK) {
 	  SETERROR(sparams->utils,
@@ -2199,7 +2202,9 @@ server_continue_step(void *conn_context,
      * authentication exchange.
      */
 
-    if (add_to_challenge(sparams->utils, &challenge, "charset", 
+    if (add_to_challenge(sparams->utils,
+			 &text->out_buf, &text->out_buf_len, &resplen,
+			 "charset", 
 			 (unsigned char *) charset, FALSE) != SASL_OK) {
 	SETERROR(sparams->utils, "internal error: add_to_challenge 5 failed");
 	return SASL_FAIL;
@@ -2217,25 +2222,17 @@ server_continue_step(void *conn_context,
      * algorithm         = "algorithm" "=" "md5-sess" 
      */
    
-    if (add_to_challenge(sparams->utils, &challenge,"algorithm",
+    if (add_to_challenge(sparams->utils,
+			 &text->out_buf, &text->out_buf_len, &resplen,
+			 "algorithm",
 			 (unsigned char *) "md5-sess", FALSE)!=SASL_OK) {
 	SETERROR(sparams->utils, "internal error: add_to_challenge 6 failed");
 	return SASL_FAIL;
     }
 
     /* FIXME: this copy is wholy inefficient */
-    *serveroutlen = strlen(challenge) + 1;
-    result =_plug_buf_alloc(sparams->utils, &(text->out_buf),
-			    &(text->out_buf_len), *serveroutlen);
-    if(result != SASL_OK) {
-	sparams->utils->free(challenge);
-	return result;
-    }
-    
-    strncpy(text->out_buf, challenge, *serveroutlen);
-
+    *serveroutlen = strlen(text->out_buf) + 1;
     *serverout = text->out_buf;
-    sparams->utils->free(challenge);
 
     /*
      * The size of a digest-challenge MUST be less than 2048 bytes!!!
@@ -2296,8 +2293,6 @@ server_continue_step(void *conn_context,
     /* can we mess with clientin? copy it to be safe */
     char           *in_start = NULL;
     char           *in = NULL; 
-
-    char *response_auth = NULL;
 
     in = sparams->utils->malloc(clientinlen + 1);
 
@@ -2610,9 +2605,8 @@ server_continue_step(void *conn_context,
     text->buffer = NULL;
 
     { /* xxx if layers */
-
-      char enckey[16];
-      char deckey[16];
+	char enckey[16];
+	char deckey[16];
 
 
       create_layer_keys(text, sparams->utils,text->HA1,n,enckey,deckey);
@@ -2638,31 +2632,30 @@ server_continue_step(void *conn_context,
      */
 
     /* add to challenge */
-    if (add_to_challenge(sparams->utils, &response_auth, "rspauth", 
-			 (unsigned char *) text->response_value, FALSE) 
-	    != SASL_OK) {
-	SETERROR(sparams->utils, "add_to_challenge failed");
-	result = SASL_FAIL;
-	goto FreeAllMem;
+    {
+	unsigned resplen =
+	    strlen(text->response_value) + strlen("rspauth") + 3;
+	
+	result = _plug_buf_alloc(sparams->utils, &(text->out_buf),
+				 &(text->out_buf_len), resplen);
+	if(result != SASL_OK) {
+	    goto FreeAllMem;
+	}
+
+	sprintf(text->out_buf, "rspauth=%s", text->response_value);
+
+	*serveroutlen = strlen(text->out_buf);
+	*serverout = text->out_buf;
+	*serverout = text->out_buf;
+
+	/* self check */
+	if (*serveroutlen > 2048) {
+	    result = SASL_FAIL;
+	    goto FreeAllMem;
+	}
+	result = SASL_OK;
     }
-    /* FIXME: this copy is wholy inefficient */
-    *serveroutlen = strlen(response_auth);
-    result =_plug_buf_alloc(sparams->utils, &(text->out_buf),
-			    &(text->out_buf_len), *serveroutlen);
-    if(result != SASL_OK)
-	goto FreeAllMem;
-    strcpy(text->out_buf, response_auth);
     
-    *serverout = text->out_buf;
-    sparams->utils->free(response_auth);
-
-    /* self check */
-    if (*serveroutlen > 2048) {
-      result = SASL_FAIL;
-      goto FreeAllMem;
-    }
-    result = SASL_OK;
-
   FreeAllMem:
     /* free everything */
     /*
@@ -3070,8 +3063,14 @@ c_get_realm(sasl_client_params_t * params,
 	strcpy(*myrealm, tmp);
 	break;
     default:
-	/* success */
-	break;
+       /* Fake the realm, if we can. */
+       if(params->serverFQDN) {
+           *myrealm = params->utils->malloc(strlen(params->serverFQDN) + 1);
+           if(!*myrealm) return SASL_NOMEM;
+           strcpy(*myrealm, params->serverFQDN);
+           result = SASL_OK;
+       }
+       break;
     }
     return result;
 }
@@ -3081,7 +3080,8 @@ c_get_realm(sasl_client_params_t * params,
  * Make the necessary prompts
  */
 static int
-make_prompts(sasl_client_params_t * params,
+make_prompts(context_t *text,
+	     sasl_client_params_t * params,
 	     sasl_interact_t ** prompts_res,
 	     int user_res, /* authorization id */
 	     int auth_res, /* authentication id */
@@ -3138,17 +3138,26 @@ make_prompts(sasl_client_params_t * params,
   }
   if (realm_res == SASL_INTERACT) {
       (prompts)->id = SASL_CB_GETREALM;
-      /* xxx this leaks memory */
+      /* FIXME:this leaks memory */
       if (params->serverFQDN==NULL)
       {
 	(prompts)->challenge = "{}";
+	(prompts)->defresult = NULL;
       } else {
-	(prompts)->challenge = (char *) params->utils->malloc(3+strlen(params->serverFQDN));
-	sprintf((char *) (prompts)->challenge,"{%s}",params->serverFQDN);
+	  int result;
+	  /* Use this as a temporary buffer to avoid a leak
+	   * it won't be used for output if we are making buffers. */
+	  result =_plug_buf_alloc(params->utils, &(text->out_buf),
+				  &(text->out_buf_len),
+				  3+strlen(params->serverFQDN));
+	  if(result != SASL_OK) return result;
+	  
+	  (prompts)->challenge = text->out_buf;
+	  sprintf(text->out_buf,"{%s}",params->serverFQDN);
+	  (prompts)->defresult = params->serverFQDN;
       }
 	
       (prompts)->prompt = "Please enter your realm";
-      (prompts)->defresult = NULL;
   }
   /* add the ending one */
   (prompts)->id = SASL_CB_LIST_END;
@@ -3177,7 +3186,8 @@ c_continue_step(void *conn_context,
 
   if(serverinlen > 2048) return SASL_BADPROT;
 
-#if 0
+#if 0 /* this is what it would look like if we didn't let the glue
+       * code handle this */
   if (text->state == 1) {
       /* here's where we'd attempt fast reauth if possible */
       /* if we can, then goto text->state=3!!! */
@@ -3219,7 +3229,7 @@ c_continue_step(void *conn_context,
     bool            IsUTF8 = FALSE;
     char           *charset = NULL;
     int             result = SASL_FAIL;
-    char           *client_response = NULL;
+    unsigned        resplen = 0;
     int             user_result = SASL_OK;
     int             auth_result = SASL_OK;
     int             pass_result = SASL_OK;
@@ -3475,7 +3485,7 @@ c_continue_step(void *conn_context,
 	(realm_result == SASL_INTERACT)) {
       int result;
       /* make the prompt list */
-      result = make_prompts(params, prompt_need,
+      result = make_prompts(text, params, prompt_need,
 			    user_result, auth_result, pass_result,
 			    realm_result);
 
@@ -3640,72 +3650,92 @@ c_continue_step(void *conn_context,
 				  text->userid, /* authorization_id */
 				  &text->response_value);
 
-    if (add_to_challenge(params->utils, &client_response, 
-			 "username", text->authid, TRUE) != SASL_OK) {
-      result = SASL_FAIL;
-      goto FreeAllocatedMem;
+
+    resplen = strlen(text->authid) + strlen("username") + 5;
+    result =_plug_buf_alloc(params->utils, &(text->out_buf),
+			    &(text->out_buf_len),
+			    resplen);
+    if(result != SASL_OK) {
+	goto FreeAllocatedMem;
     }
-    if (add_to_challenge(params->utils, &client_response, 
-		 "realm", (unsigned char *) text->realm, TRUE) != SASL_OK) {
+
+    sprintf(text->out_buf, "username=\"%s\"", text->authid);
+
+    if (add_to_challenge(params->utils,
+			 &text->out_buf, &text->out_buf_len, &resplen,
+			 "realm", (unsigned char *) text->realm,
+			 TRUE) != SASL_OK) {
       result = SASL_FAIL;
       goto FreeAllocatedMem;
     }
     if (text->userid != NULL) {
-      if (add_to_challenge(params->utils, &client_response, 
+      if (add_to_challenge(params->utils,
+			   &text->out_buf, &text->out_buf_len, &resplen,
 			   "authzid", text->userid, TRUE) != SASL_OK) {
         result = SASL_FAIL;
         goto FreeAllocatedMem;
       }
     }
-    if (add_to_challenge(params->utils, &client_response, "nonce", nonce, TRUE) != SASL_OK) {
+    if (add_to_challenge(params->utils,
+			 &text->out_buf, &text->out_buf_len, &resplen,
+			 "nonce", nonce, TRUE) != SASL_OK) {
       result = SASL_FAIL;
       goto FreeAllocatedMem;
     }
-    if (add_to_challenge(params->utils, &client_response, "cnonce", cnonce, TRUE) != SASL_OK) {
+    if (add_to_challenge(params->utils,
+			 &text->out_buf, &text->out_buf_len, &resplen,
+			 "cnonce", cnonce, TRUE) != SASL_OK) {
       result = SASL_FAIL;
       goto FreeAllocatedMem;
     }
-    if (add_to_challenge(params->utils, &client_response, "nc", ncvalue, FALSE) != SASL_OK) {
+    if (add_to_challenge(params->utils,
+			 &text->out_buf, &text->out_buf_len, &resplen,
+			 "nc", ncvalue, FALSE) != SASL_OK) {
       result = SASL_FAIL;
       goto FreeAllocatedMem;
     }
-    if (add_to_challenge(params->utils, &client_response, "qop", (unsigned char *) qop, FALSE) != SASL_OK) {
+    if (add_to_challenge(params->utils,
+			 &text->out_buf, &text->out_buf_len, &resplen,
+			 "qop", (unsigned char *) qop, FALSE) != SASL_OK) {
       result = SASL_FAIL;
       goto FreeAllocatedMem;
     }
     if (usecipher!=NULL)
-      if (add_to_challenge(params->utils, &client_response, "cipher", 
+      if (add_to_challenge(params->utils,
+			   &text->out_buf, &text->out_buf_len, &resplen,
+			   "cipher", 
 			   (unsigned char *) usecipher, TRUE) != SASL_OK) {
 	result = SASL_FAIL;
 	goto FreeAllocatedMem;
       }
 
     if (IsUTF8) {
-      if (add_to_challenge(params->utils, &client_response, "charset", (unsigned char *) "utf-8", FALSE) != SASL_OK) {
+      if (add_to_challenge(params->utils,
+			   &text->out_buf, &text->out_buf_len, &resplen,
+			   "charset", (unsigned char *) "utf-8",
+			   FALSE) != SASL_OK) {
 	result = SASL_FAIL;
 	goto FreeAllocatedMem;
       }
     }
-    if (add_to_challenge(params->utils, &client_response, "digest-uri", digesturi, TRUE) != SASL_OK) {
+    if (add_to_challenge(params->utils,
+			 &text->out_buf, &text->out_buf_len, &resplen,
+			 "digest-uri", digesturi, TRUE) != SASL_OK) {
       result = SASL_FAIL;
       goto FreeAllocatedMem;
     }
-    if (add_to_challenge(params->utils, &client_response, "response", (unsigned char *) response, FALSE) != SASL_OK) {
+    if (add_to_challenge(params->utils,
+			 &text->out_buf, &text->out_buf_len, &resplen,
+			 "response", (unsigned char *) response,
+			 FALSE) != SASL_OK) {
 
       result = SASL_FAIL;
       goto FreeAllocatedMem;
     }
 
     /* FIXME: this copy is wholy inefficient */
-    *clientoutlen = strlen(client_response) + 1;
-    result =_plug_buf_alloc(params->utils, &(text->out_buf),
-			    &(text->out_buf_len), *clientoutlen);
-    if(result != SASL_OK)
-	goto FreeAllocatedMem;
-    strncpy(text->out_buf, client_response, *clientoutlen);
-    
+    *clientoutlen = strlen(text->out_buf) + 1;
     *clientout = text->out_buf;
-    params->utils->free(client_response);
 
     /* self check */
     if (*clientoutlen > 2048) {
@@ -3780,9 +3810,6 @@ FreeAllocatedMem:
       params->utils->free(qop_list);
     }
 
-    if ((result != SASL_CONTINUE) && (client_response))
-	params->utils->free(client_response);
-
     return result;
  }
 
@@ -3840,14 +3867,6 @@ FreeAllocatedMem:
   return SASL_FAIL;		/* should never get here */
 }
 
-static const long client_required_prompts[] = {
-  SASL_CB_AUTHNAME,
-  SASL_CB_PASS,
-  SASL_CB_GETREALM,
-  SASL_CB_LIST_END
-};
-
-
 static sasl_client_plug_t client_plugins[] =
 {
   {
@@ -3862,7 +3881,7 @@ static sasl_client_plug_t client_plugins[] =
     SASL_SEC_NOPLAINTEXT | SASL_SEC_NOANONYMOUS,
     /* Note: we don't do client-first on this side of the plugin */
     SASL_FEAT_WANT_SERVER_LAST,
-    client_required_prompts,
+    NULL,
     NULL,
     &c_start,
     &c_continue_step,
