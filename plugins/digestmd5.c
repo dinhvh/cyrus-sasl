@@ -2,7 +2,7 @@
  * Rob Siemborski
  * Tim Martin
  * Alexey Melnikov 
- * $Id: digestmd5.c,v 1.97.2.7 2001/06/27 14:56:30 rjs3 Exp $
+ * $Id: digestmd5.c,v 1.97.2.8 2001/06/28 18:51:04 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -2258,7 +2258,7 @@ server_continue_step(void *conn_context,
   }
   if (text->state == 2) {
     /* verify digest */
-    sasl_secret_t  *sec;
+    sasl_secret_t  *sec = NULL;
     /* int len=sizeof(MD5_CTX); */
     int             result;
     char           *serverresponse = NULL;
