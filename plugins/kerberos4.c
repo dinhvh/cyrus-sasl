@@ -1,6 +1,6 @@
 /* Kerberos4 SASL plugin
  * Tim Martin 
- * $Id: kerberos4.c,v 1.65.2.7 2001/06/05 19:35:10 rjs3 Exp $
+ * $Id: kerberos4.c,v 1.65.2.8 2001/06/06 18:17:01 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
@@ -164,8 +164,6 @@ typedef struct context {
 
 } context_t;
 
-/* FIXME: A *GLOBAL VARIABLE*? Don't we want the POSSIBILITY of this being
- * thread-safe? */
 static char *srvtab = NULL;
 static unsigned refcount = 0;
 
@@ -193,7 +191,7 @@ static int privacy_encode(void *context,
 
   /* returns -1 on error */
   if (len==-1) return SASL_FAIL;
-
+  
   /* now copy in the len of the buffer in network byte order */
   *outputlen=len+4;
   len=htonl(len);
@@ -210,7 +208,7 @@ static int privacy_decode_once(void *context,
 			       const char **input, unsigned *inputlen,
 			       char **output, unsigned *outputlen)
 {
-    int len, tocopy;
+    int tocopy, result;
     unsigned diff;
     MSG_DAT data;
     context_t *text=context;
@@ -274,11 +272,12 @@ static int privacy_decode_once(void *context,
     
     memset(&data,0,sizeof(MSG_DAT));
     
-    len= krb_rd_priv((char *) text->buffer,text->size,  text->init_keysched, 
+    result=krb_rd_priv((char *) text->buffer,text->size,  text->init_keysched, 
 		     &text->session, &text->ip_remote, &text->ip_local, &data);
 
     /* see if the krb library gave us a failure */
-    if (len != 0) {
+    if (result != 0) {
+	text->utils->seterror(text->utils->conn, 0, krb_err_txt[result]);
 	return SASL_FAIL;
     }
 
@@ -287,7 +286,8 @@ static int privacy_decode_once(void *context,
 	(((data.time_sec == text->time_sec) && /* or the exact same time */
 	 (data.time_5ms < text->time_5ms)))) 
     {
-      return SASL_FAIL;
+	text->utils->seterror(text->utils->conn, 0, "timestamps not ok");
+	return SASL_FAIL;
     }
     text->time_sec = data.time_sec;
     text->time_5ms = data.time_5ms;
@@ -382,7 +382,7 @@ static int integrity_decode_once(void *context,
 				 const char **input, unsigned *inputlen,
 				 char **output, unsigned *outputlen)
 {
-    int len, tocopy;
+    int tocopy, result;
     MSG_DAT data;
     context_t *text=context;
     unsigned diff;
@@ -444,13 +444,14 @@ static int integrity_decode_once(void *context,
       *inputlen-=diff;
     }
   
-    len = krb_rd_safe((char *) text->buffer, text->size,
-		     &text->session, &text->ip_remote, &text->ip_local, &data);
+    result = krb_rd_safe((char *) text->buffer, text->size,
+			 &text->session, &text->ip_remote, &text->ip_local, &data);
 
     /* see if the krb library found a problem with what we were given */
-    if (len!=0)
+    if (result != 0)
     {
-      return SASL_FAIL;
+	text->utils->seterror(text->utils->conn, 0, krb_err_txt[result]);
+	return SASL_FAIL;
     }
 
     /* check to make sure the timestamps are ok */
@@ -458,7 +459,8 @@ static int integrity_decode_once(void *context,
 	(((data.time_sec == text->time_sec) && /* or the exact same time */
 	 (data.time_5ms < text->time_5ms)))) 
     {
-      return SASL_FAIL;
+	text->utils->seterror(text->utils->conn, 0, "timestamps not ok");
+	return SASL_FAIL;
     }
     text->time_sec = data.time_sec;
     text->time_5ms = data.time_5ms;
@@ -641,9 +643,11 @@ static int server_continue_step (void *conn_context,
     /* received authenticator */
 
     /* create ticket */
-    if (clientinlen > MAX_KTXT_LEN)
-	/* Request larger than maximum ticket size */
+    if (clientinlen > MAX_KTXT_LEN) {
+	text->utils->seterror(text->utils->conn,0,"request larger than maximum ticket size");
 	return SASL_FAIL;
+    }
+    
 
     ticket.length=clientinlen;
     for (lup=0;lup<clientinlen;lup++)      
@@ -674,6 +678,7 @@ static int server_continue_step (void *conn_context,
 			addr.sin_addr.s_addr, &ad, srvtab);
 
     if (result) { /* if fails mechanism fails */
+	text->utils->seterror(text->utils->conn,0,krb_err_txt[result]);
 	VL(("krb_rd_req failed service=%s instance=%s error code=%i\n",
 	    sparams->service, text->instance,result));
 	return SASL_BADAUTH;
@@ -736,9 +741,10 @@ static int server_continue_step (void *conn_context,
     int flag;
     unsigned char *in;
 
-    if ((clientinlen==0) || (clientinlen % 8 != 0))
-	/* Response to challenge is not a multiple of 8 octets (a DES block) */
+    if ((clientinlen==0) || (clientinlen % 8 != 0)) {
+	text->utils->seterror(text->utils->conn,0,"Response to challengs is not a multiple of 8 octets (a DES block)");
 	return SASL_FAIL;	
+    }
 
     /* we need to make a copy because des does in place decrpytion */
     in = sparams->utils->malloc(clientinlen + 1);
@@ -997,6 +1003,8 @@ static int client_continue_step (void *conn_context,
 	ticket.length=MAX_KTXT_LEN;   
 
 	if (serverinlen != 4) {
+	    text->utils->seterror(text->utils->conn, SASL_NOLOG, "server challenge not 4 bytes long");
+	    
 	    cparams->utils->log(NULL, SASL_LOG_ERR,
 			       "server challenge not 4 bytes long");
 	    return SASL_FAIL; 
@@ -1029,6 +1037,10 @@ static int client_continue_step (void *conn_context,
 	if ((result=krb_mk_req(&ticket, (char *) cparams->service, 
 			       text->instance, text->realm, text->challenge)))
 	{
+	    text->utils->seterror(text->utils->conn,SASL_NOLOG,
+			  "krb_mk_req() failed: %s (%d)",
+			  krb_err_txt[result], result);
+	    
 	    cparams->utils->log(NULL, SASL_LOG_ERR, 
 			       "krb_mk_req() failed: %s (%d)",
 			       krb_err_txt[result], result);
