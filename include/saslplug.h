@@ -153,7 +153,12 @@ typedef struct sasl_utils {
     int (*spare_fptr4)();
 } sasl_utils_t;
 
-/* output parameters from SASL API
+/*
+ * output parameters from SASL API
+ *
+ * created / destroyed by the glue code, though probabally filled in
+ * by a combination of the plugin, the glue code, and the canon_user callback.
+ *
  */
 typedef struct sasl_out_params {
     unsigned doneflag;		/* exchange complete */
@@ -197,7 +202,11 @@ typedef struct sasl_out_params {
  * Client Mechanism Functions *
  ******************************/
 
-/* input parameters to client SASL plugin
+/*
+ * input parameters to client SASL plugin
+ *
+ * created / destroyed by the glue code
+ *
  */
 typedef struct sasl_client_params {
     const char *service;	/* service name */
@@ -217,6 +226,37 @@ typedef struct sasl_client_params {
     /* application's security requirements & info */
     sasl_security_properties_t props;
     sasl_ssf_t external_ssf;	/* external SSF active */
+
+    /* Canonicalize a user name from on-wire to internal format
+     *  added rjs3 2001-05-23
+     *  Must be called once user name aquired if canon_user is non-NULL.
+     *  conn        connection context
+     *  user        user name from wire protocol (need not be NUL terminated)
+     *  ulen        length of user name from wire protocol (0 = strlen(user))
+     *  authid      authid from wire protocol (need not be NUL terminated)
+     *  alen        length of authid from wire protocol (0 = strlen(authid))
+     *  flags       for SASL_CU_* flags
+     *  oparams     the user, authid, ulen, alen, fields are
+     *              set appropriately after canonicalization/copying and
+     *              authorization of arguments
+     *
+     *  responsible for setting user, ulen, authid, and alen in the oparams
+     *  structure
+     *
+     *  default behavior is to strip leading and trailing whitespace, as
+     *  well as copying the parameters.
+     *
+     * results:
+     *  SASL_OK       -- success
+     *  SASL_NOMEM    -- out of memory
+     *  SASL_BADPARAM -- invalid conn
+     *  SASL_BADPROT  -- invalid user/authid
+     */
+    int (*canon_user)(sasl_conn_t *conn,
+                    const char *user, unsigned ulen,
+                    const char *authid, unsigned alen,
+                    unsigned flags,
+                    sasl_out_params_t *oparams);
 
     /* for additions which don't require a version upgrade; set to 0 */
     void *spare_ptr1;
@@ -293,7 +333,11 @@ typedef struct sasl_client_plug {
     
     /* dispose of connection context from mech_new
      */
-    void (*mech_dispose)(void *conn_context, const sasl_utils_t *utils);
+    /*
+     * FIXME: This *DIFFERS* from chris newman's spec, which is actually
+     * void (*mech_dispose)(void *conn_context, const sasl_utils_t *utils);
+     */
+    void (*mech_dispose)(void **conn_context, const sasl_utils_t *utils);
     
     /* free all global space used by mechanism
      *  mech_dispose must be called on all mechanisms first
@@ -313,7 +357,7 @@ typedef struct sasl_client_plug {
     int (*spare_fptr2)();
 } sasl_client_plug_t;
 
-#define SASL_CLIENT_PLUG_VERSION         4
+#define SASL_CLIENT_PLUG_VERSION         5
 
 /* plug-in entry point:
  *  utils       -- utility callback functions
@@ -332,9 +376,14 @@ typedef struct sasl_client_plug {
 typedef int sasl_client_plug_init_t(const sasl_utils_t *utils,
 				    int max_version,
 				    int *out_version,
-				    sasl_client_plug_t **pluglist,
-				    int *plugcount,
-				    const char *plugname);
+/*				    sasl_client_plug_t **pluglist, */
+/* FIXME: this is not const in chris newman's implementation */
+				    const sasl_client_plug_t **pluglist,
+				    int *plugcount);
+/* Chris Newman's Implementation has the following additional parameter
+ * which I don't understand (FIXME)
+ *				    const char *plugname);
+ */
 
 /* add a client plug-in
  */
@@ -348,7 +397,11 @@ LIBSASL_API int sasl_client_add_plugin(const char *plugname,
 /* log message formatting routine */
 typedef void sasl_logmsg_p(sasl_conn_t *conn, const char *fmt, ...);
 
-/* input parameters to server SASL plugin
+/*
+ * input parameters to server SASL plugin
+ *
+ * created / destroyed by the glue code
+ *
  */
 typedef struct sasl_server_params {
     const char *service;	/* NULL = default service for user_exists
@@ -403,6 +456,13 @@ typedef struct sasl_server_params {
      *  oparams     the user, authid, ulen, alen, fields are
      *              set appropriately after canonicalization/copying and
      *              authorization of arguments
+     *
+     *  responsible for setting user, ulen, authid, and alen in the oparams
+     *  structure
+     *
+     *  default behavior is to strip leading and trailing whitespace, as
+     *  well as copying the parameters.
+     *
      * results:
      *  SASL_OK       -- success
      *  SASL_NOMEM    -- out of memory
@@ -525,7 +585,11 @@ typedef struct sasl_server_plug {
     
     /* dispose of a connection state
      */
-    void (*mech_dispose)(void *conn_context, const sasl_utils_t *utils);
+    /*
+     * FIXME: This *DIFFERS* from chris newman's spec, which is actually
+     * void (*mech_dispose)(void *conn_context, const sasl_utils_t *utils);
+     */
+    void (*mech_dispose)(void **conn_context, const sasl_utils_t *utils);
     
     /* free global state for mechanism
      *  mech_dispose must be called on all mechanisms first
@@ -615,7 +679,7 @@ typedef struct sasl_server_plug {
     int (*spare_fptr2)();
 } sasl_server_plug_t;
 
-#define SASL_SERVER_PLUG_VERSION 4
+#define SASL_SERVER_PLUG_VERSION 5
 
 /* plug-in entry point:
  *  utils         -- utility callback functions
@@ -635,9 +699,14 @@ typedef struct sasl_server_plug {
 typedef int sasl_server_plug_init_t(const sasl_utils_t *utils,
 				    int max_version,
 				    int *out_version,
-				    sasl_server_plug_t **pluglist,
-				    int *plugcount,
-				    const char *plugname);
+/*				    sasl_server_plug_t **pluglist, */
+/* FIXME: this is not const in chris newman's implementation */
+				    const sasl_server_plug_t **pluglist,
+				    int *plugcount);
+/* Chris Newman's Implementation has the following additional parameter
+ * which I don't understand (FIXME)
+ *				    const char *plugname);
+ */
 
 /* add a server plug-in
  */
