@@ -1,5 +1,5 @@
 /* dbconverter-2.c -- convert libsasl v1 sasldb's to SASLv2 format
- * $Id: dbconverter-2.c,v 1.1.2.2 2001/08/03 21:32:58 rjs3 Exp $
+ * $Id: dbconverter-2.c,v 1.1.2.3 2001/08/06 15:28:04 rjs3 Exp $
  * Rob Siemborski
  * based on SASLv1 sasldblistusers
  */
@@ -75,8 +75,13 @@ void listusers_cb(const char *authid, const char *realm,
 
     printf("Converting: %s@%s (%s)...",authid,realm,mechanism);
 
-    sprintf(newPropBuffer, "cmusaslsecret%s", mechanism);
-
+    /* Maybe we have a plaintext password? */
+    if(!strcmp(mechanism,"PLAIN-APOP")) {
+	sprintf(newPropBuffer, "userPassword");
+    } else {
+	sprintf(newPropBuffer, "cmusaslsecret%s", mechanism);
+    }
+    
     _sasldb_putdata(sasl_global_utils, globalconn,
 		    authid, realm, newPropBuffer,
 		    secret, seclen);
