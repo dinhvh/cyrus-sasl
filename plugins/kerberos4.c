@@ -1,6 +1,6 @@
 /* Kerberos4 SASL plugin
  * Tim Martin 
- * $Id: kerberos4.c,v 1.65.2.2 2001/05/30 20:44:52 rjs3 Exp $
+ * $Id: kerberos4.c,v 1.65.2.3 2001/05/31 21:32:10 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
@@ -168,6 +168,7 @@ typedef struct context {
 /* FIXME: A *GLOBAL VARIABLE*? Don't we want the POSSIBILITY of this being
  * thread-safe? */
 static char *srvtab = NULL;
+static unsigned refcount = 0;
 
 /* FIXME: These shouldn't really be needed on a per-plugin basis! */
 /* FIXME: This only parses IPV4 addresses */
@@ -679,7 +680,10 @@ static void dispose(void **conn_context, const sasl_utils_t *utils)
 static void mech_free(void *glob_context __attribute__((unused)),
 		      const sasl_utils_t *utils)
 {
-    if (srvtab) utils->free(srvtab);
+    if (srvtab && --refcount == 0) {
+	utils->free(srvtab);
+	srvtab = NULL;
+    }
 }
 
 static int cando_sec(sasl_security_properties_t *props,
@@ -1024,14 +1028,21 @@ int sasl_server_plug_init(sasl_utils_t *utils,
 	return SASL_BADVERS;
     }
 
-    utils->getopt(utils->getopt_context, "KERBEROS_V4", "srvtab", &ret, &rl);
+    if(!srvtab) {	
+	utils->getopt(utils->getopt_context, "KERBEROS_V4", "srvtab", &ret, &rl);
 
-    if (ret == NULL) {
-	ret = KEYFILE;
-	rl = strlen(ret);
+	if (ret == NULL) {
+	    ret = KEYFILE;
+	    rl = strlen(ret);
+	}
+    
+	srvtab = utils->malloc(sizeof(char) * (rl + 1));
+	if(!srvtab) return SASL_NOMEM;
+
+	strcpy(srvtab, ret);
     }
-    srvtab = utils->malloc(sizeof(char) * (rl + 1));
-    strcpy(srvtab, ret);
+    
+    refcount++;
 
     /* fail if we can't open the srvtab file */
     if (access(srvtab, R_OK) != 0) {
@@ -1493,6 +1504,8 @@ int sasl_client_plug_init(sasl_utils_t *utils __attribute__((unused)),
 
   *plugcount=1;
   *out_version=KERBEROS_VERSION;
+
+  refcount++;
 
   return SASL_OK;
 }
