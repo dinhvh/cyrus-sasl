@@ -285,7 +285,6 @@ int sasl_client_new(const char *service,
   sasl_utils_t *utils;
   
   /* Remember, iplocalport and ipremoteport can be NULL and be valid! */
-  /* FIXME: where do we use them then?!?!? */
   if (!pconn || !service || !serverFQDN)
     return SASL_BADPARAM;
 

@@ -1,6 +1,6 @@
 /* SASL server API implementation
  * Tim Martin
- * $Id: server.c,v 1.84.2.2 2001/05/30 19:17:25 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.3 2001/05/30 20:22:09 rjs3 Exp $
  */
 
 /* 
@@ -1148,7 +1148,7 @@ int sasl_listmech(sasl_conn_t *conn,
   const char *mysep;
 
   /* if there hasn't been a sasl_sever_init() fail */
-  if (_sasl_server_active==0) return SASL_FAIL;
+  if (_sasl_server_active==0) return SASL_NOTINIT;
 
   if (! conn || ! result)
     return SASL_BADPARAM;
