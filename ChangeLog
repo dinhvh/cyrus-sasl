@@ -7,6 +7,7 @@
 	* Stabalized allocation/destruction of sasl_conn_t's
 	  (initialized to zero and cleared up some ordering of
 	   what got allocated/destroyed when)
+	* Added options.html to doc directory
 
 2001-07-20  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Can now deal with variable client-first mechs such as
