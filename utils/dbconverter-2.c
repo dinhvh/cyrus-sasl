@@ -1,5 +1,5 @@
 /* dbconverter-2.c -- convert libsasl v1 sasldb's to SASLv2 format
- * $Id: dbconverter-2.c,v 1.1.2.1 2001/08/03 20:39:38 rjs3 Exp $
+ * $Id: dbconverter-2.c,v 1.1.2.2 2001/08/03 21:32:58 rjs3 Exp $
  * Rob Siemborski
  * based on SASLv1 sasldblistusers
  */
@@ -96,15 +96,17 @@ void listusers_cb(const char *authid, const char *realm,
 
 int listusers(const char *path, listcb_t *cb)
 {
-    GDBM_FILE indb, outdb;
-    datum dkey, nextkey, ekey;
+    GDBM_FILE indb;
+    datum dkey, nextkey, dvalue;
 
-    indb = gdbm_open(path, 0, GDBM_READER, S_IRUSR | S_IWUSR, NULL);
+    indb = gdbm_open((char *)path, 0, GDBM_READER, S_IRUSR | S_IWUSR, NULL);
 
     if (!indb) {
 	fprintf(stderr, "can't open %s\n", path);
 	return 1;
     }
+
+    memset(&dkey, 0, sizeof(datum));
 
     dkey = gdbm_firstkey(indb);
 
@@ -120,11 +122,13 @@ int listusers(const char *path, listcb_t *cb)
 	    break;
 	}
 	memcpy(mech, tmp, len);
-	mech[dkey.dsize - tmp] = '\0';
+	mech[dkey.dsize - (tmp - dkey.dptr)] = '\0';
 
-	if (*authid) {
+	dvalue = gdbm_fetch(indb, dkey);
+
+	if (*authid && dvalue.dptr) {
 	    /* don't check return values */
-	    cb(authid,realm,mech);
+	    cb(authid,realm,mech,dvalue.dptr,dvalue.dsize);
 	}
 
 	nextkey=gdbm_nextkey(indb, dkey);
@@ -132,6 +136,7 @@ int listusers(const char *path, listcb_t *cb)
     }
 
     gdbm_close(indb);
+    return 0;
 }
 
 #elif defined(SASL_NDBM)
@@ -143,7 +148,7 @@ int listusers(const char *path, listcb_t *cb)
 int listusers(const char *path, listcb_t *cb)
 {
     DBM *indb;
-    datum dkey, nextkey;
+    datum dkey, nextkey, dvalue;
 
     indb = dbm_open(path, O_RDONLY, S_IRUSR | S_IWUSR);
 
@@ -168,9 +173,11 @@ int listusers(const char *path, listcb_t *cb)
 	memcpy(mech, tmp, len);
 	mech[dkey.dsize - (tmp - ((char *)dkey.dptr))] = '\0';
 
-	if (*authid) {
+	dvalue = dbm_fetch(indb, dkey);
+
+	if (*authid && dvalue.dptr) {
 	    /* don't check return values */
-	    cb(authid,realm,mech);
+	    cb(authid,realm,mech,dvalue.dptr,dvalue.dsize);
 	}
 
 	nextkey=dbm_nextkey(indb);
@@ -178,6 +185,7 @@ int listusers(const char *path, listcb_t *cb)
     }
 
     dbm_close(indb);
+    return 0;
 }
 
 #elif defined(SASL_BERKELEYDB)
