@@ -2,7 +2,7 @@
  * Rob Siemborski
  * Tim Martin
  * Alexey Melnikov 
- * $Id: digestmd5.c,v 1.97.2.23 2001/07/25 18:56:45 rjs3 Exp $
+ * $Id: digestmd5.c,v 1.97.2.24 2001/07/27 20:47:59 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -679,56 +679,6 @@ create_response(context_t * text,
   return result;
 }
 
-static char     basis_64[] =
-"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????";
-
-static int
-encode64(const char *_in, unsigned inlen,
-	 char *_out, unsigned outmax, unsigned *outlen)
-{
-  const unsigned char *in = (const unsigned char *) _in;
-  unsigned char  *out = (unsigned char *) _out;
-  unsigned char   oval;
-  char           *blah;
-  unsigned        olen;
-
-  /* Will it fit? */
-  olen = (inlen + 2) / 3 * 4;
-  if (outlen)
-    *outlen = olen;
-  if (outmax < olen)
-    return SASL_BUFOVER;
-
-  /* Do the work... */
-  blah = (char *) out;
-  while (inlen >= 3) {
-    /*
-     * user provided max buffer size; make sure we don't go over it
-     */
-    *out++ = basis_64[in[0] >> 2];
-    *out++ = basis_64[((in[0] << 4) & 0x30) | (in[1] >> 4)];
-    *out++ = basis_64[((in[1] << 2) & 0x3c) | (in[2] >> 6)];
-    *out++ = basis_64[in[2] & 0x3f];
-    in += 3;
-    inlen -= 3;
-  }
-  if (inlen > 0) {
-    /*
-     * user provided max buffer size; make sure we don't go over it
-     */
-    *out++ = basis_64[in[0] >> 2];
-    oval = (in[0] << 4) & 0x30;
-    if (inlen > 1)
-      oval |= in[1] >> 4;
-    *out++ = basis_64[oval];
-    *out++ = (inlen < 2) ? '=' : basis_64[(in[1] << 2) & 0x3c];
-    *out++ = '=';
-  }
-  *out = '\0';
-
-  return SASL_OK;
-}
-
 static unsigned char *
 create_nonce(const sasl_utils_t * utils)
 {
@@ -753,8 +703,8 @@ create_nonce(const sasl_utils_t * utils)
   /*
    * Returns SASL_OK on success, SASL_BUFOVER if result won't fit
    */
-  if (encode64(ret, NONCE_SIZE,
-	       (char *) base64buf, base64len, NULL) != SASL_OK) {
+  if (utils->encode64(ret, NONCE_SIZE,
+		      (char *) base64buf, base64len, NULL) != SASL_OK) {
     utils->free(ret);
     return NULL;
   }
@@ -1446,11 +1396,11 @@ static unsigned short version = 1;
 /* len, CIPHER(Kc, {msg, pag, HMAC(ki, {SeqNum, msg})[0..9]}), x0001, SeqNum */
 
 static int
-privacy_encode(void *context,
-	       const struct iovec *invec,
-	       unsigned numiov,
-	       const char **output,
-	       unsigned *outputlen)
+digestmd5_privacy_encode(void *context,
+			 const struct iovec *invec,
+			 unsigned numiov,
+			 const char **output,
+			 unsigned *outputlen)
 {
   context_t *text = (context_t *) context;
   int tmp;
@@ -1523,11 +1473,11 @@ privacy_encode(void *context,
 }
 
 static int
-privacy_decode_once(context_t *text,
-		    const char **input,
-		    unsigned *inputlen,
-		    char **output,
-		    unsigned *outputlen)
+digestmd5_privacy_decode_once(context_t *text,
+			      const char **input,
+			      unsigned *inputlen,
+			      char **output,
+			      unsigned *outputlen)
 {
     int tocopy;
     unsigned diff;
@@ -1677,9 +1627,9 @@ privacy_decode_once(context_t *text,
     return SASL_OK;
 }
 
-static int privacy_decode(void *context,
-			  const char *input, unsigned inputlen,
-			  const char **output, unsigned *outputlen)
+static int digestmd5_privacy_decode(void *context,
+				    const char *input, unsigned inputlen,
+				    const char **output, unsigned *outputlen)
 {
     char *tmp = NULL;
     unsigned tmplen = 0;
@@ -1691,8 +1641,8 @@ static int privacy_decode(void *context,
     while (inputlen!=0)
     {
 	/* no need to free tmp */
-      ret = privacy_decode_once(text, &input, &inputlen,
-				&tmp, &tmplen);
+      ret = digestmd5_privacy_decode_once(text, &input, &inputlen,
+					  &tmp, &tmplen);
 
       if(ret != SASL_OK) return ret;
 
@@ -1717,11 +1667,11 @@ static int privacy_decode(void *context,
 }
 
 static int
-integrity_encode(void *context,
-		 const struct iovec *invec,
-		 unsigned numiov,
-		 const char **output,
-		 unsigned *outputlen)
+digestmd5_integrity_encode(void *context,
+			   const struct iovec *invec,
+			   unsigned numiov,
+			   const char **output,
+			   unsigned *outputlen)
 {
   context_t      *text = (context_t *) context;
   unsigned char   MAC[16];
@@ -1859,11 +1809,11 @@ check_integrity(context_t * text,
 }
 
 static int
-integrity_decode_once(void *context,
-		      const char **input,
-		      unsigned *inputlen,
-		      char **output,
-		      unsigned *outputlen)
+digestmd5_integrity_decode_once(void *context,
+				const char **input,
+				unsigned *inputlen,
+				char **output,
+				unsigned *outputlen)
 {
   int             tocopy;
   context_t      *text = context;
@@ -1940,9 +1890,9 @@ integrity_decode_once(void *context,
   return SASL_OK;
 }
 
-static int integrity_decode(void *context,
-			    const char *input, unsigned inputlen,
-			    const char **output, unsigned *outputlen)
+static int digestmd5_integrity_decode(void *context,
+				      const char *input, unsigned inputlen,
+				      const char **output, unsigned *outputlen)
 {
     char *tmp = NULL;
     unsigned tmplen = 0;
@@ -1954,8 +1904,8 @@ static int integrity_decode(void *context,
     while (inputlen!=0)
     {
 	/* no need to free tmp */
-      ret = integrity_decode_once(text, &input, &inputlen,
-				  &tmp, &tmplen);
+      ret = digestmd5_integrity_decode_once(text, &input, &inputlen,
+					    &tmp, &tmplen);
 
       if(ret != SASL_OK) return ret;
 
@@ -1979,11 +1929,11 @@ static int integrity_decode(void *context,
     return SASL_OK;
 }
 
-static int server_start(void *glob_context __attribute__((unused)),
-			sasl_server_params_t * sparams,
-			const char *challenge __attribute__((unused)),
-			unsigned challen __attribute__((unused)),
-			void **conn)
+static int digestmd5_server_mech_new(void *glob_context __attribute__((unused)),
+				     sasl_server_params_t * sparams,
+				     const char *challenge __attribute__((unused)),
+				     unsigned challen __attribute__((unused)),
+				     void **conn)
 {
     context_t *text;
 
@@ -2001,7 +1951,7 @@ static int server_start(void *glob_context __attribute__((unused)),
 }
 
 static void
-dispose(void *conn_context, const sasl_utils_t * utils)
+digestmd5_both_mech_dispose(void *conn_context, const sasl_utils_t * utils)
 {
   context_t *text=(context_t *) conn_context;
 
@@ -2032,7 +1982,7 @@ dispose(void *conn_context, const sasl_utils_t * utils)
 }
 
 static void
-mech_free(void *global_context, const sasl_utils_t * utils)
+digestmd5_both_mech_free(void *global_context, const sasl_utils_t * utils)
 {
     if(global_context) utils->free(global_context);
 }
@@ -2063,13 +2013,13 @@ get_realm(sasl_server_params_t * params,
 }
 
 static int
-server_continue_step(void *conn_context,
-		     sasl_server_params_t * sparams,
-		     const char *clientin,
-		     unsigned clientinlen,
-		     const char **serverout,
-		     unsigned *serveroutlen,
-		     sasl_out_params_t * oparams)
+digestmd5_server_mech_step(void *conn_context,
+			   sasl_server_params_t * sparams,
+			   const char *clientin,
+			   unsigned clientinlen,
+			   const char **serverout,
+			   unsigned *serveroutlen,
+			   sasl_out_params_t * oparams)
 {
   int             result;
   context_t      *text = (context_t *)conn_context;
@@ -2442,12 +2392,12 @@ server_continue_step(void *conn_context,
 	    goto FreeAllMem;
 	}
 
-	oparams->encode=&privacy_encode;
-	oparams->decode=&privacy_decode;
+	oparams->encode=&digestmd5_privacy_encode;
+	oparams->decode=&digestmd5_privacy_decode;
     } else if (!strcasecmp(qop, "auth-int") &&
 	       text->requiressf <= 1 && text->limitssf >= 1) {
-	oparams->encode = &integrity_encode;
-	oparams->decode = &integrity_decode;
+	oparams->encode = &digestmd5_integrity_encode;
+	oparams->decode = &digestmd5_integrity_decode;
 	oparams->mech_ssf = 1;
     } else if (!strcasecmp(qop, "auth") && text->requiressf == 0) {
 	oparams->encode = NULL;
@@ -2698,7 +2648,7 @@ server_continue_step(void *conn_context,
   return SASL_FAIL;		/* should never get here */
 }
 
-static sasl_server_plug_t plugins[] =
+static sasl_server_plug_t digestmd5_server_plugins[] =
 {
   {
     "DIGEST-MD5",
@@ -2712,10 +2662,10 @@ static sasl_server_plug_t plugins[] =
     SASL_SEC_NOPLAINTEXT | SASL_SEC_NOANONYMOUS,
     SASL_FEAT_INTERNAL_CLIENT_FIRST | SASL_FEAT_WANT_SERVER_LAST,
     NULL,
-    &server_start,
-    &server_continue_step,
-    &dispose,
-    &mech_free,
+    &digestmd5_server_mech_new,
+    &digestmd5_server_mech_step,
+    &digestmd5_both_mech_dispose,
+    &digestmd5_both_mech_free,
     NULL,
     NULL,
     NULL,
@@ -2733,7 +2683,7 @@ int digestmd5_server_plug_init(sasl_utils_t * utils __attribute__((unused)),
   if (maxversion < SASL_SERVER_PLUG_VERSION)
       return SASL_BADVERS;
 
-  *pluglist = plugins;
+  *pluglist = digestmd5_server_plugins;
 
   *plugcount = 1;
   *out_version = SASL_SERVER_PLUG_VERSION;
@@ -2742,9 +2692,9 @@ int digestmd5_server_plug_init(sasl_utils_t * utils __attribute__((unused)),
 }
 
 /* put in sasl_wrongmech */
-static int c_start(void *glob_context __attribute__((unused)),
-		   sasl_client_params_t * params,
-		   void **conn) {
+static int digestmd5_client_mech_new(void *glob_context __attribute__((unused)),
+				     sasl_client_params_t * params,
+				     void **conn) {
     context_t *text;
 
     /* holds state are in */
@@ -2764,7 +2714,6 @@ static int c_start(void *glob_context __attribute__((unused)),
 /*
  * Convert hex string to int
  */
-
 static int
 htoi(unsigned char *hexin, int *res)
 {
@@ -2818,7 +2767,6 @@ htoi(unsigned char *hexin, int *res)
  * Trys to find the prompt with the lookingfor id in the prompt list Returns
  * it if found. NULL otherwise
  */
-
 static sasl_interact_t *
 find_prompt(sasl_interact_t ** promptlist,
 	    unsigned int lookingfor)
@@ -3173,14 +3121,14 @@ make_prompts(context_t *text,
 
 
 static int
-c_continue_step(void *conn_context,
-		sasl_client_params_t * params,
-		const char *serverin,
-		unsigned serverinlen,
-		sasl_interact_t ** prompt_need,
-		const char **clientout,
-		unsigned *clientoutlen,
-		sasl_out_params_t * oparams)
+digestmd5_client_mech_step(void *conn_context,
+			   sasl_client_params_t * params,
+			   const char *serverin,
+			   unsigned serverinlen,
+			   sasl_interact_t ** prompt_need,
+			   const char **clientout,
+			   unsigned *clientoutlen,
+			   sasl_out_params_t * oparams)
 {
   char           *in = NULL;
   char           *in_start;
@@ -3554,8 +3502,8 @@ c_continue_step(void *conn_context,
 
 	if (bestcipher) {
 	    /* we found a cipher we like */
-	    oparams->encode = &privacy_encode; 
-	    oparams->decode = &privacy_decode;
+	    oparams->encode = &digestmd5_privacy_encode; 
+	    oparams->decode = &digestmd5_privacy_decode;
 	    oparams->mech_ssf = bestcipher->ssf;
 
 	    qop = "auth-conf";
@@ -3580,8 +3528,8 @@ c_continue_step(void *conn_context,
 	if ((limit >= 1) && (musthave <= 1) 
 	    && (protection & DIGEST_INTEGRITY)) {
 	    /* integrity */
-	    oparams->encode = &integrity_encode;
-	    oparams->decode = &integrity_decode;
+	    oparams->encode = &digestmd5_integrity_encode;
+	    oparams->decode = &digestmd5_integrity_decode;
 	    oparams->mech_ssf = 1;
 	    qop = "auth-int";
 	} else if (musthave <= 0) {
@@ -3870,7 +3818,7 @@ FreeAllocatedMem:
   return SASL_FAIL;		/* should never get here */
 }
 
-static sasl_client_plug_t client_plugins[] =
+static sasl_client_plug_t digestmd5_client_plugins[] =
 {
   {
     "DIGEST-MD5",
@@ -3886,10 +3834,10 @@ static sasl_client_plug_t client_plugins[] =
     SASL_FEAT_WANT_SERVER_LAST,
     NULL,
     NULL,
-    &c_start,
-    &c_continue_step,
-    &dispose,
-    &mech_free,
+    &digestmd5_client_mech_new,
+    &digestmd5_client_mech_step,
+    &digestmd5_both_mech_dispose,
+    &digestmd5_both_mech_free,
     NULL,
     NULL,
     NULL
@@ -3904,7 +3852,7 @@ int digestmd5_client_plug_init(sasl_utils_t * utils __attribute__((unused)),
   if (maxversion < SASL_CLIENT_PLUG_VERSION)
     return SASL_BADVERS;
 
-  *pluglist = client_plugins;
+  *pluglist = digestmd5_client_plugins;
 
   *plugcount = 1;
   *out_version = SASL_CLIENT_PLUG_VERSION;

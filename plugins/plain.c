@@ -1,7 +1,7 @@
 /* Plain SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: plain.c,v 1.43.2.15 2001/07/25 20:41:44 rjs3 Exp $
+ * $Id: plain.c,v 1.43.2.16 2001/07/27 20:48:02 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -72,11 +72,11 @@ typedef struct context {
     unsigned out_buf_len;
 } context_t;
 
-static int start(void *glob_context __attribute__((unused)), 
-		 sasl_server_params_t *sparams,
-		 const char *challenge __attribute__((unused)),
-		 unsigned challen __attribute__((unused)),
-		 void **conn)
+static int plain_server_mech_new(void *glob_context __attribute__((unused)), 
+				 sasl_server_params_t *sparams,
+				 const char *challenge __attribute__((unused)),
+				 unsigned challen __attribute__((unused)),
+				 void **conn)
 {
   context_t *text;
 
@@ -96,7 +96,8 @@ static int start(void *glob_context __attribute__((unused)),
   return SASL_OK;
 }
 
-static void dispose(void *conn_context, const sasl_utils_t *utils)
+static void plain_both_mech_dispose(void *conn_context,
+				    const sasl_utils_t *utils)
 {
   context_t *text;
   text=conn_context;
@@ -113,7 +114,8 @@ static void dispose(void *conn_context, const sasl_utils_t *utils)
   utils->free(text);
 }
 
-static void mech_free(void *global_context, const sasl_utils_t *utils)
+static void plain_both_mech_free(void *global_context,
+				 const sasl_utils_t *utils)
 {
     if(global_context) utils->free(global_context);  
 }
@@ -135,13 +137,13 @@ int verify_password(sasl_server_params_t *params,
 static const char blank_server_out[] = "";
 
 static int
-server_continue_step (void *conn_context,
-		      sasl_server_params_t *params,
-		      const char *clientin,
-		      unsigned clientinlen,
-		      const char **serverout,
-		      unsigned *serveroutlen,
-		      sasl_out_params_t *oparams)
+plain_server_mech_step(void *conn_context,
+		       sasl_server_params_t *params,
+		       const char *clientin,
+		       unsigned clientinlen,
+		       const char **serverout,
+		       unsigned *serveroutlen,
+		       sasl_out_params_t *oparams)
 {
     context_t *text;
     text=conn_context;
@@ -257,7 +259,7 @@ server_continue_step (void *conn_context,
   return SASL_FAIL; /* should never get here */
 }
 
-static sasl_server_plug_t plugins[] = 
+static sasl_server_plug_t plain_server_plugins[] = 
 {
   {
     "PLAIN",
@@ -265,10 +267,10 @@ static sasl_server_plug_t plugins[] =
     SASL_SEC_NOANONYMOUS,
     SASL_FEAT_WANT_CLIENT_FIRST,
     NULL,
-    &start,
-    &server_continue_step,
-    &dispose,
-    &mech_free,
+    &plain_server_mech_new,
+    &plain_server_mech_step,
+    &plain_both_mech_dispose,
+    &plain_both_mech_free,
     NULL,
     NULL,
     NULL,
@@ -288,7 +290,7 @@ int plain_server_plug_init(const sasl_utils_t *utils,
 	return SASL_BADVERS;
     }
     
-    *pluglist=plugins;
+    *pluglist=plain_server_plugins;
 
     *plugcount=1;  
     *out_version=SASL_SERVER_PLUG_VERSION;
@@ -297,9 +299,9 @@ int plain_server_plug_init(const sasl_utils_t *utils,
 }
 
 /* put in sasl_wrongmech */
-static int c_start(void *glob_context __attribute__((unused)),
-		   sasl_client_params_t *params,
-		   void **conn)
+static int plain_client_mech_new(void *glob_context __attribute__((unused)),
+				 sasl_client_params_t *params,
+				 void **conn)
 {
     context_t *text;
 
@@ -553,14 +555,14 @@ static int make_prompts(sasl_client_params_t *params,
 
 
 
-static int client_continue_step (void *conn_context,
-				 sasl_client_params_t *params,
-				 const char *serverin __attribute__((unused)),
-				 unsigned serverinlen __attribute__((unused)),
-				 sasl_interact_t **prompt_need,
-				 const char **clientout,
-				 unsigned *clientoutlen,
-				 sasl_out_params_t *oparams)
+static int plain_client_mech_step(void *conn_context,
+				  sasl_client_params_t *params,
+				  const char *serverin __attribute__((unused)),
+				  unsigned serverinlen __attribute__((unused)),
+				  sasl_interact_t **prompt_need,
+				  const char **clientout,
+				  unsigned *clientoutlen,
+				  sasl_out_params_t *oparams)
 {
   int result;
   const char *user, *authid;
@@ -679,7 +681,7 @@ static int client_continue_step (void *conn_context,
   return SASL_FAIL; /* should never get here */
 }
 
-static sasl_client_plug_t client_plugins[] = 
+static sasl_client_plug_t plain_client_plugins[] = 
 {
   {
     "PLAIN",
@@ -688,10 +690,10 @@ static sasl_client_plug_t client_plugins[] =
     SASL_FEAT_WANT_CLIENT_FIRST,
     NULL,
     NULL,
-    &c_start,
-    &client_continue_step,
-    &dispose,
-    &mech_free,
+    &plain_client_mech_new,
+    &plain_client_mech_step,
+    &plain_both_mech_dispose,
+    &plain_both_mech_free,
     NULL,
     NULL,
     NULL
@@ -709,7 +711,7 @@ int plain_client_plug_init(sasl_utils_t *utils,
 	return SASL_BADVERS;
     }
 
-    *pluglist=client_plugins;
+    *pluglist=plain_client_plugins;
 
     *plugcount=1;
     *out_version=SASL_CLIENT_PLUG_VERSION;

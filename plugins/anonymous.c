@@ -1,7 +1,7 @@
 /* Anonymous SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: anonymous.c,v 1.34.2.20 2001/07/19 22:50:00 rjs3 Exp $
+ * $Id: anonymous.c,v 1.34.2.21 2001/07/27 20:47:58 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -81,11 +81,11 @@ typedef struct context {
 } context_t;
 
 static int
-server_start(void *glob_context __attribute__((unused)),
-      sasl_server_params_t *sparams,
-      const char *challenge __attribute__((unused)),
-      unsigned challen __attribute__((unused)),
-      void **conn_context)
+anonymous_server_mech_new(void *glob_context __attribute__((unused)),
+			  sasl_server_params_t *sparams,
+			  const char *challenge __attribute__((unused)),
+			  unsigned challen __attribute__((unused)),
+			  void **conn_context)
 {
     /* holds state are in */
     if (!conn_context) {
@@ -99,13 +99,13 @@ server_start(void *glob_context __attribute__((unused)),
 }
 
 static int
-server_continue_step (void *conn_context __attribute__((unused)),
-	       sasl_server_params_t *sparams,
-	       const char *clientin,
-	       unsigned clientinlen,
-	       const char **serverout,
-	       unsigned *serveroutlen,
-	       sasl_out_params_t *oparams)
+anonymous_server_mech_step(void *conn_context __attribute__((unused)),
+			   sasl_server_params_t *sparams,
+			   const char *clientin,
+			   unsigned clientinlen,
+			   const char **serverout,
+			   unsigned *serveroutlen,
+			   sasl_out_params_t *oparams)
 {
   char *clientdata;
 
@@ -163,7 +163,7 @@ server_continue_step (void *conn_context __attribute__((unused)),
   return SASL_OK;
 }
 
-static sasl_server_plug_t plugins[] = 
+static sasl_server_plug_t anonymous_server_plugins[] = 
 {
   {
     "ANONYMOUS",		/* mech_name */
@@ -171,8 +171,8 @@ static sasl_server_plug_t plugins[] =
     SASL_SEC_NOPLAINTEXT,	/* security_flags */
     SASL_FEAT_WANT_CLIENT_FIRST,/* features */
     NULL,			/* glob_context */
-    &server_start,		/* mech_new */
-    &server_continue_step,	/* mech_step */
+    &anonymous_server_mech_new,	/* mech_new */
+    &anonymous_server_mech_step,/* mech_step */
     NULL,			/* mech_dispose */
     NULL,			/* mech_free */
     NULL,			/* setpass */
@@ -183,19 +183,18 @@ static sasl_server_plug_t plugins[] =
   }
 };
 
-int anonymous_server_plug_init(
-                          const sasl_utils_t *utils,
-			  int maxversion,
-			  int *out_version,
-			  sasl_server_plug_t **pluglist,
-			  int *plugcount)
+int anonymous_server_plug_init(const sasl_utils_t *utils,
+			       int maxversion,
+			       int *out_version,
+			       sasl_server_plug_t **pluglist,
+			       int *plugcount)
 {
     if (maxversion<SASL_SERVER_PLUG_VERSION) {
 	SETERROR( utils, "ANONYMOUS version mismatch" );
 	return SASL_BADVERS;
     }
     
-    *pluglist=plugins;
+    *pluglist=anonymous_server_plugins;
     
     *plugcount=1;  
     *out_version=SASL_SERVER_PLUG_VERSION;
@@ -203,7 +202,8 @@ int anonymous_server_plug_init(
     return SASL_OK;
 }
 
-static void dispose(void *conn_context, const sasl_utils_t *utils)
+static void anonymous_client_dispose(void *conn_context,
+				     const sasl_utils_t *utils)
 {
   context_t *text;
 
@@ -218,9 +218,9 @@ static void dispose(void *conn_context, const sasl_utils_t *utils)
 }
 
 static int
-client_start(void *glob_context __attribute__((unused)),
-	sasl_client_params_t *cparams,
-	void **conn_context)
+anonymous_client_mech_new(void *glob_context __attribute__((unused)),
+			  sasl_client_params_t *cparams,
+			  void **conn_context)
 {
   context_t *text;
 
@@ -247,14 +247,14 @@ client_start(void *glob_context __attribute__((unused)),
 }
 
 static int
-client_continue_step(void *conn_context,
-		sasl_client_params_t *cparams,
-		const char *serverin __attribute__((unused)),
-		unsigned serverinlen,
-		sasl_interact_t **prompt_need,
-		const char **clientout,
-		unsigned *clientoutlen,
-		sasl_out_params_t *oparams)
+anonymous_client_mech_step(void *conn_context,
+			   sasl_client_params_t *cparams,
+			   const char *serverin __attribute__((unused)),
+			   unsigned serverinlen,
+			   sasl_interact_t **prompt_need,
+			   const char **clientout,
+			   unsigned *clientoutlen,
+			   sasl_out_params_t *oparams)
 {
   int result;
   unsigned userlen;
@@ -377,23 +377,23 @@ client_continue_step(void *conn_context,
   return SASL_OK;
 }
 
-static const long client_required_prompts[] = {
+static const long anonymous_required_prompts[] = {
   SASL_CB_AUTHNAME,
   SASL_CB_LIST_END
 };
 
-static sasl_client_plug_t client_plugins[] = 
+static sasl_client_plug_t anonymous_client_plugins[] = 
 {
   {
     "ANONYMOUS",		/* mech_name */
     0,				/* max_ssf */
     SASL_SEC_NOPLAINTEXT,	/* security_flags */
     SASL_FEAT_WANT_CLIENT_FIRST,/* features */
-    client_required_prompts,	/* required_prompts */
+    anonymous_required_prompts,	/* required_prompts */
     NULL,			/* glob_context */
-    &client_start,		/* mech_new */
-    &client_continue_step,	/* mech_step */
-    &dispose,			/* mech_dispose */
+    &anonymous_client_mech_new, /* mech_new */
+    &anonymous_client_mech_step,/* mech_step */
+    &anonymous_client_dispose,	/* mech_dispose */
     NULL,			/* mech_free */
     NULL,			/* idle */
     NULL,			/* spare */
@@ -413,7 +413,7 @@ int anonymous_client_plug_init(
 	return SASL_BADVERS;
     }
 
-    *pluglist=client_plugins;
+    *pluglist=anonymous_client_plugins;
     
     *plugcount=1;
     *out_version=SASL_CLIENT_PLUG_VERSION;

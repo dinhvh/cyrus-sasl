@@ -1,7 +1,7 @@
 /* GSSAPI SASL plugin
  * Leif Johansson
  * Rob Siemborski (SASL v2 Conversion)
- * $Id: gssapi.c,v 1.41.2.25 2001/07/27 19:11:27 rjs3 Exp $
+ * $Id: gssapi.c,v 1.41.2.26 2001/07/27 20:48:01 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -247,7 +247,7 @@ sasl_gss_seterror(const sasl_utils_t *utils, OM_uint32 maj, OM_uint32 min)
 
 static int 
 sasl_gss_encode(void *context, const struct iovec *invec, unsigned numiov,
-		const char **output, unsigned *outputlen, int privacy)
+	      const char **output, unsigned *outputlen, int privacy)
 {
   context_t *text = (context_t *)context;
   OM_uint32 maj_stat, min_stat;
@@ -316,16 +316,15 @@ sasl_gss_encode(void *context, const struct iovec *invec, unsigned numiov,
 }
 
 static int
-sasl_gss_privacy_encode(void *context, const struct iovec *invec,
+gssapi_privacy_encode(void *context, const struct iovec *invec,
 			unsigned numiov, const char **output,
 			unsigned *outputlen)
 {
   return sasl_gss_encode(context,invec,numiov,output,outputlen,1);
 }
 
-
 static int
-sasl_gss_integrity_encode(void *context, const struct iovec *invec,
+gssapi_integrity_encode(void *context, const struct iovec *invec,
 			unsigned numiov, const char **output,
 			unsigned *outputlen) 
 {
@@ -335,7 +334,7 @@ sasl_gss_integrity_encode(void *context, const struct iovec *invec,
 #define myMIN(a,b) (((a) < (b)) ? (a) : (b))
 
 static int 
-sasl_gss_decode_once(void *context,
+gssapi_decode_once(void *context,
 		     const char **input, unsigned *inputlen,
 		     char **output, unsigned *outputlen)
 {
@@ -451,9 +450,9 @@ sasl_gss_decode_once(void *context,
     return SASL_OK;
 }
 
-static int sasl_gss_decode(void *context,
-			   const char *input, unsigned inputlen,
-			   const char **output, unsigned *outputlen)
+static int gssapi_decode(void *context,
+			 const char *input, unsigned inputlen,
+			 const char **output, unsigned *outputlen)
 {
     char *tmp = NULL;
     unsigned tmplen = 0;
@@ -465,8 +464,8 @@ static int sasl_gss_decode(void *context,
     while (inputlen!=0)
     {
 	/* no need to free tmp */
-      ret = sasl_gss_decode_once(text, &input, &inputlen,
-				 &tmp, &tmplen);
+      ret = gssapi_decode_once(text, &input, &inputlen,
+			       &tmp, &tmplen);
 
       if(ret != SASL_OK) return ret;
 
@@ -506,11 +505,11 @@ static context_t *gss_new_context(const sasl_utils_t *utils)
 }
 
 static int 
-sasl_gss_server_start(void *glob_context __attribute__((unused)), 
-		      sasl_server_params_t *params,
-		      const char *challenge __attribute__((unused)), 
-		      unsigned challen __attribute__((unused)),
-		      void **conn)
+gssapi_server_mech_new(void *glob_context __attribute__((unused)), 
+		       sasl_server_params_t *params,
+		       const char *challenge __attribute__((unused)), 
+		       unsigned challen __attribute__((unused)),
+		       void **conn)
 {
   context_t *text;
   
@@ -594,26 +593,26 @@ sasl_gss_free_context_contents(context_t *text)
 }
 
 static void 
-sasl_gss_dispose(void *conn_context, const sasl_utils_t *utils)
+gssapi_both_mech_dispose(void *conn_context, const sasl_utils_t *utils)
 {
   sasl_gss_free_context_contents((context_t *)(conn_context));
   utils->free(conn_context);
 }
 
 static void 
-sasl_gss_free(void *global_context, const sasl_utils_t *utils)
+gssapi_both_mech_free(void *global_context, const sasl_utils_t *utils)
 {
   if(global_context) utils->free(global_context);
 }
 
 static int 
-sasl_gss_server_step (void *conn_context,
-		      sasl_server_params_t *params,
-		      const char *clientin,
-		      unsigned clientinlen,
-		      const char **serverout,
-		      unsigned *serveroutlen,
-		      sasl_out_params_t *oparams)
+gssapi_server_mech_step(void *conn_context,
+			sasl_server_params_t *params,
+			const char *clientin,
+			unsigned clientinlen,
+			const char **serverout,
+			unsigned *serveroutlen,
+			sasl_out_params_t *oparams)
 {
   context_t *text = (context_t *)conn_context;
   gss_buffer_t input_token, output_token;
@@ -953,13 +952,13 @@ sasl_gss_server_step (void *conn_context,
 	    oparams->mech_ssf = 0;
 	} else if (layerchoice == 2 && text->requiressf <= 1 &&
 		   text->limitssf >= 1) { /* integrity */
-	    oparams->encode=&sasl_gss_integrity_encode;
-	    oparams->decode=&sasl_gss_decode;
+	    oparams->encode=&gssapi_integrity_encode;
+	    oparams->decode=&gssapi_decode;
 	    oparams->mech_ssf=1;
 	} else if (layerchoice == 4 && text->requiressf <= 56 &&
 		   text->limitssf >= 56) { /* privacy */
-	    oparams->encode = &sasl_gss_privacy_encode;
-	    oparams->decode = &sasl_gss_decode;
+	    oparams->encode = &gssapi_privacy_encode;
+	    oparams->decode = &gssapi_decode;
 	    oparams->mech_ssf = 56;
 	} else {
 	    /* not a supported encryption layer */
@@ -1013,7 +1012,7 @@ sasl_gss_server_step (void *conn_context,
   return SASL_FAIL;
 }
 
-static sasl_server_plug_t plugins[] = 
+static sasl_server_plug_t gssapi_server_plugins[] = 
 {
   {
     "GSSAPI",
@@ -1021,10 +1020,10 @@ static sasl_server_plug_t plugins[] =
     SASL_SEC_NOPLAINTEXT | SASL_SEC_NOACTIVE | SASL_SEC_NOANONYMOUS,
     SASL_FEAT_WANT_CLIENT_FIRST,
     NULL,
-    &sasl_gss_server_start,
-    &sasl_gss_server_step,
-    &sasl_gss_dispose,
-    &sasl_gss_free,
+    &gssapi_server_mech_new,
+    &gssapi_server_mech_step,
+    &gssapi_both_mech_dispose,
+    &gssapi_both_mech_free,
     NULL,
     NULL,
     NULL,
@@ -1081,7 +1080,7 @@ int gssapiv2_server_plug_init(
     }
 #endif
 
-    *pluglist = plugins;
+    *pluglist = gssapi_server_plugins;
     *plugcount = 1;  
     *out_version = SASL_SERVER_PLUG_VERSION;
 
@@ -1089,9 +1088,9 @@ int gssapiv2_server_plug_init(
 }
 
 static int 
-sasl_gss_client_start(void *glob_context __attribute__((unused)), 
-		      sasl_client_params_t *params,
-		      void **conn)
+gssapi_client_mech_new(void *glob_context __attribute__((unused)), 
+		       sasl_client_params_t *params,
+		       void **conn)
 {
   context_t *text;
 
@@ -1144,18 +1143,6 @@ make_prompts(sasl_client_params_t *params,
      prompts++;
    }
  
-   if (auth_res==SASL_INTERACT)
-   {
-     /* We weren't able to get the callback; let's try a SASL_INTERACT */
-     (prompts)->id=SASL_CB_AUTHNAME;
-     (prompts)->challenge="Authentication Name";
-     (prompts)->prompt="Please enter your authentication name";
-     (prompts)->defresult=NULL;
- 
-     prompts++;
-   }
- 
- 
    if (pass_res==SASL_INTERACT)
    {
      /* We weren't able to get the callback; let's try a SASL_INTERACT */
@@ -1166,7 +1153,6 @@ make_prompts(sasl_client_params_t *params,
  
      prompts++;
    }
- 
  
    /* add the ending one */
    (prompts)->id=SASL_CB_LIST_END;
@@ -1243,14 +1229,14 @@ get_userid(sasl_client_params_t *params,
 }
 
 static int 
-sasl_gss_client_step (void *conn_context,
-		      sasl_client_params_t *params,
-		      const char *serverin,
-		      unsigned serverinlen,
-		      sasl_interact_t **prompt_need,
-		      const char **clientout,
-		      unsigned *clientoutlen,
-		      sasl_out_params_t *oparams)
+gssapi_client_mech_step(void *conn_context,
+			sasl_client_params_t *params,
+			const char *serverin,
+			unsigned serverinlen,
+			sasl_interact_t **prompt_need,
+			const char **clientout,
+			unsigned *clientoutlen,
+			sasl_out_params_t *oparams)
 {
   context_t *text = (context_t *)conn_context;
   gss_buffer_t input_token, output_token;
@@ -1463,14 +1449,14 @@ sasl_gss_client_step (void *conn_context,
 	/* if client didn't set use strongest layer available */
 	if (allowed >= 56 && need <= 56 && (serverhas & 4)) {
 	    /* encryption */
-	    oparams->encode = &sasl_gss_privacy_encode;
-	    oparams->decode = &sasl_gss_decode;
+	    oparams->encode = &gssapi_privacy_encode;
+	    oparams->decode = &gssapi_decode;
 	    oparams->mech_ssf = 56;
 	    mychoice = 4;
 	} else if (allowed >= 1 && need <= 1 && (serverhas & 2)) {
 	    /* integrity */
-	    oparams->encode = &sasl_gss_integrity_encode;
-	    oparams->decode = &sasl_gss_decode;
+	    oparams->encode = &gssapi_integrity_encode;
+	    oparams->decode = &gssapi_decode;
 	    oparams->mech_ssf = 1;
 	    mychoice = 2;
 	} else if (need <= 0 && (serverhas & 1)) {
@@ -1562,24 +1548,24 @@ sasl_gss_client_step (void *conn_context,
   return SASL_FAIL;
 }
 
-static const long client_required_prompts[] = {
-  SASL_CB_AUTHNAME,
+static const long gssapi_client_required_prompts[] = {
+  SASL_CB_USER,
   SASL_CB_LIST_END
 };  
 
-static sasl_client_plug_t client_plugins[] = 
+static sasl_client_plug_t gssapi_client_plugins[] = 
 {
   {
     "GSSAPI",
     56, /* max ssf */
     SASL_SEC_NOPLAINTEXT | SASL_SEC_NOACTIVE | SASL_SEC_NOANONYMOUS,
     SASL_FEAT_WANT_CLIENT_FIRST,
-    client_required_prompts,
+    gssapi_client_required_prompts,
     NULL,
-    &sasl_gss_client_start,
-    &sasl_gss_client_step,
-    &sasl_gss_dispose,
-    &sasl_gss_free,
+    &gssapi_client_mech_new,
+    &gssapi_client_mech_step,
+    &gssapi_both_mech_dispose,
+    &gssapi_both_mech_free,
     NULL,
     NULL,
     NULL
@@ -1596,7 +1582,7 @@ int gssapiv2_client_plug_init(
   if (maxversion<SASL_CLIENT_PLUG_VERSION)
     return SASL_BADVERS;
   
-  *pluglist=client_plugins;
+  *pluglist=gssapi_client_plugins;
 
   *plugcount=1;
   *out_version=SASL_CLIENT_PLUG_VERSION;

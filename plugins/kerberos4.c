@@ -1,7 +1,7 @@
 /* Kerberos4 SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: kerberos4.c,v 1.65.2.35 2001/07/24 16:25:00 rjs3 Exp $
+ * $Id: kerberos4.c,v 1.65.2.36 2001/07/27 20:48:01 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -205,11 +205,11 @@ static void *krb_mutex = NULL;
 static char *srvtab = NULL;
 static unsigned refcount = 0;
 
-static int encode(void *context,
-		  const struct iovec *invec,
-		  unsigned numiov,
-		  const char **output,
-		  unsigned *outputlen)
+static int kerberosv4_encode(void *context,
+			     const struct iovec *invec,
+			     unsigned numiov,
+			     const char **output,
+			     unsigned *outputlen)
 {
   int len, ret;
   context_t *text = (context_t *)context;
@@ -254,9 +254,9 @@ static int encode(void *context,
 }
 
 
-static int decode_once(void *context,
-		       const char **input, unsigned *inputlen,
-		       char **output, unsigned *outputlen)
+static int kerberosv4_decode_once(void *context,
+				  const char **input, unsigned *inputlen,
+				  char **output, unsigned *outputlen)
 {
     int tocopy, result;
     unsigned diff;
@@ -375,9 +375,9 @@ static int decode_once(void *context,
     return SASL_OK;
 }
 
-static int decode(void *context,
-		  const char *input, unsigned inputlen,
-		  const char **output, unsigned *outputlen)
+static int kerberosv4_decode(void *context,
+			     const char *input, unsigned inputlen,
+			     const char **output, unsigned *outputlen)
 {
     char *tmp = NULL;
     unsigned tmplen = 0;
@@ -389,7 +389,7 @@ static int decode(void *context,
     while (inputlen!=0)
     {
       /* No need to free tmp, it will be reused */
-      ret = decode_once(text, &input, &inputlen, &tmp, &tmplen);
+      ret = kerberosv4_decode_once(text, &input, &inputlen, &tmp, &tmplen);
       if(ret != SASL_OK) return ret;
 
       if (tmp!=NULL) /* if received 2 packets merge them together */
@@ -432,11 +432,11 @@ new_text(const sasl_utils_t *utils, context_t **text)
 
 #ifndef macintosh
 static int
-server_start(void *glob_context __attribute__((unused)),
-	     sasl_server_params_t *sparams,
-	     const char *challenge __attribute__((unused)),
-	     unsigned challen __attribute__((unused)),
-	     void **conn_context)
+kerberosv4_server_mech_new(void *glob_context __attribute__((unused)),
+			   sasl_server_params_t *sparams,
+			   const char *challenge __attribute__((unused)),
+			   unsigned challen __attribute__((unused)),
+			   void **conn_context)
 {
     if(!krb_mutex) {
 	krb_mutex = sparams->utils->mutex_alloc();
@@ -451,7 +451,8 @@ server_start(void *glob_context __attribute__((unused)),
 }
 #endif
 
-static void dispose(void *conn_context, const sasl_utils_t *utils)
+static void kerberosv4_both_mech_dispose(void *conn_context,
+					 const sasl_utils_t *utils)
 {
     context_t *text = (context_t *)conn_context;
 
@@ -469,8 +470,8 @@ static void dispose(void *conn_context, const sasl_utils_t *utils)
     utils->free(text);
 }
 
-static void mech_free(void *glob_context __attribute__((unused)),
-		      const sasl_utils_t *utils)
+static void kerberosv4_both_mech_free(void *glob_context __attribute__((unused)),
+				      const sasl_utils_t *utils)
 {
     if (krb_mutex) {
 	utils->mutex_free(krb_mutex);
@@ -530,7 +531,7 @@ static int ipv4_ipfromstring(const sasl_utils_t *utils, const char *addr,
 }
 
 #ifndef macintosh
-static int server_continue_step (void *conn_context,
+static int kerberosv4_server_mech_step (void *conn_context,
 	      sasl_server_params_t *sparams,
 	      const char *clientin,
 	      unsigned clientinlen,
@@ -721,22 +722,22 @@ static int server_continue_step (void *conn_context,
 	return SASL_BADPROT;
     }
 
-    oparams->encode=&encode;
-    oparams->decode=&decode;
+    oparams->encode=&kerberosv4_encode;
+    oparams->decode=&kerberosv4_decode;
     
     switch (in[4] & KRB_SECFLAGS) {
     case KRB_SECFLAG_NONE:
-	text->sec_type = KRB_SEC_NONE;
+	text->sec_type=KRB_SEC_NONE;
 	oparams->encode=NULL;
 	oparams->decode=NULL;
 	oparams->mech_ssf=0;
 	break;
     case KRB_SECFLAG_INTEGRITY:
-	text->sec_type = KRB_SEC_INTEGRITY;
+	text->sec_type=KRB_SEC_INTEGRITY;
 	oparams->mech_ssf=KRB_INTEGRITY_BITS;
 	break;
     case KRB_SECFLAG_ENCRYPTION:
-	text->sec_type = KRB_SEC_ENCRYPTION;
+	text->sec_type=KRB_SEC_ENCRYPTION;
 	oparams->mech_ssf=KRB_DES_SECURITY_BITS;
 	break;
     default:
@@ -864,7 +865,7 @@ int mech_avail(void *glob_context __attribute__((unused)),
 }
 
 
-static sasl_server_plug_t plugins[] = 
+static sasl_server_plug_t kerberosv4_server_plugins[] = 
 {
   {
     "KERBEROS_V4",
@@ -872,10 +873,10 @@ static sasl_server_plug_t plugins[] =
     SASL_SEC_NOPLAINTEXT | SASL_SEC_NOACTIVE | SASL_SEC_NOANONYMOUS,
     0,
     NULL,
-    &server_start,
-    &server_continue_step,
-    &dispose,
-    &mech_free,
+    &kerberosv4_server_mech_new,
+    &kerberosv4_server_mech_step,
+    &kerberosv4_both_mech_dispose,
+    &kerberosv4_both_mech_free,
     NULL,
     NULL,
     NULL,
@@ -929,7 +930,7 @@ int kerberos4_server_plug_init(const sasl_utils_t *utils,
 	return SASL_FAIL;
     }
 
-    *pluglist = plugins;
+    *pluglist = kerberosv4_server_plugins;
 
     *plugcount = 1;
     *out_version = SASL_SERVER_PLUG_VERSION;
@@ -938,21 +939,22 @@ int kerberos4_server_plug_init(const sasl_utils_t *utils,
 #endif
 }
 
-static int client_start(void *glob_context __attribute__((unused)), 
+static int kerberosv4_client_mech_new(
+                 void *glob_context __attribute__((unused)), 
 		 sasl_client_params_t *params,
 		 void **conn)
 {
   return new_text(params->utils, (context_t **) conn);
 }
 
-static int client_continue_step (void *conn_context,
-				 sasl_client_params_t *cparams,
-				 const char *serverin,
-				 unsigned serverinlen,
-				 sasl_interact_t **prompt_need,
-				 const char **clientout,
-				 unsigned *clientoutlen,
-				 sasl_out_params_t *oparams)
+static int kerberosv4_client_mech_step(void *conn_context,
+				       sasl_client_params_t *cparams,
+				       const char *serverin,
+				       unsigned serverinlen,
+				       sasl_interact_t **prompt_need,
+				       const char **clientout,
+				       unsigned *clientoutlen,
+				       sasl_out_params_t *oparams)
 {
     KTEXT_ST authent;
     context_t *text=conn_context;
@@ -1233,8 +1235,8 @@ static int client_continue_step (void *conn_context,
 	need = cparams->props.max_ssf - cparams->external_ssf;
 	musthave = cparams->props.min_ssf - cparams->external_ssf;
 
-	oparams->decode = &decode;
-	oparams->encode = &encode;
+	oparams->decode = &kerberosv4_decode;
+	oparams->encode = &kerberosv4_encode;
 
 	if ((in[4] & KRB_SECFLAG_ENCRYPTION)
 	    && (need>=56) && (musthave <= 56)) {
@@ -1370,24 +1372,24 @@ static int client_continue_step (void *conn_context,
     return SASL_FAIL; /* should never get here */
 }
 
-static const long client_required_prompts[] = {
+static const long kerberosv4_client_required_prompts[] = {
   SASL_CB_USER,
   SASL_CB_LIST_END
 };
 
-static sasl_client_plug_t client_plugins[] = 
+static sasl_client_plug_t kerberosv4_client_plugins[] = 
 {
   {
     "KERBEROS_V4",
     KRB_DES_SECURITY_BITS,
     SASL_SEC_NOPLAINTEXT | SASL_SEC_NOACTIVE | SASL_SEC_NOANONYMOUS,
     SASL_FEAT_NEEDSERVERFQDN,
-    client_required_prompts,
+    kerberosv4_client_required_prompts,
     NULL,
-    &client_start,
-    &client_continue_step,
-    &dispose,
-    &mech_free,
+    &kerberosv4_client_mech_new,
+    &kerberosv4_client_mech_step,
+    &kerberosv4_both_mech_dispose,
+    &kerberosv4_both_mech_free,
     NULL,
     NULL,
     NULL
@@ -1406,7 +1408,7 @@ int kerberos4_client_plug_init(
 	return SASL_BADVERS;
     }
 
-    *pluglist=client_plugins;
+    *pluglist=kerberosv4_client_plugins;
 
     *plugcount=1;
     *out_version=SASL_CLIENT_PLUG_VERSION;

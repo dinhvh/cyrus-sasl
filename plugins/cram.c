@@ -1,7 +1,7 @@
 /* CRAM-MD5 SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: cram.c,v 1.55.2.19 2001/07/25 20:41:12 rjs3 Exp $
+ * $Id: cram.c,v 1.55.2.20 2001/07/27 20:47:58 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -92,11 +92,11 @@ typedef struct context {
 
 } context_t;
 
-static int start(void *glob_context __attribute__((unused)),
-		 sasl_server_params_t *sparams,
-		 const char *challenge __attribute__((unused)),
-		 unsigned challen __attribute__((unused)),
-		 void **conn)
+static int crammd5_server_mech_new(void *glob_context __attribute__((unused)),
+				   sasl_server_params_t *sparams,
+				   const char *challenge __attribute__((unused)),
+				   unsigned challen __attribute__((unused)),
+				   void **conn)
 {
   context_t *text;
 
@@ -115,7 +115,8 @@ static int start(void *glob_context __attribute__((unused)),
   return SASL_OK;
 }
 
-static void dispose(void *conn_context, const sasl_utils_t *utils)
+static void crammd5_both_mech_dispose(void *conn_context,
+				      const sasl_utils_t *utils)
 {
   context_t *text;
   text=conn_context;
@@ -130,7 +131,8 @@ static void dispose(void *conn_context, const sasl_utils_t *utils)
   utils->free(text);
 }
 
-static void mech_free(void *global_context, const sasl_utils_t *utils)
+static void crammd5_both_mech_free(void *global_context,
+				   const sasl_utils_t *utils)
 {
     if(global_context) utils->free(global_context);  
 }
@@ -282,13 +284,13 @@ static char *make_hashed(sasl_secret_t *sec, char *nonce, int noncelen,
 }
 
 
-static int server_continue_step (void *conn_context,
-				 sasl_server_params_t *sparams,
-				 const char *clientin,
-				 unsigned clientinlen,
-				 const char **serverout,
-				 unsigned *serveroutlen,
-				 sasl_out_params_t *oparams)
+static int crammd5_server_mech_step (void *conn_context,
+				     sasl_server_params_t *sparams,
+				     const char *clientin,
+				     unsigned clientinlen,
+				     const char **serverout,
+				     unsigned *serveroutlen,
+				     sasl_out_params_t *oparams)
 {
   context_t *text;
   text=conn_context;
@@ -493,7 +495,7 @@ static int server_continue_step (void *conn_context,
   return SASL_FAIL; /* should never get here */
 }
 
-static sasl_server_plug_t plugins[] = 
+static sasl_server_plug_t crammd5_server_plugins[] = 
 {
   {
     "CRAM-MD5",
@@ -501,10 +503,10 @@ static sasl_server_plug_t plugins[] =
     SASL_SEC_NOPLAINTEXT | SASL_SEC_NOANONYMOUS,
     0,
     NULL,
-    &start,
-    &server_continue_step,
-    &dispose,
-    &mech_free,
+    &crammd5_server_mech_new,
+    &crammd5_server_mech_step,
+    &crammd5_both_mech_dispose,
+    &crammd5_both_mech_free,
     NULL,
     NULL,
     NULL,
@@ -526,7 +528,7 @@ int crammd5_server_plug_init(const sasl_utils_t *utils,
 
     /* make sure there is a cram entry */
     
-    *pluglist=plugins;
+    *pluglist=crammd5_server_plugins;
 
     *plugcount=1;  
     *out_version=SASL_SERVER_PLUG_VERSION;
@@ -534,9 +536,9 @@ int crammd5_server_plug_init(const sasl_utils_t *utils,
     return SASL_OK;
 }
 
-static int c_start(void *glob_context __attribute__((unused)), 
-		 sasl_client_params_t *params,
-		 void **conn)
+static int crammd5_client_mech_new(void *glob_context __attribute__((unused)), 
+				   sasl_client_params_t *params,
+				   void **conn)
 {
     context_t *text;
 
@@ -765,14 +767,14 @@ static int make_prompts(sasl_client_params_t *params,
   return SASL_OK;
 }
 
-static int c_continue_step (void *conn_context,
-	      sasl_client_params_t *params,
-	      const char *serverin,
-	      unsigned serverinlen,
-	      sasl_interact_t **prompt_need,
-	      const char **clientout,
-	      unsigned *clientoutlen,
-	      sasl_out_params_t *oparams)
+static int crammd5_client_mech_step(void *conn_context,
+				    sasl_client_params_t *params,
+				    const char *serverin,
+				    unsigned serverinlen,
+				    sasl_interact_t **prompt_need,
+				    const char **clientout,
+				    unsigned *clientoutlen,
+				    sasl_out_params_t *oparams)
 {
   context_t *text;
   text=conn_context;
@@ -902,7 +904,7 @@ static int c_continue_step (void *conn_context,
   return SASL_FAIL; /* should never get here */
 }
 
-static sasl_client_plug_t client_plugins[] = 
+static sasl_client_plug_t crammd5_client_plugins[] = 
 {
   {
     "CRAM-MD5",
@@ -911,10 +913,10 @@ static sasl_client_plug_t client_plugins[] =
     0,
     NULL,
     NULL,
-    &c_start,
-    &c_continue_step,
-    &dispose,
-    &mech_free,
+    &crammd5_client_mech_new,
+    &crammd5_client_mech_step,
+    &crammd5_both_mech_dispose,
+    &crammd5_both_mech_free,
     NULL,
     NULL,
     NULL
@@ -932,7 +934,7 @@ int crammd5_client_plug_init(const sasl_utils_t *utils,
 	return SASL_BADVERS;
     }
 
-    *pluglist=client_plugins;
+    *pluglist=crammd5_client_plugins;
     *plugcount=1;
     *out_version=SASL_CLIENT_PLUG_VERSION;
 

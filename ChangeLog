@@ -6,6 +6,16 @@
 
 	* utils/testsuite.c: switch some sasl_errstrings to sasl_errdetail
 	* plugins/gssapi.c: Fix error reporting
+
+	* plugins/gssapi.c: Required SASL_CB_USER instead of SASL_CB_AUTHNAME
+
+	* plugins/anonymous.c: Function name standardization
+	* plugins/cram.c: Function name standardization
+	* plugins/digestmd5.c: Function name standardization
+	* plugins/gssapi.c: Function name standardization
+	* plugins/kerberos.c: Function name standardization
+	* plugins/login.c: Function name standardization
+	* plugins/plain.c: Function name standardization	
 	
 2001-07-26  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* lib/common.c (_sasl_getcallback): fixed reference to
