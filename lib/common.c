@@ -1,7 +1,7 @@
 /* common.c - Functions that are common to server and clinet
  * Rob Siemborski
  * Tim Martin
- * $Id: common.c,v 1.64.2.30 2001/07/06 21:06:15 rjs3 Exp $
+ * $Id: common.c,v 1.64.2.31 2001/07/06 22:26:04 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -310,25 +310,8 @@ int _sasl_conn_init(sasl_conn_t *conn,
 
   conn->secflags = secflags;
 
-  if(!iplocalport ||
-     _sasl_ipfromstring(iplocalport, &conn->ip_local) != SASL_OK) {
-      memset(&conn->ip_local, 0, sizeof(conn->ip_local));
-      conn->got_ip_local = 0;
-  } else {
-      /* It checks out OK */
-      strcpy(conn->iplocalport, iplocalport);
-      conn->got_ip_local = 1;
-  }
-  
-  if(!ipremoteport ||
-     _sasl_ipfromstring(ipremoteport, &conn->ip_remote) != SASL_OK) {
-      memset(&conn->ip_remote, 0, sizeof(conn->ip_remote));
-      conn->got_ip_remote = 0;
-  } else {
-      /* It checks out OK */
-      strcpy(conn->ipremoteport, ipremoteport);
-      conn->got_ip_remote = 1;
-  }
+  sasl_setprop(conn, SASL_IPLOCALPORT, iplocalport);
+  sasl_setprop(conn, SASL_IPREMOTEPORT, ipremoteport);
   
   conn->encode_buf = NULL;
   conn->context = NULL;
@@ -555,6 +538,7 @@ int sasl_setprop(sasl_conn_t *conn, int propnum, const void *value)
   case SASL_SSF_EXTERNAL:
       conn->external.ssf = *((sasl_ssf_t *)value);
       break;
+
   case SASL_AUTH_EXTERNAL:
       if(value && strlen(value)) {
 	  result = _sasl_strdup(value, &str, NULL);
@@ -569,11 +553,48 @@ int sasl_setprop(sasl_conn_t *conn, int propnum, const void *value)
       conn->external.auth_id = str;
 
       break;
+
   case SASL_SEC_PROPS:
       memcpy(&(conn->props),(sasl_security_properties_t *)value,
 	     sizeof(sasl_security_properties_t));
       break;
+
+  case SASL_IPREMOTEPORT:
+  {
+      const char *ipremoteport = (const char *)value;
+      if(!value) {
+	  memset(&conn->ip_remote, 0, sizeof(conn->ip_remote));
+	  conn->got_ip_remote = 0; 
+      } else if (_sasl_ipfromstring(ipremoteport, &(conn->ip_remote))
+		 != SASL_OK) {
+	  sasl_seterror(conn, 0, "Bad IPREMOTEPORT value");
+	  result = SASL_BADPARAM;
+      } else {
+	  strcpy(conn->ipremoteport, ipremoteport);
+	  conn->got_ip_remote = 1;
+      }
+      break;
+  }
+
+  case SASL_IPLOCALPORT:
+  {
+      const char *iplocalport = (const char *)value;
+      if(!value) {
+	  memset(&conn->ip_local, 0, sizeof(conn->ip_local));
+	  conn->got_ip_local = 0;	  
+      } else if (_sasl_ipfromstring(iplocalport, &(conn->ip_local))
+		 != SASL_OK) {
+	  sasl_seterror(conn, 0, "Bad IPLOCALPORT value");
+	  result = SASL_BADPARAM;
+      } else {
+	  strcpy(conn->iplocalport, iplocalport);
+	  conn->got_ip_local = 1;
+      }
+      break;
+  }
+
   default:
+      sasl_seterror(conn, 0, "Unknown parameter type");
       result = SASL_BADPARAM;
   }
   

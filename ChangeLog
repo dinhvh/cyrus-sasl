@@ -6,6 +6,8 @@
 	* Cleaned up a good deal of the library loading code so it
 	  now only gets called from the sasl_*_init functions, and
 	  all the cleanup happens in the common sasl_done function
+	* Added SASL_IPREMOTEPORT and SASL_IPLOCALPORT to setprop,
+	  and now _sasl_conn_init calls it to do the same work.
 
 2000-07-05  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Working libsfsasl and smtptest program (--with-sfio)
