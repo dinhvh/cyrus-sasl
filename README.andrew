@@ -1,5 +1,5 @@
 #!/bin/sh
-smake -gnu init mf install
+smake -gnu init install
 exit 0
 
 To wash, "smake -gnu wash install".
