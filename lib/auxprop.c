@@ -58,6 +58,7 @@ struct proppool
 
 struct propctx  {
     struct propval *values;
+    unsigned used_values, allocated_values;
 
     struct proppool *mem_base;
     struct proppool *mem_cur;
@@ -96,6 +97,9 @@ static int prop_init(struct propctx *ctx, unsigned estimate)
     ctx->values = sasl_ALLOC(VALUES_SIZE);
     if(!ctx->values) return SASL_NOMEM;
 
+    ctx->allocated_values = PROP_DEFAULT;
+    ctx->used_values = 0;
+
     ctx->mem_base = alloc_proppool(estimate);
     if(!ctx->mem_base) return SASL_NOMEM;
 
@@ -131,6 +135,8 @@ struct propctx *prop_new(unsigned estimate)
 int prop_dup(struct propctx *src_ctx, struct propctx **dst_ctx) 
 {
     if(!src_ctx || !dst_ctx) return SASL_BADPARAM;
+
+    /* FIXME: [broken] */
     
     *dst_ctx = sasl_ALLOC(sizeof(struct propctx));
     if(!(*dst_ctx)) return SASL_NOMEM;
@@ -168,7 +174,48 @@ void prop_dispose(struct propctx **in_ctx)
  */
 int prop_request(struct propctx *ctx, const char **names) 
 {
-    return SASL_FAIL;
+    unsigned i, new_values, total_values;
+
+    if(!ctx || !names) return SASL_BADPARAM;
+
+    /* Count how many we need to add */
+    for(new_values=0; names[new_values]; new_values++);
+
+    /* Do we need to add ANY? */
+    if(!new_values) return SASL_OK;
+
+    total_values = new_values + ctx->used_values;
+
+    if(total_values > ctx->allocated_values) {
+	unsigned new_alloc_length;
+	
+	if(total_values > 2 * ctx->allocated_values) {
+	    new_alloc_length = total_values;
+	} else {
+	    new_alloc_length = 2 * ctx->allocated_values;
+	}
+	
+	/* We need to allocate more! */
+	ctx->values = sasl_REALLOC(ctx->values,
+				   new_alloc_length * sizeof(struct propval));
+
+	if(!ctx->values) {
+	    ctx->allocated_values = ctx->used_values = 0;
+	    return SASL_NOMEM;
+	}
+
+	/* It worked! Update the structure! */
+	ctx->allocated_values = new_alloc_length;
+    }
+
+    /* Now do the copy, or referencing rather */
+    for(i=0;i<new_values;i++) {
+	ctx->values[ctx->used_values++].name = names[i];
+    }
+
+    /* FIXME: Clear Values as Side-Effect? */
+    
+    return SASL_OK;
 }
 
 /* return array of struct propval from the context
