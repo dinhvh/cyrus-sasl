@@ -1,6 +1,6 @@
 /* Kerberos4 SASL plugin
  * Tim Martin 
- * $Id: kerberos4.c,v 1.65.2.11 2001/06/12 19:25:16 rjs3 Exp $
+ * $Id: kerberos4.c,v 1.65.2.12 2001/06/18 15:38:38 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
@@ -261,6 +261,7 @@ static int privacy_decode_once(void *context,
     if (*inputlen < diff) { /* not enough for a decode */
 	memcpy(text->buffer+text->cursize, *input, *inputlen);
 	text->cursize+=*inputlen;
+	*inputlen=0;
 	*outputlen=0;
 	*output=NULL;
 	return SASL_OK;
@@ -328,11 +329,15 @@ static int privacy_decode(void *context,
       if (tmp!=NULL) /* if received 2 packets merge them together */
       {
 	  ret = _plug_buf_alloc(text->utils, &text->decode_buf,
-				&text->decode_buf_len, *outputlen + tmplen);
+				&text->decode_buf_len, *outputlen + tmplen + 1);
 	  if(ret != SASL_OK) return ret;
 
 	  *output = text->decode_buf;
 	  memcpy(text->decode_buf + *outputlen, tmp, tmplen);
+
+	  /* Protect stupid clients */
+	  *(text->decode_buf + *outputlen + tmplen) = '\0';	  
+
 	  *outputlen+=tmplen;
 	  text->utils->free(tmp);
       }

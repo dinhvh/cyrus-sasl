@@ -239,6 +239,7 @@ sasl_gss_decode_once(void *context,
     OM_uint32 maj_stat, min_stat;
     gss_buffer_t input_token, output_token;
     gss_buffer_desc real_input_token, real_output_token;
+    int result;
     unsigned diff;
 
     if (text->state != SASL_GSSAPI_STATE_AUTHENTICATED)
@@ -263,11 +264,9 @@ sasl_gss_decode_once(void *context,
 	    if (text->size > 0xFFFF || text->size <= 0) return SASL_FAIL;
 
 	    if (text->bufsize < text->size + 5) {
-		if(!text->buffer)
-		    text->buffer = text->utils->malloc(text->size + 5);
-		else
-		    text->buffer = text->utils->realloc(text->buffer, text->size + 5);
-		text->bufsize = text->size + 5;
+		result = _plug_buf_alloc(text->utils, &text->buffer,
+					       &(text->bufsize), text->size+5);
+		if(result != SASL_OK) return result;
 	    }
 	    if (text->buffer == NULL) return SASL_NOMEM;
 	}
@@ -286,6 +285,7 @@ sasl_gss_decode_once(void *context,
 	/* ok, let's queue it up; not enough data */
 	memcpy(text->buffer + text->cursize, *input, *inputlen);
 	text->cursize += *inputlen;
+	*inputlen = 0;
 	*outputlen = 0;
 	*output = NULL;
 	return SASL_OK;
@@ -319,6 +319,8 @@ sasl_gss_decode_once(void *context,
 
     if (outputlen)
 	*outputlen = output_token->length;
+
+    /* FIXME: This really looks like a potential memory leak to me! */
     if (output_token->value) {
 	if (output)
 	    *output = output_token->value;
@@ -354,11 +356,16 @@ static int sasl_gss_decode(void *context,
       if (tmp!=NULL) /* if received 2 packets merge them together */
       {
 	  ret = _plug_buf_alloc(text->utils, &(text->decode_buf),
-				&(text->decode_buf_len), *outputlen + tmplen);
+				&(text->decode_buf_len),
+				*outputlen + tmplen + 1);
 	  if(ret != SASL_OK) return ret;
 
 	  *output = text->decode_buf;
 	  memcpy(text->decode_buf + *outputlen, tmp, tmplen);
+
+	  /* Protect stupid clients */
+	  *(text->decode_buf + *outputlen + tmplen) = '\0';
+
 	  *outputlen+=tmplen;
 	  text->utils->free(tmp);
       }
