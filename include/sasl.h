@@ -572,6 +572,12 @@ typedef int sasl_server_userdb_setpass_t(sasl_conn_t *conn,
 #define SASL_CB_SERVER_USERDB_SETPASS (0x8006)
 
 /* callback for a server-supplied user canonicalization function.
+ *
+ * This function is called directly after the mechanism has the
+ * authentication and authorization IDs.  It is called before any
+ * User Canonicalization plugin is called.  It has the responsibility
+ * of copying its output into the provided output buffers.
+ * 
  *  user, ulen    -- user name (authorization name), may not be NUL terminated
  *                   may be same as out_user
  *  authid, alen  -- authentication name, may not be NUL terminated
