@@ -1,7 +1,7 @@
 /* Kerberos4 SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: kerberos4.c,v 1.65.2.38 2001/07/31 21:17:57 rjs3 Exp $
+ * $Id: kerberos4.c,v 1.65.2.39 2001/07/31 21:54:08 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -679,7 +679,9 @@ static int kerberosv4_server_mech_step (void *conn_context,
 
   if (text->state==2)
   {
+#ifndef KRB4_IGNORE_IP_ADDRESS
     int result;
+#endif
     int testnum;
     int flag;
     unsigned char *in;
@@ -747,6 +749,7 @@ static int kerberosv4_server_mech_step (void *conn_context,
 
     /* get ip data */
     /* get ip number in addr*/
+#ifndef KRB4_IGNORE_IP_ADDRESS
     result = ipv4_ipfromstring(sparams->utils,
 			       sparams->iplocalport, &(text->ip_local));
     if (result != SASL_OK) {
@@ -754,7 +757,11 @@ static int kerberosv4_server_mech_step (void *conn_context,
 	/* couldn't get local IP address */
 	return result;
     }
+#else
+    memset(&text->ip_local, 0, sizeof(text->ip_local));
+#endif
 
+#ifndef KRB4_IGNORE_IP_ADDRESS
     result = ipv4_ipfromstring(sparams->utils,
 			       sparams->ipremoteport, &(text->ip_remote));
     if (result != SASL_OK) {
@@ -762,6 +769,10 @@ static int kerberosv4_server_mech_step (void *conn_context,
 	/* couldn't get remote IP address */
 	return result;
     }
+#else
+    memset(&text->ip_remote, 0, sizeof(text->ip_remote));
+#endif
+  
 
     /* fill in oparams */
     oparams->maxoutbuf = (in[5] << 16) + (in[6] << 8) + in[7];
