@@ -3,6 +3,7 @@
 	* Cleaned up java test utilities and gave them a build system
 	* Minor GSSAPI configure changes
 	* Clarfied -d option for saslpasswd
+	* Added plugin programmer's guide
         * corrected FreeBSD-related configure checking of Berkeley DB
           as well as treatment of libcom_err
           (from Scot W. Hetzel <scot@genroco.com>)
