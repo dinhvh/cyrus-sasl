@@ -2,7 +2,6 @@ Library
 ~~~~~~~
 ) Better/FASTER random numbers (init time is pretty miserable)
 ) Test suite [still] needs work
-) parse the .la file instead of assuming we load the ".so" file
 ) better support for including missing routines
 ) check return settings (ssf, etc.) on auth failure
 ) Make real global objects in cram, digest
