@@ -1,7 +1,7 @@
 /* testsuite.c -- Stress the library a little
  * Rob Siemborski
  * Tim Martin
- * $Id: testsuite.c,v 1.13.2.17 2001/06/28 21:51:28 rjs3 Exp $
+ * $Id: testsuite.c,v 1.13.2.18 2001/06/30 01:29:55 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -1786,10 +1786,10 @@ void test_checkpass(void)
 		   password, strlen(password)) == SASL_OK)
 	fatal("Suceeded with NULL saslconn");
 
-    /* NULL username */
+    /* NULL username -- should be OK if sasl_checkpass enabled */
     if (sasl_checkpass(saslconn, NULL, strlen(username),
-		   password, strlen(password)) == SASL_OK)
-	fatal("Suceeded with NULL username");
+		   password, strlen(password)) != SASL_OK)
+	fatal("failed check if sasl_checkpass is enabled");
 
     /* NULL password */
     if (sasl_checkpass(saslconn, username, strlen(username),
