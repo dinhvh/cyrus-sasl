@@ -1,5 +1,6 @@
 /* testsuite.c -- Stress the library a little
  * Tim Martin
+ * Rob Siemborski (SASL v2 changes)
  */
 /* 
  * Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
@@ -61,9 +62,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <sasl.h>
-#include <saslutil.h>
+#include <sasl/sasl.h>
+#include <sasl/saslutil.h>
 
+#include <sasl/md5global.h>
+#include <sasl/md5.h>
+#include <sasl/hmac-md5.h>
 
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
@@ -86,11 +90,11 @@ char myhostname[1024+1];
 #define REALLY_LONG_LENGTH  32000
 #define REALLY_LONG_BACKOFF  2000
 
-char *username = "tmartin";
-char *authname = "tmartin";
-char *password = "1234";
+const char *username = "rjs3";
+const char *authname = "rjs3";
+const char *password = "1234";
 
-static char *gssapi_service = "host";
+static const char *gssapi_service = "host";
 
 /* our types of failures */
 typedef enum {
@@ -205,6 +209,11 @@ int good_getopt(void *context __attribute__((unused)),
 	*result = "sasldb";
 	if (len)
 	    *len = strlen("sasldb");
+	return SASL_OK;
+    } else if (!strcmp(option, "sasldb_path")) {
+	*result = "./sasldb";
+	if (len)
+	    *len = strlen("./sasldb");
 	return SASL_OK;
     }
 
@@ -565,42 +574,30 @@ static sasl_callback_t client_callbacks[] = {
 void interaction (int id, const char *prompt,
 		  char **tresult, unsigned int *tlen)
 {
-    char result[1024];
+    /* FIXME: Look at that memory leak! */
     
     if (id==SASL_CB_PASS) {
 	*tresult=(char *) strdup(password);
-	*tlen=strlen(*tresult);
-	return;
     } else if (id==SASL_CB_USER) {
-	if (username != NULL) {
-	    strcpy(result, username);
-	} else {
-	    fatal("no username");
-	}
+	*tresult=(char *) strdup(username);
     } else if (id==SASL_CB_AUTHNAME) {
-	if (authname != NULL) {
-	    strcpy(result, authname);
-	} else {
-	    fatal("no authname");
-	}
+	*tresult=(char *) strdup(authname);
 #ifdef SASL_CB_GETREALM
     } else if ((id==SASL_CB_GETREALM)) {
-      strcpy(result, myhostname);
+	*tresult=(char *) strdup(myhostname);
 #endif
     } else {
+	char result[1024];
 	int c;
 	
 	printf("%s: ",prompt);
 	fgets(result, sizeof(result) - 1, stdin);
 	c = strlen(result);
 	result[c - 1] = '\0';
+	*tresult=strdup(result);
     }
 
-    *tlen = strlen(result);
-    *tresult = (char *) malloc(*tlen+1);
-
-    memset(*tresult, 0, *tlen+1);
-    memcpy((char *) *tresult, result, *tlen);
+    *tlen=strlen(*tresult);
 }
 
 void fillin_correctly(sasl_interact_t *tlist)
@@ -724,7 +721,7 @@ void corrupt(corrupt_type_t type, char *in, int inlen, char **out, unsigned *out
 
 void sendbadsecond(char *mech, void *rock)
 {
-    int result;
+    int result, need_another_client = 0;
     sasl_conn_t *saslconn;
     sasl_conn_t *clientconn;
     const char *out, *dec, *out2;
@@ -732,7 +729,7 @@ void sendbadsecond(char *mech, void *rock)
     unsigned outlen, declen, outlen2;
     sasl_interact_t *client_interact=NULL;
     const char *mechusing;
-    char *service = "rcmd";
+    const char *service = "rcmd";
     int mystep = 0; /* what step in the authentication are we on */
     int mayfail = 0; /* we did some corruption earlier so it's likely to fail now */
     
@@ -784,7 +781,8 @@ void sendbadsecond(char *mech, void *rock)
 				   &mechusing);
 
 	if (result == SASL_INTERACT) fillin_correctly(client_interact);
-
+	else if(result == SASL_CONTINUE) need_another_client = 1;
+	else if(result == SASL_OK) need_another_client = 0;
     } while (result == SASL_INTERACT);
 			       
     if (result < 0)
@@ -840,7 +838,12 @@ void sendbadsecond(char *mech, void *rock)
 				      &client_interact,
 				      &out2, &outlen2);
 	    
-	    if (result == SASL_INTERACT) fillin_correctly(client_interact);
+	    if (result == SASL_INTERACT)
+		fillin_correctly(client_interact);
+	    else if (result == SASL_CONTINUE)
+		need_another_client = 1;
+	    else if (result == SASL_OK)
+		need_another_client = 0;
 	} while (result == SASL_INTERACT);
 
 	if (mayfail == 1)
@@ -893,8 +896,19 @@ void sendbadsecond(char *mech, void *rock)
 
     }
 
+    if(need_another_client) {
+	result = sasl_client_step(clientconn,
+				  out, outlen,
+				  &client_interact,
+				  &out2, &outlen2);
+	if(result != SASL_OK)
+	    fatal("client was not ok on last server step");
+    }
+    
+
     /* client to server */
-    result = sasl_encode(clientconn, CLIENT_TO_SERVER, strlen(CLIENT_TO_SERVER), &out, &outlen);
+    result = sasl_encode(clientconn, CLIENT_TO_SERVER,
+			 strlen(CLIENT_TO_SERVER), &out, &outlen);
     if (result != SASL_OK) fatal("Error encoding");
 
     if (mystep == send->step)
@@ -1092,10 +1106,14 @@ void test_serverstart(int steps)
 void create_ids(void)
 {
     sasl_conn_t *saslconn;
-    int result;
+    int i,result;
     struct sockaddr_in addr;
     struct hostent *hp;
     char buf[8192];
+    const char challenge[] = "<1896.697170952@cyrus.andrew.cmu.edu>";
+    MD5_CTX ctx;
+    unsigned char digest[16];
+    char digeststr[32];
 
     if (sasl_server_init(goodsasl_cb,"TestSuite")!=SASL_OK) fatal("");
 
@@ -1130,6 +1148,25 @@ void create_ids(void)
     if (result != SASL_OK)
 	fatal("Unable to verify password we just set");
 
+    /* Test sasl_checkapop */
+    MD5Init(&ctx);
+    MD5Update(&ctx,challenge,strlen(challenge));
+    MD5Update(&ctx,password,strlen(password));
+    MD5Final(digest, &ctx);
+                            
+    /* convert digest from binary to ASCII hex */
+    for (i = 0; i < 16; i++)
+      sprintf(digeststr + (i*2), "%02x", digest[i]);
+
+    sprintf(buf, "%s %s", username, digeststr);
+    
+    result = sasl_checkapop(saslconn,
+                            challenge, strlen(challenge),
+                            buf, strlen(buf));
+    if(result != SASL_OK)
+        fatal("Unable to checkapop password we just set");
+    /* End checkapop test */
+
     /* now delete user and make sure can't find him anymore */
     result = sasl_setpass(saslconn, username, password, strlen(password), NULL, 0, SASL_SET_DISABLE);
     if (result != SASL_OK)
@@ -1139,6 +1176,14 @@ void create_ids(void)
 			    password, strlen(password));
     if (result != SASL_NOUSER)
 	fatal("Didn't get SASL_NOUSER");
+
+    /* And checkapop... */
+    result = sasl_checkapop(saslconn,
+                            challenge, strlen(challenge), 
+                            buf, strlen(buf));
+    if(result == SASL_OK)
+        fatal("Checkapop succeeded but should have failed");
+    /* End checkapop */
 
     /* try bad params */
     if (sasl_setpass(NULL,username, password, strlen(password), NULL, 0, SASL_SET_CREATE)==SASL_OK)
