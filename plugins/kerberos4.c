@@ -1,7 +1,7 @@
 /* Kerberos4 SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: kerberos4.c,v 1.65.2.19 2001/06/27 14:56:31 rjs3 Exp $
+ * $Id: kerberos4.c,v 1.65.2.20 2001/06/28 19:28:53 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -178,6 +178,21 @@ typedef struct context {
 
 } context_t;
 
+#define KRB_LOCK_MUTEX(utils)  \
+    if(((sasl_utils_t *)(utils))->mutex_lock(krb_mutex) != 0) { \
+       ((sasl_utils_t *)(utils))->seterror(((sasl_utils_t *)(utils))->conn, \
+                                           0, "error locking mutex"); \
+			           return SASL_FAIL; \
+                                }
+#define KRB_UNLOCK_MUTEX(utils) \
+    if(((sasl_utils_t *)(utils))->mutex_unlock(krb_mutex) != 0) { \
+       ((sasl_utils_t *)(utils))->seterror(((sasl_utils_t *)(utils))->conn, \
+                                           0, "error unlocking mutex"); \
+			           return SASL_FAIL; \
+                                }
+
+/* Mutex for not-thread-safe kerberos 4 library */
+static void *krb_mutex = NULL;
 static char *srvtab = NULL;
 static unsigned refcount = 0;
 
@@ -198,11 +213,15 @@ static int privacy_encode(void *context,
 
   if(ret != SASL_OK) return ret;
 
+  KRB_LOCK_MUTEX(text->utils);
+  
   len=krb_mk_priv((char *) text->enc_in_buf->data, text->encode_buf+4,
 		  text->enc_in_buf->curlen,  text->init_keysched, 
 		  &text->session, &text->ip_local,
 		  &text->ip_remote);
 
+  KRB_UNLOCK_MUTEX(text->utils);
+  
   /* returns -1 on error */
   if (len==-1) return SASL_FAIL;
   
@@ -284,10 +303,14 @@ static int privacy_decode_once(void *context,
     }
     
     memset(&data,0,sizeof(MSG_DAT));
+
+    KRB_LOCK_MUTEX(text->utils);
     
     result=krb_rd_priv((char *) text->buffer,text->size,  text->init_keysched, 
 		       &text->session, &text->ip_remote,
 		       &text->ip_local, &data);
+
+    KRB_UNLOCK_MUTEX(text->utils);
 
     /* see if the krb library gave us a failure */
     if (result != 0) {
@@ -380,9 +403,13 @@ integrity_encode(void *context,
 
   if(ret != SASL_OK) return ret;
   
+  KRB_LOCK_MUTEX(text->utils);
+  
   len=krb_mk_safe(text->enc_in_buf->data, (text->encode_buf+4),
 		  text->enc_in_buf->curlen,
 		  &text->session, &text->ip_local, &text->ip_remote);
+
+  KRB_UNLOCK_MUTEX(text->utils);
 
   /* returns -1 on error */
   if (len==-1) return SASL_FAIL;
@@ -463,10 +490,14 @@ static int integrity_decode_once(void *context,
       input+=diff;      
       *inputlen-=diff;
     }
-  
+
+    KRB_LOCK_MUTEX(text->utils);
+    
     result = krb_rd_safe((char *) text->buffer, text->size,
 			 &text->session, &text->ip_remote,
 			 &text->ip_local, &data);
+
+    KRB_UNLOCK_MUTEX(text->utils);
 
     /* see if the krb library found a problem with what we were given */
     if (result != 0)
@@ -557,7 +588,15 @@ server_start(void *glob_context __attribute__((unused)),
 	     unsigned challen __attribute__((unused)),
 	     void **conn_context)
 {
-  return new_text(sparams->utils, (context_t **) conn_context);
+    if(!krb_mutex) {
+	krb_mutex = sparams->utils->mutex_alloc();
+	if(!krb_mutex) {
+	    sparams->utils->seterror(sparams->utils->conn, 0,
+				     "couldn't allocate mutex");
+	}
+    }
+    
+    return new_text(sparams->utils, (context_t **) conn_context);
 }
 #endif
 
@@ -581,6 +620,8 @@ static void dispose(void *conn_context, const sasl_utils_t *utils)
 static void mech_free(void *glob_context __attribute__((unused)),
 		      const sasl_utils_t *utils)
 {
+    if (krb_mutex) utils->mutex_free(krb_mutex);
+
     if (srvtab && --refcount == 0) {
 	utils->free(srvtab);
 	srvtab = NULL;
@@ -675,13 +716,17 @@ static int server_continue_step (void *conn_context,
     for (lup=0;lup<clientinlen;lup++)      
       ticket.dat[lup]=clientin[lup];
 
+    KRB_LOCK_MUTEX(sparams->utils);
+
     text->realm = krb_realmofhost(sparams->serverFQDN);
 
     /* get instance */
     strncpy (text->instance, krb_get_phost (sparams->serverFQDN),
 	     sizeof (text->instance));
-    text->instance[sizeof(text->instance)-1] = 0;
 
+    KRB_UNLOCK_MUTEX(sparams->utils);
+    
+    text->instance[sizeof(text->instance)-1] = 0;
     memset(&addr, 0, sizeof(struct sockaddr_in));
 
 #ifndef KRB4_IGNORE_IP_ADDRESS
@@ -696,8 +741,11 @@ static int server_continue_step (void *conn_context,
 #endif
 
     /* check ticket */
+
+    KRB_LOCK_MUTEX(sparams->utils);
     result = krb_rd_req(&ticket, (char *) sparams->service, text->instance, 
 			addr.sin_addr.s_addr, &ad, srvtab);
+    KRB_UNLOCK_MUTEX(sparams->utils);
 
     if (result) { /* if fails mechanism fails */
 	text->utils->seterror(text->utils->conn,0,krb_err_txt[result]);
@@ -1043,12 +1091,14 @@ static int client_continue_step (void *conn_context,
 	    return SASL_BADPARAM;
 	}
 
+	KRB_LOCK_MUTEX(cparams->utils);
 	text->realm=krb_realmofhost(cparams->serverFQDN);
 	text->hostname=(char *) cparams->serverFQDN;
 
 	/* the instance of the principal we're authenticating with */
 	strncpy (text->instance, krb_get_phost (cparams->serverFQDN), 
 		 sizeof (text->instance));
+
 	/* text->instance is NULL terminated unless it was too long */
 	text->instance[sizeof(text->instance)-1] = '\0';
 
@@ -1068,6 +1118,8 @@ static int client_continue_step (void *conn_context,
 			     text->credentials.pinst) != 0)
 #endif
 	{
+	    KRB_UNLOCK_MUTEX(cparams->utils);
+	    
 	    text->utils->seterror(text->utils->conn,SASL_NOLOG,
 			  "krb_mk_req() failed: %s (%d)",
 			  krb_err_txt[result], result);
@@ -1077,6 +1129,8 @@ static int client_continue_step (void *conn_context,
 			       krb_err_txt[result], result);
 	    return SASL_FAIL;
 	}
+
+	KRB_UNLOCK_MUTEX(cparams->utils);
 
 	ret = _plug_buf_alloc(text->utils, &(text->out_buf),
 			      &(text->out_buf_len), ticket.length);
@@ -1198,10 +1252,14 @@ static int client_continue_step (void *conn_context,
 
 #ifndef macintosh
 	/* get credentials */
-	if ((result = krb_get_cred((char *)cparams->service,
-			  text->instance,
-			  text->realm,
-			  &text->credentials)) != 0) {
+	KRB_LOCK_MUTEX(cparams->utils);
+	result = krb_get_cred((char *)cparams->service,
+			      text->instance,
+			      text->realm,
+			      &text->credentials);
+	KRB_UNLOCK_MUTEX(cparams->utils);
+	
+	if(result != 0) {
 	    cparams->utils->log(NULL, SASL_LOG_ERR,
 				"krb_get_cred() failed: %s (%d)",
 				krb_err_txt[result], result);
