@@ -215,6 +215,9 @@ typedef struct sasl_client_params {
     const char *serverFQDN;	/* server fully qualified domain name */
     const char *clientFQDN;	/* client's fully qualified domain name */
     const sasl_utils_t *utils;	/* SASL API utility routines */
+				/* FIXME: (different from chris's API)
+				 * Must remain valid until mech_free is
+				 * called */
     const sasl_callback_t *prompt_supp; /* client callback list */
     const char *iplocalport;	/* server IP domain literal & port */
     const char *ipremoteport;	/* client IP domain literal & port */
@@ -429,6 +432,9 @@ typedef struct sasl_server_params {
     int log_level;
 
     const sasl_utils_t *utils;	/* SASL API utility routines */
+				/* FIXME: (different from chris's API)
+				 * Must remain valid until mech_free is
+				 * called */
     const sasl_callback_t *callbacks;	/* Callbacks from application */
 
     /* application's security requirements */
