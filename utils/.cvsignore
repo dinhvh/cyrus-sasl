@@ -3,6 +3,7 @@ Makefile
 .deps
 .libs
 *.l[ao]
+smtptest
 testsuite
 testsuitestatic
 sasldblistusers
