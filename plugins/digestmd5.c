@@ -1,7 +1,7 @@
 /* DIGEST-MD5 SASL plugin
  * Tim Martin
  * Alexey Melnikov 
- * $Id: digestmd5.c,v 1.97.2.1 2001/06/20 20:40:27 rjs3 Exp $
+ * $Id: digestmd5.c,v 1.97.2.2 2001/06/22 15:37:53 rjs3 Exp $
  */
 
 /* 
@@ -49,8 +49,10 @@
 #include <stdio.h>
 #include <time.h>
 #include <string.h>
+#ifndef macintosh
 #include <sys/types.h>
 #include <sys/stat.h>
+#endif
 #include <fcntl.h>
 #include <ctype.h>
 
@@ -95,6 +97,10 @@ extern int      strcasecmp(const char *s1, const char *s2);
 #endif /* end WIN32 */
 
 static const char rcsid[] = "$Implementation: Carnegie Mellon SASL " VERSION " $";
+
+#ifdef macintosh
+#include <sasl_md5_plugin_decl.h>
+#endif
 
 /* external definitions */
 
@@ -245,7 +251,7 @@ static int      htoi(unsigned char *hexin, int *res);
 
 static unsigned char *COLON = (unsigned char *) ":";
 
-void
+static void
 CvtHex(
        IN HASH Bin,
        OUT HASHHEX Hex
@@ -269,7 +275,7 @@ CvtHex(
   Hex[HASHHEXLEN] = '\0';
 }
 
-bool
+static bool
 UTF8_In_8859_1(const unsigned char *base,
 	       int len)
 {
@@ -369,7 +375,7 @@ DigestCalcSecret(IN const sasl_utils_t * utils,
 
 
 /* calculate H(A1) as per spec */
-void
+static void
 DigestCalcHA1(IN context_t * text,
 	      IN const sasl_utils_t * utils,
 	      IN unsigned char *pszUserName,
@@ -581,7 +587,7 @@ calculate_response(context_t * text,
   return result;
 }
 
-void
+static void
 DigestCalcHA1FromSecret(IN context_t * text,
 			IN const sasl_utils_t * utils,
 			IN HASH HA1,
@@ -808,7 +814,7 @@ add_to_challenge(const sasl_utils_t * utils,
 }
 
 
-char           *
+static char           *
 strend(char *s)
 {
   if (s == NULL)
@@ -817,7 +823,7 @@ strend(char *s)
   return (s + strlen(s));
 }
 
-char *skip_lws (char *s)
+static char *skip_lws (char *s)
 {
   assert (s != NULL);
 
@@ -830,7 +836,7 @@ char *skip_lws (char *s)
   return s;
 }
 
-char *skip_token (char *s, int caseinsensitive)
+static char *skip_token (char *s, int caseinsensitive)
 {
   assert (s != NULL);
   
@@ -852,7 +858,7 @@ char *skip_token (char *s, int caseinsensitive)
 }
 
 /* NULL - error (unbalanced quotes), otherwise pointer to the first character after value */
-char * unquote (char *qstr)
+static char * unquote (char *qstr)
 {
   char *endvalue;
   int   escaped = 0;

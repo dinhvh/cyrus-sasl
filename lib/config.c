@@ -1,6 +1,6 @@
 /* SASL Config file API
  * Tim Martin (originally in Cyrus distribution)
- * $Id: config.c,v 1.10 2000/08/14 01:43:06 leg Exp $
+ * $Id: config.c,v 1.10.2.1 2001/06/22 15:37:52 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
@@ -57,6 +57,7 @@
 #include "saslint.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <ctype.h>
 
 struct configlist {

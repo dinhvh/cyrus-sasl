@@ -1,6 +1,6 @@
 /* CRAM-MD5 SASL plugin
  * Tim Martin 
- * $Id: cram.c,v 1.55.2.3 2001/06/20 20:40:16 rjs3 Exp $
+ * $Id: cram.c,v 1.55.2.4 2001/06/22 15:37:53 rjs3 Exp $
  */
 
 /* 
@@ -43,16 +43,14 @@
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifdef HAVE_CONFIG_H
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
 #include <config.h>
-#endif /* HAVE_CONFIG_H */
-#ifdef WIN32
-/* # include "winconfig.h" */
-#include <config.h>
-#include <stdio.h>		/* for sprintf, snprinft */
-#endif /* WIN32 */
 #include <time.h>
+#ifndef macintosh
 #include <sys/stat.h>
+#endif
 #include <fcntl.h>
 #include <assert.h>
 
@@ -61,6 +59,10 @@
 #include <saslutil.h>
 
 #include "plugin_common.h"
+
+#ifdef macintosh
+#include <sasl_cram_plugin_decl.h>
+#endif
 
 #ifdef WIN32
 /* This must be after sasl.h, saslutil.h */

@@ -1,7 +1,7 @@
 /* Login SASL plugin
  * contributed by Rainer Schoepf <schoepf@uni-mainz.de>
  * based on PLAIN, by Tim Martin <tmartin@andrew.cmu.edu>
- * $Id: login.c,v 1.6.2.2 2001/06/20 16:28:14 rjs3 Exp $
+ * $Id: login.c,v 1.6.2.3 2001/06/22 15:37:55 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
@@ -590,7 +590,7 @@ static int client_continue_step (void *conn_context,
     /* set oparams */
     oparams->param_version = 0;
     oparams->doneflag = 1;
-    
+
     text->state = 99;
 
     return SASL_OK;

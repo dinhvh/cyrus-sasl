@@ -1,6 +1,6 @@
 /* Kerberos4 SASL plugin
  * Tim Martin 
- * $Id: kerberos4.c,v 1.65.2.13 2001/06/20 20:34:06 rjs3 Exp $
+ * $Id: kerberos4.c,v 1.65.2.14 2001/06/22 15:37:54 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
@@ -43,10 +43,14 @@
  */
 
 #include <config.h>
+#include <stdlib.h>
+#include <string.h>
 #include <krb.h>
 #include <des.h>
 #ifdef WIN32
 # include <winsock.h>
+#elif defined(macintosh)
+#include <kcglue_krb.h>
 #else
 # include <sys/param.h>
 # include <sys/socket.h>
@@ -67,6 +71,15 @@
 #include <sys/uio.h>
 
 #include "plugin_common.h"
+
+#ifdef macintosh
+/*
+ * krb.h doenst include some functions and mac compiler is picky
+ * about declartions
+ */
+#include <extra_krb.h>
+#include <sasl_kerberos4_plugin_decl.h>
+#endif
 
 #ifdef WIN32
 /* This must be after sasl.h, saslutil.h */
@@ -274,7 +287,8 @@ static int privacy_decode_once(void *context,
     memset(&data,0,sizeof(MSG_DAT));
     
     result=krb_rd_priv((char *) text->buffer,text->size,  text->init_keysched, 
-		     &text->session, &text->ip_remote, &text->ip_local, &data);
+		       &text->session, &text->ip_remote,
+		       &text->ip_local, &data);
 
     /* see if the krb library gave us a failure */
     if (result != 0) {
@@ -290,10 +304,12 @@ static int privacy_decode_once(void *context,
 	text->utils->seterror(text->utils->conn, 0, "timestamps not ok");
 	return SASL_FAIL;
     }
+
     text->time_sec = data.time_sec;
     text->time_5ms = data.time_5ms;
 
     *output = text->utils->malloc(data.app_length + 1);
+
     if ((*output) == NULL) {
 	return SASL_NOMEM;
     }
@@ -450,7 +466,8 @@ static int integrity_decode_once(void *context,
     }
   
     result = krb_rd_safe((char *) text->buffer, text->size,
-			 &text->session, &text->ip_remote, &text->ip_local, &data);
+			 &text->session, &text->ip_remote,
+			 &text->ip_local, &data);
 
     /* see if the krb library found a problem with what we were given */
     if (result != 0)
@@ -467,10 +484,12 @@ static int integrity_decode_once(void *context,
 	text->utils->seterror(text->utils->conn, 0, "timestamps not ok");
 	return SASL_FAIL;
     }
+
     text->time_sec = data.time_sec;
     text->time_5ms = data.time_5ms;
 
     *output=text->utils->malloc(data.app_length+1);
+
     if ((*output) == NULL) return SASL_NOMEM;
  
     *outputlen=data.app_length;
@@ -531,6 +550,7 @@ new_text(const sasl_utils_t *utils, context_t **text)
     return SASL_OK;
 }
 
+#ifndef macintosh /* FIXME: is this for real? */
 static int
 server_start(void *glob_context __attribute__((unused)),
 	     sasl_server_params_t *sparams,
@@ -540,8 +560,7 @@ server_start(void *glob_context __attribute__((unused)),
 {
   return new_text(sparams->utils, (context_t **) conn_context);
 }
-
-
+#endif
 
 static void dispose(void *conn_context, const sasl_utils_t *utils)
 {
@@ -595,6 +614,7 @@ static int cando_sec(sasl_security_properties_t *props,
   return 0;
 }
 
+#ifndef macintosh
 static int server_continue_step (void *conn_context,
 	      sasl_server_params_t *sparams,
 	      const char *clientin,
@@ -900,6 +920,7 @@ static const sasl_server_plug_t plugins[] =
     NULL
   }
 };
+#endif
 
 int sasl_server_plug_init(const sasl_utils_t *utils,
 			  int maxversion,
@@ -907,6 +928,9 @@ int sasl_server_plug_init(const sasl_utils_t *utils,
 			  const sasl_server_plug_t **pluglist,
 			  int *plugcount)
 {
+#ifdef macintosh
+	return SASL_BADVERS;
+#else
     const char *ret;
     unsigned int rl;
     
@@ -944,6 +968,7 @@ int sasl_server_plug_init(const sasl_utils_t *utils,
     *out_version = SASL_SERVER_PLUG_VERSION;
     
     return SASL_OK;
+#endif
 }
 
 static int client_start(void *glob_context __attribute__((unused)), 
@@ -1027,8 +1052,21 @@ static int client_continue_step (void *conn_context,
 	/* text->instance is NULL terminated unless it was too long */
 	text->instance[sizeof(text->instance)-1] = '\0';
 
+#ifndef macintosh
 	if ((result=krb_mk_req(&ticket, (char *) cparams->service, 
 			       text->instance, text->realm, text->challenge)))
+#else
+	memset(&text->credentials,0,sizeof(text->credentials));
+	if(kcglue_krb_mk_req(ticket.dat,
+			     &ticket.length,
+			     params->service,
+			     text->instance,
+			     text->realm,
+			     text->challenge,
+			     &text->credentials.session,
+			     text->credentials.pname,
+			     text->credentials.pinst) != 0)
+#endif
 	{
 	    text->utils->seterror(text->utils->conn,SASL_NOLOG,
 			  "krb_mk_req() failed: %s (%d)",
@@ -1158,6 +1196,7 @@ static int client_continue_step (void *conn_context,
 
 	memcpy(in, serverin, 8);
 
+#ifndef macintosh
 	/* get credentials */
 	if ((result = krb_get_cred((char *)cparams->service,
 			  text->instance,
@@ -1168,7 +1207,7 @@ static int client_continue_step (void *conn_context,
 				krb_err_txt[result], result);
 	    return SASL_BADAUTH;
 	}
-
+#endif
 	memcpy(text->session, text->credentials.session, 8);
 
 	/* make key schedule for encryption and decryption */
