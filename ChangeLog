@@ -7,6 +7,8 @@
 	  checking.  Added parameter to doauth to disable fatal() calls,
 	  updated all callers.
 
+	* utils/smtptest.c (main): added ability to support LMTP
+
 	* plugins/gssapi.c: conform with draft-ietf-cat-sasl-gssapi-05.txt
 
 2001-08-06  Rob Siemborski <rjs3+@andrew.cmu.edu>

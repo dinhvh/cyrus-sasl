@@ -72,7 +72,9 @@ int iptostring(const struct sockaddr *addr, socklen_t addrlen,
 
 void usage(char *p)
 {
-    fprintf(stderr, "%s [-v] [-u username] [-a authname] [-l ssf] [-m mech] host[:port]\n", p);
+    fprintf(stderr, "%s [-v] [-l] [-u username] [-a authname] [-s ssf] [-m mech] host[:port]\n", p);
+    fprintf(stderr, " -v\tVerbose Output\n");
+    fprintf(stderr, " -l\tLMTP semantics\n");
     exit(EX_USAGE);
 }
 
@@ -219,17 +221,22 @@ int main(int argc, char **argv)
     int sz;
     char greeting[1024];
     int code;
+    int do_lmtp=0;
     int r = 0;
 
     debug = stderr;
 
-    while ((c = getopt(argc, argv, "vEm:l:u:a:d:")) != EOF) {
+    while ((c = getopt(argc, argv, "vElm:s:u:a:d:")) != EOF) {
 	switch (c) {
 	case 'm':
 	    mechlist = optarg;
 	    break;
 
 	case 'l':
+	    do_lmtp = 1;
+	    break;
+
+	case 's':
 	    maxssf = atoi(optarg);
 	    break;
 	    
@@ -271,7 +278,11 @@ int main(int argc, char **argv)
     if (p) {
 	*p++ = '\0';
     } else {
-	p = "smtp";
+	if(do_lmtp) {
+	    p = "lmtp";
+	} else {
+	    p = "smtp";
+	}
     }
     service = getservbyname(p, "tcp");
     if (service) {
@@ -326,8 +337,14 @@ int main(int argc, char **argv)
 
     /* EHLO */
     gethostname(buf, sizeof(buf)-1);
-    if (verbose) fprintf(debug, "EHLO %s\r\n", buf);
-    fprintf(server_out, "EHLO %s\r\n", buf);
+    if(do_lmtp) {
+	if(verbose) fprintf(debug, "LHLO %s\r\n", buf);
+	fprintf(server_out, "LHLO %s\r\n", buf);
+    } else {
+	if (verbose) fprintf(debug, "EHLO %s\r\n", buf);
+	fprintf(server_out, "EHLO %s\r\n", buf);
+    }
+    
     /* read responses */
     for (;;) {
 	sfsync(server_out);
@@ -382,8 +399,16 @@ int main(int argc, char **argv)
 		       sizeof(struct sockaddr_in), local_ip, 64);
     }
 
-    if (!r) r = sasl_client_new("smtp", host, local_ip, remote_ip,
+    if (!r) {
+	if(do_lmtp) {
+	    r = sasl_client_new("lmtp", host, local_ip, remote_ip,
 				NULL, 0, &conn);
+	} else {
+	    r = sasl_client_new("smtp", host, local_ip, remote_ip,
+				NULL, 0, &conn);
+	}
+    }
+    
     if (!r) {
 	sasl_security_properties_t *secprops = make_secprops(minssf, maxssf);
 	r = sasl_setprop(conn, SASL_SEC_PROPS, secprops);
