@@ -1,7 +1,7 @@
 /* common.c - Functions that are common to server and clinet
  * Rob Siemborski
  * Tim Martin
- * $Id: common.c,v 1.64.2.24 2001/06/26 19:07:02 rjs3 Exp $
+ * $Id: common.c,v 1.64.2.25 2001/06/26 23:05:43 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -1139,16 +1139,16 @@ _sasl_log (sasl_conn_t *conn,
   char *cval;
   va_list ap; /* varargs thing */
 
-  if(!fmt) return;
-
+  if(!fmt) goto done;
+  if(!out) return;
+  
   formatlen = strlen(fmt);
 
   /* See if we have a logging callback... */
   result = _sasl_getcallback(conn, SASL_CB_LOG, &log_cb, &log_ctx);
   if (result == SASL_OK && ! log_cb)
     result = SASL_FAIL;
-  if (result != SASL_OK)
-    return;
+  if (result != SASL_OK) goto done;
   
   va_start(ap, fmt); /* start varargs */
 
@@ -1157,8 +1157,7 @@ _sasl_log (sasl_conn_t *conn,
     if (fmt[pos]!='%') /* regular character */
     {
       result = _buf_alloc(&out, &alloclen, outlen+1);
-      if (result != SASL_OK)
-	return;
+      if (result != SASL_OK) goto done;
       out[outlen]=fmt[pos];
       outlen++;
       pos++;
@@ -1181,7 +1180,7 @@ _sasl_log (sasl_conn_t *conn,
 				&outlen, cval);
 	      
 	    if (result != SASL_OK) /* add the string */
-	      return;
+		goto done;
 
 	    done=1;
 	    break;
@@ -1189,7 +1188,8 @@ _sasl_log (sasl_conn_t *conn,
 	  case '%': /* double % output the '%' character */
 	    result = _buf_alloc(&out,&alloclen,outlen+1);
 	    if (result != SASL_OK)
-	      return;
+		goto done;
+	    
 	    out[outlen]='%';
 	    outlen++;
 	    done=1;
@@ -1199,7 +1199,8 @@ _sasl_log (sasl_conn_t *conn,
 	    result = add_string(&out, &alloclen, &outlen,
 				strerror(va_arg(ap, int)));
 	    if (result != SASL_OK)
-	      return;
+		goto done;
+	    
 	    done=1;
 	    break;
 
@@ -1207,7 +1208,8 @@ _sasl_log (sasl_conn_t *conn,
 	    result = add_string(&out, &alloclen, &outlen,
 				(char *) sasl_errstring(va_arg(ap, int),NULL,NULL));
 	    if (result != SASL_OK)
-	      return;
+		goto done;
+	    
 	    done=1;
 	    break;
 
@@ -1220,7 +1222,8 @@ _sasl_log (sasl_conn_t *conn,
 	    /* now add the character */
 	    result = add_string(&out, &alloclen, &outlen, tempbuf);
 	    if (result != SASL_OK)
-	      return;
+		goto done;
+		
 	    done=1;
 	    break;
 
@@ -1234,7 +1237,8 @@ _sasl_log (sasl_conn_t *conn,
 	    /* now add the string */
 	    result = add_string(&out, &alloclen, &outlen, tempbuf);
 	    if (result != SASL_OK)
-	      return;
+		goto done;
+
 	    done=1;
 
 	    break;
@@ -1259,8 +1263,9 @@ _sasl_log (sasl_conn_t *conn,
 
   /* send log message */
   result = log_cb(log_ctx, level, out);
-  sasl_FREE(out);
-  return;
+
+ done:
+  if(out) sasl_FREE(out);
 }
 
 

@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: server.c,v 1.84.2.29 2001/06/26 19:02:47 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.30 2001/06/26 23:05:43 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -145,7 +145,7 @@ int sasl_setpass(sasl_conn_t *conn,
     /* set/create password for PLAIN usage */
     tmpresult = _sasl_sasldb_set_pass(conn, user, pass, passlen, 
 				      s_conn->user_realm, flags);
-    
+
     if (tmpresult != SASL_OK && tmpresult != SASL_NOCHANGE) {
 	result = tmpresult;
 	_sasl_log(conn, SASL_LOG_ERR,
@@ -364,6 +364,9 @@ static void server_done(void) {
       sasl_FREE(mechlist);
       mechlist = NULL;
   }
+
+  /* Free the auxprop plugins */
+  _sasl_auxprop_free();
 
   global_callbacks.callbacks = NULL;
   global_callbacks.appname = NULL;

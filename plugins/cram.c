@@ -1,7 +1,7 @@
 /* CRAM-MD5 SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: cram.c,v 1.55.2.8 2001/06/25 18:44:40 rjs3 Exp $
+ * $Id: cram.c,v 1.55.2.9 2001/06/26 23:05:46 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -78,14 +78,17 @@ static const char rcsid[] = "$Implementation: Carnegie Mellon SASL " VERSION " $
 
 typedef struct context {
 
-  int state;    /* holds state are in */
-  char *msgid;  /* timestamp used for md5 transforms */
-  int msgidlen;
+    int state;    /* holds state are in */
+    char *msgid;  /* timestamp used for md5 transforms */
+    int msgidlen;
 
-  int secretlen;
+    int secretlen;
 
-  char *authid;
-  sasl_secret_t *password;
+    char *authid;
+    sasl_secret_t *password;
+
+    char *out_buf;
+    unsigned out_buf_len;
 
 } context_t;
 
@@ -113,6 +116,8 @@ static void dispose(void *conn_context, const sasl_utils_t *utils)
 {
   context_t *text;
   text=conn_context;
+
+  if(text->out_buf) utils->free(text->out_buf);
 
   /* get rid of all sensetive info */
   _plug_free_string(utils,&(text->msgid));
@@ -297,6 +302,8 @@ static int server_continue_step (void *conn_context,
   if (text->state==1)
   {    
     char *time, *randdigits;
+    int result;
+    
     /* arbitrary string of random digits 
      * time stamp
      * primary host
@@ -317,18 +324,21 @@ static int server_continue_step (void *conn_context,
     if ((time==NULL) || (randdigits==NULL)) return SASL_NOMEM;
 
     /* allocate some space for the nonce */
-    *serverout=sparams->utils->malloc(200+1);
-    if (*serverout==NULL) return SASL_NOMEM;
+    result = _plug_buf_alloc(sparams->utils, &(text->out_buf),
+			     &(text->out_buf_len), 200+1);
+    if(result != SASL_OK) return result;
 
     /* create the nonce */
-    snprintf((char *)*serverout,200,"<%s.%s@%s>",randdigits,time,
+    snprintf(text->out_buf,200,"<%s.%s@%s>",randdigits,time,
 	    sparams->serverFQDN);
 
+    *serverout = text->out_buf;
+    *serveroutlen=strlen(*serverout);
+    
     /* free stuff */
     sparams->utils->free(time);    
     sparams->utils->free(randdigits);    
     
-    *serveroutlen=strlen(*serverout);
     text->msgidlen=*serveroutlen;
 
     /* save nonce so we can check against it later */
@@ -654,7 +664,6 @@ static int get_password(sasl_client_params_t *params,
     return SASL_OK;
   }
 
-
   /* Try to get the callback... */
   result = params->utils->getcallback(params->utils->conn,
 				      SASL_CB_PASS,
@@ -791,7 +800,6 @@ static int c_continue_step (void *conn_context,
 
       if ((auth_result!=SASL_OK) && (auth_result!=SASL_INTERACT))
 	return auth_result;
-
     }
 
     /* try to get the password */
@@ -807,7 +815,7 @@ static int c_continue_step (void *conn_context,
     }
     
     /* free prompts we got */
-    if (prompt_need) params->utils->free(*prompt_need);
+    if (prompt_need && *prompt_need) params->utils->free(*prompt_need);
 
     /* if there are prompts not filled in */
     if ((auth_result==SASL_INTERACT) ||
@@ -843,15 +851,17 @@ static int c_continue_step (void *conn_context,
     VL(("in16=[%s]\n",in16));
 
     maxsize=32+1+strlen(text->authid)+30;
-    *clientout=params->utils->malloc(maxsize);
-    if ((*clientout) == NULL) return SASL_NOMEM;
+    result = _plug_buf_alloc(params->utils, &(text->out_buf),
+			     &(text->out_buf_len), maxsize);
+    if(result != SASL_OK) return result;
 
-    snprintf((char *)*clientout,maxsize ,"%s %s",text->authid,in16);
+    snprintf(text->out_buf, maxsize, "%s %s", text->authid, in16);
 
     /* get rid of private information */
     _plug_free_string(params->utils, &in16);
 
-    *clientoutlen=strlen(*clientout);
+    *clientout = text->out_buf;
+    *clientoutlen = strlen(*clientout);
 
     /*nothing more to do; authenticated */
     oparams->doneflag=1;

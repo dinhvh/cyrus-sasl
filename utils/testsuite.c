@@ -1,7 +1,7 @@
 /* testsuite.c -- Stress the library a little
  * Rob Siemborski
  * Tim Martin
- * $Id: testsuite.c,v 1.13.2.14 2001/06/26 15:31:11 rjs3 Exp $
+ * $Id: testsuite.c,v 1.13.2.15 2001/06/26 23:05:48 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -629,7 +629,6 @@ void test_random(void)
     /* try seeding w/o calling rand_create first */
     rpool = NULL;
     sasl_randseed(rpool, "seed", 4);
-    
 
     /* try seeding with bad values */
     sasl_randcreate(&rpool);
@@ -1645,14 +1644,13 @@ void create_ids(void)
 	fatal("");
     
     /* Try to set password then check it */
-    
+
     result = sasl_setpass(saslconn, username, password, strlen(password),
 			  NULL, 0, SASL_SET_CREATE);
     if (result != SASL_OK) {
 	printf("error was %s (%d)\n",sasl_errstring(result,NULL,NULL),result);
 	fatal("Error setting password. Do we have write access to sasldb?");
-    }
-    
+    }    
     
     result = sasl_checkpass(saslconn, username, strlen(username),
 			    password, strlen(password));
@@ -1736,7 +1734,6 @@ void create_ids(void)
 	    fatal("Disabling non-existant didn't return SASL_NOUSER");
 	}
     
-
     /* Now set the user again (we use for rest of program) */
     result = sasl_setpass(saslconn, username, password, strlen(password),
 			  NULL, 0, SASL_SET_CREATE);
@@ -1861,27 +1858,34 @@ int main(int argc, char **argv)
 
     create_ids();
     printf("Created id's in sasldb... ok\n");
-/*  FOR THE FUTURE (and below): 
- *    if(mem_stat() != SASL_OK) fatal("memory error");
- */  
+    if(mem_stat() != SASL_OK) fatal("memory error");
+
     test_checkpass();
     printf("Checking plaintext passwords... ok\n");
+    if(mem_stat() != SASL_OK) fatal("memory error");
 
     test_random();
     printf("Random number functions... ok\n");
+    if(mem_stat() != SASL_OK) fatal("memory error");
 
     test_64();
     printf("Tested base64 functions... ok\n");
+    if(mem_stat() != SASL_OK) fatal("memory error");
 
     test_init();
     printf("Tests of sasl_server_init()... ok\n");
+    if(mem_stat() != SASL_OK) fatal("memory error");
 
     test_listmech();
     printf("Tests of sasl_listmech()... ok\n");
+    if(mem_stat() != SASL_OK) fatal("memory error");
 
     test_serverstart();
     printf("Tests of serverstart... ok\n");
+    if(mem_stat() != SASL_OK) fatal("memory error");
 
+    /* FIXME: do memory tests below here on the things
+     * that are MEANT to fail sometime. */
     if(do_all) {	
 	test_all_corrupt();
 	printf("All corruption tests... ok\n");
@@ -1894,7 +1898,7 @@ int main(int argc, char **argv)
 
     test_seclayer();
     printf("Tests of security layer... ok\n");
-    
+
     printf("All tests seemed to go ok (i.e. we didn't crash)\n");
 
     exit(0);

@@ -1,7 +1,7 @@
 /* GSSAPI SASL plugin
  * Leif Johansson
  * Rob Siemborski (SASL v2 Conversion)
- * $Id: gssapi.c,v 1.41.2.11 2001/06/25 18:44:41 rjs3 Exp $
+ * $Id: gssapi.c,v 1.41.2.12 2001/06/26 23:05:46 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -109,7 +109,6 @@ typedef struct context {
     gss_cred_id_t server_creds;
     sasl_ssf_t limitssf, requiressf; /* application defined bounds, for the
 					server */
-
     const sasl_utils_t *utils;
 
     /* layers buffering */
@@ -660,7 +659,9 @@ sasl_gss_server_step (void *conn_context,
 	   to return the id (i.e. just "tmartin" */
 	if (strchr((char *)name_token.value, (int) '@')!=NULL)
 	{
-	    name_without_realm.value = (char *) params->utils->malloc(strlen(name_token.value)+1);
+	    /* NOTE: libc malloc, as it is freed below by a gssapi internal
+	     *       function! */
+	    name_without_realm.value = malloc(strlen(name_token.value)+1);
 	    if (name_without_realm.value == NULL) return SASL_NOMEM;
 
 	    strcpy(name_without_realm.value, name_token.value);
@@ -674,6 +675,7 @@ sasl_gss_server_step (void *conn_context,
 					&name_without_realm,
 					GSS_C_NULL_OID,
 					&without);
+
 	    if (GSS_ERROR(maj_stat)) {
 		params->utils->free(name_without_realm.value);
 		if (name_token.value)
@@ -700,7 +702,6 @@ sasl_gss_server_step (void *conn_context,
 	    }
 
 	    gss_release_name(&min_stat,&without);
-
 	} else {
 	    equal = 0;
 	}
@@ -720,8 +721,9 @@ sasl_gss_server_step (void *conn_context,
 
 	if (name_token.value)
 	    params->utils->free(name_token.value);
-	if (name_without_realm.value)
+	if (name_without_realm.value) {
 	    gss_release_buffer(&min_stat, &name_without_realm);
+	}
 	
 	/* we have to decide what sort of encryption/integrity/etc.,
 	   we support */

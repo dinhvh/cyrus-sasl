@@ -1,7 +1,7 @@
 /* Kerberos4 SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: kerberos4.c,v 1.65.2.17 2001/06/25 18:44:41 rjs3 Exp $
+ * $Id: kerberos4.c,v 1.65.2.18 2001/06/26 23:05:46 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -251,12 +251,10 @@ static int privacy_decode_once(void *context,
 	    
 	    /* too big? */
 	    if ((text->size>0xFFFF) || (text->size < 0)) return SASL_FAIL;
-	    
-	    if (text->bufsize < text->size + 5) {
-		text->buffer = text->utils->realloc(text->buffer, text->size + 5);
-		text->bufsize = text->size + 5;
-	    }
-	    if (text->buffer == NULL) return SASL_NOMEM;
+
+	    result = _plug_buf_alloc(text->utils, &text->buffer,
+				     &text->bufsize, text->size + 5);
+	    if (result != SASL_OK) return result;
 	}
 	*outputlen=0;
 	*output=NULL;

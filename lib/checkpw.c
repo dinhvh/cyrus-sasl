@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: checkpw.c,v 1.41.2.10 2001/06/26 15:30:43 rjs3 Exp $
+ * $Id: checkpw.c,v 1.41.2.11 2001/06/26 23:05:43 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -323,7 +323,7 @@ int _sasl_sasldb_set_pass(sasl_conn_t *conn,
 	ret = _sasl_db_putsecret(conn, userid, realm, NULL);
 
 	if (ret != SASL_OK) {
-	    _sasl_log(conn, SASL_LOG_ERR, NULL, ret, 0,
+	    _sasl_log(conn, SASL_LOG_ERR,
 		      "failed to disable account for %s: %z", userid);
 	}
     }

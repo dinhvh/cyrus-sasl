@@ -2,7 +2,7 @@
  * Rob Siemborski
  * Tim Martin
  * Alexey Melnikov 
- * $Id: digestmd5.c,v 1.97.2.5 2001/06/26 15:30:47 rjs3 Exp $
+ * $Id: digestmd5.c,v 1.97.2.6 2001/06/26 23:05:46 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -148,6 +148,7 @@ typedef int cipher_function_t(void *,
 			      unsigned *);
 
 typedef int cipher_init_t(void *, char [16], char [16]);
+typedef void cipher_free_t(void *);
 
 enum Context_type { SERVER = 0, CLIENT = 1 };
 
@@ -212,6 +213,7 @@ typedef struct context {
     cipher_function_t *cipher_enc;
     cipher_function_t *cipher_dec;
     cipher_init_t *cipher_init;
+    cipher_free_t *cipher_free;
 
 #ifdef WITH_DES
     des_key_schedule keysched_enc;   /* key schedule for des initialization */
@@ -238,6 +240,7 @@ struct digest_cipher {
     cipher_function_t *cipher_enc;
     cipher_function_t *cipher_dec;
     cipher_init_t *cipher_init;
+    cipher_free_t *cipher_free;
 };
 
 /* this is from the rpc world */
@@ -1307,6 +1310,16 @@ rc4_decrypt(rc4_context_t *text,
     text->j = j;
 }
 
+static void
+free_rc4(void *v) 
+{
+    context_t *text = (context_t *) v;
+
+    /* allocate rc4 context structures */
+    if(text->rc4_enc_context) text->utils->free(text->rc4_enc_context);
+    if(text->rc4_dec_context) text->utils->free(text->rc4_dec_context);
+}
+
 static int
 init_rc4(void *v, 
 	 char enckey[16],
@@ -1381,15 +1394,15 @@ enc_rc4(void *v,
 struct digest_cipher available_ciphers[] =
 {
 #ifdef WITH_RC4
-    { "rc4-40", 40, 5, 0x01, &enc_rc4, &dec_rc4, &init_rc4 },
-    { "rc4-56", 56, 7, 0x02, &enc_rc4, &dec_rc4, &init_rc4 },
-    { "rc4", 128, 16, 0x04, &enc_rc4, &dec_rc4, &init_rc4 },
+    { "rc4-40", 40, 5, 0x01, &enc_rc4, &dec_rc4, &init_rc4, &free_rc4 },
+    { "rc4-56", 56, 7, 0x02, &enc_rc4, &dec_rc4, &init_rc4, &free_rc4 },
+    { "rc4", 128, 16, 0x04, &enc_rc4, &dec_rc4, &init_rc4, &free_rc4 },
 #endif
 #ifdef WITH_DES
-    { "des", 55, 16, 0x08, &enc_des, &dec_des, &init_des },
-    { "3des", 112, 16, 0x10, &enc_3des, &dec_3des, &init_3des },
+    { "des", 55, 16, 0x08, &enc_des, &dec_des, &init_des, NULL },
+    { "3des", 112, 16, 0x10, &enc_3des, &dec_3des, &init_3des, NULL },
 #endif
-    { NULL, 0, 0, 0, NULL, NULL, NULL }
+    { NULL, 0, 0, 0, NULL, NULL, NULL, NULL }
 };
 
 static int create_layer_keys(context_t *text,
@@ -1573,8 +1586,11 @@ privacy_decode_once(context_t *text,
 	*/
 	if ((text->size>0xFFFFFF) || (text->size < 0))
 	    return SASL_FAIL; /* too big probably error */
-	
-	text->buffer=text->utils->realloc(text->buffer,text->size+5);
+
+	if(!text->buffer)
+	    text->buffer=text->utils->malloc(text->size+5);
+	else
+	    text->buffer=text->utils->realloc(text->buffer,text->size+5);	    
 	if (text->buffer == NULL) return SASL_NOMEM;
       }
       *outputlen=0;
@@ -1988,6 +2004,8 @@ dispose(void *conn_context, const sasl_utils_t * utils)
 {
   context_t *text=(context_t *) conn_context;
 
+  if (text->cipher_free) text->cipher_free(text);
+
   /* free the stuff in the context */
   if (text->nonce!=NULL) utils->free(text->nonce);
   if (text->response_value!=NULL) utils->free(text->response_value);
@@ -2199,9 +2217,19 @@ server_continue_step(void *conn_context,
 		      "internal error: add_to_challenge 6 failed");
 	return SASL_FAIL;
     }
+    /* FIXME: this copy is wholy inefficient */
+    *serveroutlen = strlen(challenge);
+    result =_plug_buf_alloc(sparams->utils, &(text->out_buf),
+			    &(text->out_buf_len), *serveroutlen);
+    if(result != SASL_OK) {
+	sparams->utils->free(challenge);
+	return result;
+    }
+    
+    strcpy(text->out_buf, challenge);
 
-    *serverout = challenge;
-    *serveroutlen = strlen(*serverout);
+    *serverout = text->out_buf;
+    sparams->utils->free(challenge);
 
     /*
      * The size of a digest-challenge MUST be less than 2048 bytes!!!
@@ -2406,6 +2434,7 @@ server_continue_step(void *conn_context,
 	    text->cipher_enc = cptr->cipher_enc;
 	    text->cipher_dec = cptr->cipher_dec;
 	    text->cipher_init = cptr->cipher_init;
+	    text->cipher_free = cptr->cipher_free;
 	    oparams->mech_ssf = cptr->ssf;
 	    n = cptr->n;
 	} else {
@@ -2606,7 +2635,6 @@ server_continue_step(void *conn_context,
       /* initialize cipher if need be */
       if (text->cipher_init)
 	text->cipher_init(text, enckey, deckey);
-
     }
 
     /*
@@ -2633,15 +2661,24 @@ server_continue_step(void *conn_context,
 	result = SASL_FAIL;
 	goto FreeAllMem;
     }
-    *serverout = response_auth;
+    /* FIXME: this copy is wholy inefficient */
     *serveroutlen = strlen(response_auth);
+    result =_plug_buf_alloc(sparams->utils, &(text->out_buf),
+			    &(text->out_buf_len), *serveroutlen);
+    if(result != SASL_OK)
+	goto FreeAllMem;
+    strcpy(text->out_buf, response_auth);
+    
+    *serverout = text->out_buf;
+    sparams->utils->free(response_auth);
 
     /* self check */
     if (*serveroutlen > 2048) {
       result = SASL_FAIL;
       goto FreeAllMem;
     }
-    result = SASL_CONTINUE; /* xxx this should be SASL_OK but would cause applications to fail
+    result = SASL_CONTINUE; /* xxx this should be SASL_OK but would cause
+			       applications to fail
 			       will fix for 2.0 */
 
   FreeAllMem:
@@ -2660,6 +2697,8 @@ server_continue_step(void *conn_context,
 	sparams->utils->free (cnonce);
     if (response != NULL)
 	sparams->utils->free (response);
+    if (cipher != NULL)
+	sparams->utils->free (cipher);
     if (serverresponse != NULL)
 	sparams->utils->free(serverresponse);
     if (charset != NULL)
@@ -3260,9 +3299,13 @@ c_continue_step(void *conn_context,
 
 	if (strcasecmp(name, "realm") == 0) {
 	    nrealm++;
+	    
+	    if(!realm)
+		realm = params->utils->malloc(sizeof(char *) * (nrealm + 1));
+	    else
+		realm = params->utils->realloc(realm, 
+					       sizeof(char *) * (nrealm + 1));
 
-	    realm = params->utils->realloc(realm, 
-					   sizeof(char *) * (nrealm + 1));
 	    if (realm == NULL) {
 		result = SASL_NOMEM;
 		goto FreeAllocatedMem;
@@ -3551,6 +3594,7 @@ c_continue_step(void *conn_context,
 	    usecipher = bestcipher->name;
 	    text->cipher_enc = bestcipher->cipher_enc;
 	    text->cipher_dec = bestcipher->cipher_dec;
+	    text->cipher_free = bestcipher->cipher_free;
 	    text->cipher_init = bestcipher->cipher_init;
 	} else {
 	    /* we didn't find any ciphers we like */
@@ -3697,8 +3741,18 @@ c_continue_step(void *conn_context,
     }
     VL(("adding things\n"));
 
-    *clientout = client_response;
+    /* FIXME: this copy is wholy inefficient */
     *clientoutlen = strlen(client_response);
+    result =_plug_buf_alloc(params->utils, &(text->out_buf),
+			    &(text->out_buf_len), *clientoutlen);
+    if(result != SASL_OK)
+	goto FreeAllocatedMem;
+    strcpy(text->out_buf, client_response);
+    
+    *clientout = text->out_buf;
+    params->utils->free(client_response);
+
+    /* self check */
     if (*clientoutlen > 2048) {
       result = SASL_FAIL;
       goto FreeAllocatedMem;
