@@ -191,8 +191,6 @@ int sasl_client_init(const sasl_callback_t *callbacks)
 {
   int ret;
 
-  printf("in sasl_client_init\n");
-
   _sasl_client_cleanup_hook = &client_done;
   _sasl_client_idle_hook = &client_idle;
 
@@ -270,8 +268,8 @@ static void client_dispose(sasl_conn_t *pconn)
 
 int sasl_client_new(const char *service,
 		    const char *serverFQDN,
-		    const char *iplocalport,
-		    const char *ipremoteport,
+		    const char *iplocalport __attribute__((unused)),
+		    const char *ipremoteport __attribute__((unused)),
 		    const sasl_callback_t *prompt_supp,
 		    unsigned secflags,
 		    sasl_conn_t **pconn)
@@ -418,8 +416,6 @@ int sasl_client_start(sasl_conn_t *conn,
     /* parse mechlist */
     VL(("mech list from server is %s\n", mechlist));
     list_len = strlen(mechlist);
-
-    fprintf(stderr, "mech list is (%s) [%d]\n", mechlist, list_len);
 
     while (pos<list_len)
     {
