@@ -2,7 +2,7 @@
  * Rob Siemborski
  * Tim Martin
  * Alexey Melnikov 
- * $Id: digestmd5.c,v 1.97.2.16 2001/07/06 18:15:35 rjs3 Exp $
+ * $Id: digestmd5.c,v 1.97.2.17 2001/07/09 16:11:19 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -2220,8 +2220,9 @@ server_continue_step(void *conn_context,
 	SETERROR(sparams->utils, "internal error: add_to_challenge 6 failed");
 	return SASL_FAIL;
     }
+
     /* FIXME: this copy is wholy inefficient */
-    *serveroutlen = strlen(challenge);
+    *serveroutlen = strlen(challenge) + 1;
     result =_plug_buf_alloc(sparams->utils, &(text->out_buf),
 			    &(text->out_buf_len), *serveroutlen);
     if(result != SASL_OK) {
@@ -2229,7 +2230,7 @@ server_continue_step(void *conn_context,
 	return result;
     }
     
-    strcpy(text->out_buf, challenge);
+    strncpy(text->out_buf, challenge, *serveroutlen);
 
     *serverout = text->out_buf;
     sparams->utils->free(challenge);
@@ -3478,7 +3479,7 @@ c_continue_step(void *conn_context,
     }
 
     /* free prompts we got */
-    if (prompt_need) {
+    if (prompt_need && *prompt_need) {
 	params->utils->free(*prompt_need);
 	*prompt_need = NULL;
     }
@@ -3712,12 +3713,12 @@ c_continue_step(void *conn_context,
     }
 
     /* FIXME: this copy is wholy inefficient */
-    *clientoutlen = strlen(client_response);
+    *clientoutlen = strlen(client_response) + 1;
     result =_plug_buf_alloc(params->utils, &(text->out_buf),
 			    &(text->out_buf_len), *clientoutlen);
     if(result != SASL_OK)
 	goto FreeAllocatedMem;
-    strcpy(text->out_buf, client_response);
+    strncpy(text->out_buf, client_response, *clientoutlen);
     
     *clientout = text->out_buf;
     params->utils->free(client_response);

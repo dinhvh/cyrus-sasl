@@ -1,7 +1,7 @@
 /* Plain SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: plain.c,v 1.43.2.11 2001/07/06 18:15:36 rjs3 Exp $
+ * $Id: plain.c,v 1.43.2.12 2001/07/09 16:11:20 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -631,7 +631,7 @@ static int client_continue_step (void *conn_context,
     }
 
     /* free prompts we got */
-    if (prompt_need) {
+    if (prompt_need && *prompt_need) {
 	params->utils->free(*prompt_need);
 	*prompt_need = NULL;
     }

@@ -1,7 +1,7 @@
 /* GSSAPI SASL plugin
  * Leif Johansson
  * Rob Siemborski (SASL v2 Conversion)
- * $Id: gssapi.c,v 1.41.2.17 2001/07/06 18:15:35 rjs3 Exp $
+ * $Id: gssapi.c,v 1.41.2.18 2001/07/09 16:11:19 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -1162,7 +1162,7 @@ sasl_gss_client_step (void *conn_context,
 	      }
 
 	    /* free prompts we got */
-	    if (prompt_need) {
+	    if (prompt_need && *prompt_need) {
 		params->utils->free(*prompt_need);
 		*prompt_need = NULL;
 	    }
