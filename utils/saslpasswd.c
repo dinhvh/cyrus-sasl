@@ -62,14 +62,20 @@ __declspec(dllimport) int getsubopt(char **optionp, char * const *tokens, char *
 #include <saslplug.h>
 #include "../sasldb/sasldb.h"
 
-/* Cheat a bit */
-extern const sasl_utils_t *sasl_global_utils;
+/* Cheating to make the utils work out right */
+extern sasl_utils_t *_sasl_alloc_utils(void *conn,
+				       void *global_callbacks);
+extern int _sasl_free_utils(const sasl_utils_t ** utils);
+const sasl_utils_t *global_utils = NULL;
+
+char myhostname[1025];
 
 #define PW_BUF_SIZE 2048
 
 static const char build_ident[] = "$Build: saslpasswd " PACKAGE "-" VERSION " $";
 
 const char *progname = NULL;
+char *sasldb_path = NULL;
 
 void read_password(const char *prompt,
 		   int flag_pipe,
@@ -170,6 +176,26 @@ exit_sasl(int result, const char *errstr)
   exit(-result);
 }
 
+int good_getopt(void *context __attribute__((unused)), 
+		const char *plugin_name __attribute__((unused)), 
+		const char *option,
+		const char **result,
+		unsigned *len)
+{
+    if (sasldb_path && !strcmp(option, "sasldb_path")) {
+	*result = sasldb_path;
+	if (len)
+	    *len = strlen(sasldb_path);
+	return SASL_OK;
+    }
+
+    return SASL_FAIL;
+}
+
+static struct sasl_callback goodsasl_cb[] = {
+    { SASL_CB_GETOPT, &good_getopt, NULL },
+    { SASL_CB_LIST_END, NULL, NULL }
+};
 
 /* returns the realm we should pretend to be in */
 static int parseuser(char **user, char **realm, const char *user_realm, 
@@ -238,11 +264,12 @@ int _sasl_sasldb_set_pass(sasl_conn_t *conn,
 	/* if SASL_SET_CREATE is set, we don't want to overwrite an
 	   existing account */
 	if (flags & SASL_SET_CREATE) {
-	    ret = _sasl_db_getsecret(sasl_global_utils,
+	    ret = _sasl_db_getsecret(global_utils,
 				     conn, userid, realm, &sec);
 	    if (ret == SASL_OK) {
 		memset(sec->data, 0, sec->len);
 		free(sec);
+		sec = NULL;
 		ret = SASL_NOCHANGE;
 	    } else {
 		/* Don't give up yet-- the DB might have failed because
@@ -263,7 +290,7 @@ int _sasl_sasldb_set_pass(sasl_conn_t *conn,
 	    }
 	}
 	if (ret == SASL_OK) {
-	    ret = _sasl_db_putsecret(sasl_global_utils,
+	    ret = _sasl_db_putsecret(global_utils,
 				     conn, userid, realm, sec);
 	}
 	if ( ret != SASL_OK ) {
@@ -272,10 +299,11 @@ int _sasl_sasldb_set_pass(sasl_conn_t *conn,
 	if (sec) {
 	    memset(sec->data, 0, sec->len);
 	    free(sec);
+	    sec = NULL;
 	}
     } else { 
 	/* SASL_SET_DISABLE specified */
-	ret = _sasl_db_putsecret(sasl_global_utils, conn, userid, realm, NULL);
+	ret = _sasl_db_putsecret(global_utils, conn, userid, realm, NULL);
 
 	if (ret != SASL_OK) {
 	    printf("failed to disable account for %s", userid);
@@ -300,6 +328,10 @@ main(int argc, char *argv[])
   char *user_domain = NULL;
   char *appname = "saslpasswd";
 
+  memset(myhostname, 0, sizeof(myhostname));
+  result = gethostname(myhostname, sizeof(myhostname)-1);
+  if (result == -1) exit_sasl(SASL_FAIL, "gethostname");
+
   if (! argv[0])
     progname = "saslpasswd";
   else {
@@ -310,7 +342,7 @@ main(int argc, char *argv[])
       progname = argv[0];
   }
 
-  while ((c = getopt(argc, argv, "pcdu:a:h?")) != EOF)
+  while ((c = getopt(argc, argv, "pcdf:u:a:h?")) != EOF)
     switch (c) {
     case 'p':
       flag_pipe = 1;
@@ -330,6 +362,9 @@ main(int argc, char *argv[])
     case 'u':
       user_domain = optarg;
       break;
+    case 'f':
+      sasldb_path = optarg;
+      break;
     case 'a':
       appname = optarg;
       if (strchr(optarg, '/') != NULL) {
@@ -347,10 +382,11 @@ main(int argc, char *argv[])
 
   if (flag_error) {
     (void)fprintf(stderr,
-		  "%s: usage: %s [-a appname] [-p] [-c] [-d] [-u DOM] userid\n"
+		  "%s: usage: %s [-a appname] [-p] [-c] [-d] [-f sasldb] [-u DOM] userid\n"
 		  "\t-p\tpipe mode -- no prompt, password read on stdin\n"
 		  "\t-c\tcreate -- ask mechs to create the account\n"
 		  "\t-d\tdisable -- ask mechs to disable the account\n"
+		  "\t-f sasldb\tuse given file as sasldb\n"
 		  "\t-a appname\tuse appname as application name\n"
 		  "\t-u DOM\tuse DOM for user domain\n",
 		  progname, progname);
@@ -359,12 +395,16 @@ main(int argc, char *argv[])
 
   userid = argv[optind];
 
-  result = sasl_server_init(NULL, appname);
+  result = sasl_server_init(goodsasl_cb, appname);
   if (result != SASL_OK)
     exit_sasl(result, NULL);
 
+  global_utils = _sasl_alloc_utils(NULL, goodsasl_cb);
+  if(!global_utils)
+      exit_sasl(SASL_NOMEM, NULL);
+
   result = sasl_server_new("saslpasswd",
-			   NULL,
+			   myhostname,
 			   user_domain,
 			   NULL,
 			   NULL,
@@ -394,6 +434,16 @@ main(int argc, char *argv[])
       }
   }
 
+  if((result = _sasl_check_db(global_utils)) == SASL_OK) {
+    result = _sasl_sasldb_set_pass(conn, myhostname, userid, password, passlen,
+				   user_domain,
+				   (flag_create ? SASL_SET_CREATE : 0)
+				   | (flag_disable ? SASL_SET_DISABLE : 0));
+  }
+
+  if(result != SASL_OK)
+      exit_sasl(result, NULL);
+
   result = sasl_setpass(conn,
 			userid,
 			password,
@@ -405,6 +455,8 @@ main(int argc, char *argv[])
   if (result != SASL_OK)
     exit_sasl(result, errstr);
 
+  _sasl_free_utils(&global_utils);
+  
   return 0;
 }
 

@@ -233,6 +233,7 @@ int listusers(const char *path, listcb_t *cb)
     {
 	char *authid;
 	char *realm;
+	char realm_buf[2048];
 	int numnulls = 0;
 	unsigned int lup;
 
@@ -249,11 +250,16 @@ int listusers(const char *path, listcb_t *cb)
 
 	authid = key.data;
 	realm  = authid + strlen(authid)+1;
+	memcpy(realm_buf, realm, key.size - (strlen(authid)+1));
+	realm_buf[key.size - (strlen(authid)+1)] = '\0';
 
 	if (*authid) {
 	    /* don't check return values */
-	    cb(authid,realm);
+	    cb(authid,realm_buf);
 	}
+
+	memset(&key,0, sizeof(key));
+	memset(&data,0,sizeof(data));
 
 	result = cursor->c_get(cursor, &key, &data, DB_NEXT);
     }
