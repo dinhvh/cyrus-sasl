@@ -3,6 +3,8 @@ Makefile
 .deps
 .libs
 *.l[ao]
+testsuite
+testsuitestatic
 sasldblistusers
 dbconverter-1.5.9
 saslpasswd
