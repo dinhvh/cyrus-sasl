@@ -1,0 +1,60 @@
+.\" Hey Emacs! This file is -*- nroff -*- source.
+.\"
+.\" This manpage is Copyright (C) 1999 Tim Martin
+.\"
+.\" Permission is granted to make and distribute verbatim copies of this
+.\" manual provided the copyright notice and this permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted to copy and distribute modified versions of this
+.\" manual under the conditions for verbatim copying, provided that the
+.\" entire resulting derived work is distributed under the terms of a
+.\" permission notice identical to this one
+.\" 
+.\" Formatted or processed versions of this manual, if unaccompanied by
+.\" the source, must acknowledge the copyright and authors of this work.
+.\"
+.\"
+.TH sasl_authorize_t "26 March 2000" SASL "SASL man pages"
+.SH NAME
+sasl_verifyfile_t \- The SASL file verification
+
+
+.SH SYNOPSIS
+.nf
+.B #include <sasl/sasl.h>
+
+.sp
+.BI "typedef enum {"
+    SASL_VRFY_PLUGIN, /* a DLL/shared library plugin */
+    SASL_VRFY_CONF,   /* a configuration file */
+    SASL_VRFY_PASSWD, /* a password storage file */
+    SASL_VRFY_OTHER   /* some other file type */
+.BI "} sasl_verify_type_t"
+
+.BI "int sasl_verifyfile_t(void " *context ", "
+.BI "			   const char " *file ","
+.BI "                      sasl_verify_type_t " type ")"
+
+.fi
+.SH DESCRIPTION
+
+.B sasl_verifyfile_t
+is used to check whether a given file is okay for use by the SASL library.
+this is intended to allow applications to sanity check the enviornment to
+ensure that plugins or the config file cannot be written to, etc.
+
+.I context
+context from the callback record
+
+.I file
+full path of the file to verify
+
+.I type
+type of the file.
+
+.SH "RETURN VALUE"
+SASL callback functions should return SASL return codes. See sasl.h for a complete list. SASL_OK indicates success.
+
+.SH "SEE ALSO"
+sasl(3), sasl_callbacks(3)
