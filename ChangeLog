@@ -1,3 +1,9 @@
+2001-08-20  Rob Siemborski <rjs3+@andrew.cmu.edu>
+	* plugins/gssapi.c (gssapi_server_mech_step): fixed accidental
+	  back link into glue code
+
+	* config/kerberos4.m4: Actually link in -lkrb
+
 2001-08-15  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* lib/common.c (_sasl_iptostring): #if 0'd out.
 

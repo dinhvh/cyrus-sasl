@@ -1,7 +1,7 @@
 /* GSSAPI SASL plugin
  * Leif Johansson
  * Rob Siemborski (SASL v2 Conversion)
- * $Id: gssapi.c,v 1.41.2.27 2001/08/07 19:14:43 rjs3 Exp $
+ * $Id: gssapi.c,v 1.41.2.28 2001/08/20 15:33:23 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -870,8 +870,8 @@ gssapi_server_mech_step(void *conn_context,
 	*((unsigned long *)sasldata) = params->props.maxbufsize & 0xFFFFFF;
 	sasldata[0] = 0;
 	if(text->requiressf != 0 && !params->props.maxbufsize) {
-	    sasl_seterror(params->utils->conn, 0,
-			  "GSSAPI needs a security layer but one is forbidden");
+	    params->utils->seterror(params->utils->conn, 0,
+			            "GSSAPI needs a security layer but one is forbidden");
 	    return SASL_TOOWEAK;
 	}
 
