@@ -1,6 +1,6 @@
 /* canonusr.c - user canonicalization support
  * Rob Siemborski
- * $Id: canonusr.c,v 1.1.2.8 2001/06/27 20:26:03 rjs3 Exp $
+ * $Id: canonusr.c,v 1.1.2.9 2001/06/30 01:29:30 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -224,12 +224,18 @@ static int _canonuser_internal(const sasl_utils_t *utils,
 			       unsigned out_amax, unsigned *out_alen) 
 {
     unsigned i;
-    char userin[ulen+1], authidin[alen+1];
+    char *in_buf, *userin, *authidin;
     const char *begin_u, *begin_a;
     unsigned u_apprealm = 0, a_apprealm = 0;
     sasl_server_conn_t *sconn = NULL;
 
     if(!utils || !user || !authid) return SASL_BADPARAM;
+
+    in_buf = sasl_ALLOC((ulen + alen + 2) * sizeof(char));
+    if(!in_buf) return SASL_NOMEM;
+
+    userin = in_buf;
+    authidin = userin + ulen + 1;
 
     memcpy(userin, user, ulen);
     userin[ulen] = '\0';
@@ -242,7 +248,10 @@ static int _canonuser_internal(const sasl_utils_t *utils,
     if(i>0) ulen -= i;
 
     for(;isspace(begin_u[ulen-1]) && ulen > 0; ulen--);
-    if(begin_u == &(userin[ulen])) return SASL_FAIL;
+    if(begin_u == &(userin[ulen])) {
+	sasl_FREE(in_buf);
+	return SASL_FAIL;
+    }
 
     /* Strip Auth ID */
     for(i=0;isspace(authidin[i]) && i<alen;i++);
@@ -250,7 +259,10 @@ static int _canonuser_internal(const sasl_utils_t *utils,
     if(i>0) alen -= i;
 
     for(;isspace(begin_a[alen-1]) && alen > 0; alen--);
-    if(begin_a == &(authidin[alen])) return SASL_FAIL;
+    if(begin_a == &(authidin[alen])) {
+	sasl_FREE(in_buf);
+	return SASL_FAIL;
+    }
 
     if(utils->conn && utils->conn->type == SASL_CONN_SERVER)
 	sconn = (sasl_server_conn_t *)utils->conn;
@@ -263,7 +275,7 @@ static int _canonuser_internal(const sasl_utils_t *utils,
 	a_apprealm = strlen(sconn->user_realm) + 1;
     }
     
-    /* Now copy! */
+    /* Now copy! (FIXME: check for SASL_BUFOVER?) */
     memcpy(out_user, begin_u, MIN(ulen, out_umax));
     if(u_apprealm) {
 	out_user[ulen] = '@';
@@ -284,6 +296,7 @@ static int _canonuser_internal(const sasl_utils_t *utils,
 
     if(out_alen) *out_alen = MIN(alen + a_apprealm, out_amax);
 
+    sasl_FREE(in_buf);
     return SASL_OK;
 }
 

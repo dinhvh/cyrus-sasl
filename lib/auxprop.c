@@ -1,6 +1,6 @@
 /* auxprop.c - auxilliary property support
  * Rob Siemborski
- * $Id: auxprop.c,v 1.1.2.11 2001/06/27 14:56:27 rjs3 Exp $
+ * $Id: auxprop.c,v 1.1.2.12 2001/06/30 01:29:30 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -55,7 +55,7 @@ struct proppool
     size_t unused;        /* Space unused in this pool between end
 			   * of char** area and beginning of char* area */
 
-    char data[0];         /* Variable Sized */
+    char data[1];         /* Variable Sized */
 };
 
 struct propctx  {
@@ -82,7 +82,9 @@ static auxprop_plug_list_t *auxprop_head = NULL;
 static struct proppool *alloc_proppool(size_t size) 
 {
     struct proppool *ret;
-    size_t total_size = sizeof(struct proppool) + size;
+    /* minus 1 for the one that is already a part of the array
+     * in the struct */
+    size_t total_size = sizeof(struct proppool) + size - 1;
     ret = sasl_ALLOC(total_size);
     if(!ret) return NULL;
 
