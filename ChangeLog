@@ -3,10 +3,13 @@
 	  	possibly NULL conn
 
 	* configure.in: only build saslpasswd and sasldblistusers
-		if we have a meaningfull libsasldb (e.g. not db_none)
+		if we have a meaningfull libsasldb (e.g. not db_none),
 	* utils/Makefile.am: only build saslpasswd and sasldblistusers
-		if we have a meaningfull libsasldb (e.g. not db_none)
+		if we have a meaningfull libsasldb (e.g. not db_none),
 
+	* configure.in: conditionally build smtptest
+	* utils/Makefile.am: conditionally build smtptest
+	
 	* sasldb/allockey.c (_sasldb_parse_key): added
 
 	* sasldb/sasldb.h: New key list access API, added  parameter to
@@ -18,6 +21,7 @@
 
 	* utils/sasldblistuser.c: Use libsasldb instead of internal
 	  	functions.
+	
 	* utils/saslpasswd.c: No longer have separate global_utils,
 		call sasl_dispose and sasl_done
 

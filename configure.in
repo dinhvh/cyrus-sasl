@@ -1,6 +1,6 @@
 dnl configure.in for the SASL library
 dnl Rob Earhart
-dnl $Id: configure.in,v 1.106.2.26 2001/07/26 22:12:11 rjs3 Exp $
+dnl $Id: configure.in,v 1.106.2.27 2001/07/26 22:46:58 rjs3 Exp $
 dnl
 dnl Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
 dnl
@@ -819,6 +819,7 @@ if test "$with_sfio" != "no"; then
 
    SFIO_INC_FLAGS="-I$SFIO_INC_DIR"
    SFIO_LIB_FLAGS="-L$SFIO_LIBDIR -lsfio"
+   SMTPTEST_PROGRAM="smtptest"
    SASL_UTIL_LIBS_EXTRA=libsfsasl2.la
    SASL_UTIL_HEADERS_EXTRA=sfsasl.h
 
@@ -827,12 +828,14 @@ else
    AC_MSG_RESULT(no)
    SFIO_INC_FLAGS=""
    SFIO_LIB_FLAGS=""
+   SMTPTEST_PROGRAM=""
    SASL_UTIL_LIBS_EXTRA=""
    SASL_UTIL_HEADERS_EXTRA=""
 fi
 
 AC_SUBST(SFIO_INC_FLAGS)
 AC_SUBST(SFIO_LIB_FLAGS)
+AC_SUBST(SMTPTEST_PROGRAM)
 AC_SUBST(SASL_UTIL_LIBS_EXTRA)
 AC_SUBST(SASL_UTIL_HEADERS_EXTRA)
 
