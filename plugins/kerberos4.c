@@ -1,7 +1,7 @@
 /* Kerberos4 SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: kerberos4.c,v 1.65.2.27 2001/07/12 14:10:14 rjs3 Exp $
+ * $Id: kerberos4.c,v 1.65.2.28 2001/07/12 17:42:55 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -361,7 +361,8 @@ static int decode_once(void *context,
     result = _plug_buf_alloc(text->utils, &text->decode_once_buf,
 			      &text->decode_once_buf_len,
 			      data.app_length + 1);
-    if(result != SASL_OK) return result;
+    if(result != SASL_OK)
+	return result;
     
     *output = text->decode_once_buf;
     *outputlen = data.app_length;
@@ -389,7 +390,6 @@ static int decode(void *context,
     {
       /* No need to free tmp, it will be reused */
       ret = decode_once(text, &input, &inputlen, &tmp, &tmplen);
-
       if(ret != SASL_OK) return ret;
 
       if (tmp!=NULL) /* if received 2 packets merge them together */
@@ -416,7 +416,10 @@ static int
 new_text(const sasl_utils_t *utils, context_t **text)
 {
     context_t *ret = (context_t *) utils->malloc(sizeof(context_t));
-    if (ret==NULL) return SASL_NOMEM;
+    if (ret==NULL) {
+	MEMERROR(utils);
+	return SASL_NOMEM;
+    }
 
     memset(ret, 0, sizeof(context_t));
 
@@ -440,6 +443,7 @@ server_start(void *glob_context __attribute__((unused)),
 	if(!krb_mutex) {
 	    sparams->utils->seterror(sparams->utils->conn, 0,
 				     "couldn't allocate mutex");
+	    return SASL_FAIL;
 	}
     }
     
@@ -519,10 +523,10 @@ static int server_continue_step (void *conn_context,
 
   if (text->state==0)
   {    
-      /* random 32-bit number */
-      int randocts, nchal;
+    /* random 32-bit number */
+    int randocts, nchal;
 
-      /* shouldn't we check for erroneous client input here?!? */
+    /* shouldn't we check for erroneous client input here?!? */
 
     sparams->utils->rand(sparams->utils->rpool,(char *) &randocts ,
 			 sizeof(randocts));    
@@ -554,11 +558,11 @@ static int server_continue_step (void *conn_context,
 
     /* create ticket */
     if (clientinlen > MAX_KTXT_LEN) {
-	text->utils->seterror(text->utils->conn,0,"request larger than maximum ticket size");
+	text->utils->seterror(text->utils->conn,0,
+			      "request larger than maximum ticket size");
 	return SASL_FAIL;
     }
     
-
     ticket.length=clientinlen;
     for (lup=0;lup<clientinlen;lup++)      
       ticket.dat[lup]=clientin[lup];
@@ -582,9 +586,10 @@ static int server_continue_step (void *conn_context,
 
     /* get ip number in addr*/
     result = _plug_ipfromstring(sparams->utils, sparams->ipremoteport, &addr);
-    if (result != SASL_OK)
-	/* couldn't get remote IP address */
+    if (result != SASL_OK || !sparams->ipremoteport) {
+	SETERROR(text->utils, "couldn't get remote IP address");
 	return result;
+    }
 #endif
 
     /* check ticket */
@@ -659,13 +664,18 @@ static int server_continue_step (void *conn_context,
     unsigned char *in;
 
     if ((clientinlen==0) || (clientinlen % 8 != 0)) {
-	text->utils->seterror(text->utils->conn,0,"Response to challengs is not a multiple of 8 octets (a DES block)");
+	text->utils->seterror(text->utils->conn,0,
+			      "Response to challengs is not a multiple of 8 octets (a DES block)");
 	return SASL_FAIL;	
     }
 
     /* we need to make a copy because des does in place decrpytion */
     in = sparams->utils->malloc(clientinlen + 1);
-    if (in == NULL) return SASL_NOMEM;
+    if (in == NULL) {
+	MEMERROR(sparams->utils);
+	return SASL_NOMEM;
+    }
+  
     memcpy(in, clientin, clientinlen);
     in[clientinlen]='\0';
 
@@ -680,12 +690,14 @@ static int server_continue_step (void *conn_context,
 
     testnum=(in[0]*256*256*256)+(in[1]*256*256)+(in[2]*256)+in[3];
 
-    if (testnum != text->challenge)
-	/* incorrect response to challenge */
+    if (testnum != text->challenge) {
+	SETERROR(sparams->utils, "incorrect response to challenge");
 	return SASL_BADAUTH;
-
+    }
+    
     if (! cando_sec(&sparams->props, in[4] & KRB_SECFLAGS)) {
-	/* invalid security property specified */
+	SETERROR(sparams->utils,
+		      "invalid security property specified");
 	return SASL_BADPROT;
     }
 
@@ -708,7 +720,7 @@ static int server_continue_step (void *conn_context,
 	oparams->mech_ssf=KRB_DES_SECURITY_BITS;
 	break;
     default:
-        /* not a supported encryption layer */
+        SETERROR(sparams->utils, "not a supported encryption layer");
 	return SASL_BADPROT;
     }
 
@@ -717,6 +729,7 @@ static int server_continue_step (void *conn_context,
     result = _plug_ipfromstring(sparams->utils,
 				sparams->iplocalport, &(text->ip_local));
     if (result != SASL_OK) {
+        SETERROR(sparams->utils, "couldn't get local ip address");
 	/* couldn't get local IP address */
 	return result;
     }
@@ -724,6 +737,7 @@ static int server_continue_step (void *conn_context,
     result = _plug_ipfromstring(sparams->utils,
 				sparams->ipremoteport, &(text->ip_remote));
     if (result != SASL_OK) {
+        SETERROR(sparams->utils, "couldn't get remote ip address");
 	/* couldn't get remote IP address */
 	return result;
     }
@@ -748,8 +762,11 @@ static int server_continue_step (void *conn_context,
       }
 
       authid = sparams->utils->malloc(alen + 1);
-      if (!authid)
-	return SASL_NOMEM;
+      if (!authid) {
+	  MEMERROR(sparams->utils);
+	  return SASL_NOMEM;
+      }
+      
       strcpy(authid, text->pname);
       if (text->pinst[0]) {
 	strcat(authid, ".");
@@ -762,7 +779,11 @@ static int server_continue_step (void *conn_context,
 
       if (in[8]) {
 	  user = sparams->utils->malloc(strlen((char *) in + 8) + 1);
-	  if (!user) return SASL_NOMEM;
+	  if (!user) {
+	      MEMERROR(sparams->utils);
+	      return SASL_NOMEM;
+	  }
+	  
 	  strcpy(user, (char *) in + 8);
 	  ulen = strlen(user);
       } else {
@@ -796,6 +817,7 @@ static int server_continue_step (void *conn_context,
   }
   
   /* Improper step. Probably application error */
+  SETERROR(sparams->utils, "invalid step");
   return SASL_FAIL; /* should never get here */
 }
 
@@ -837,7 +859,8 @@ int kerberos4_server_plug_init(const sasl_utils_t *utils,
     }
 
     if(!srvtab) {	
-	utils->getopt(utils->getopt_context, "KERBEROS_V4", "srvtab", &ret, &rl);
+	utils->getopt(utils->getopt_context,
+		      "KERBEROS_V4", "srvtab", &ret, &rl);
 
 	if (ret == NULL) {
 	    ret = KEYFILE;
@@ -845,7 +868,10 @@ int kerberos4_server_plug_init(const sasl_utils_t *utils,
 	}
     
 	srvtab = utils->malloc(sizeof(char) * (rl + 1));
-	if(!srvtab) return SASL_NOMEM;
+	if(!srvtab) {
+	    MEMERROR(utils);
+	    return SASL_NOMEM;
+	}
 
 	strcpy(srvtab, ret);
     }
@@ -914,11 +940,9 @@ static int client_continue_step (void *conn_context,
 	ticket.length=MAX_KTXT_LEN;   
 
 	if (serverinlen != 4) {
-	    text->utils->seterror(text->utils->conn, SASL_NOLOG, "server challenge not 4 bytes long");
-	    
-	    cparams->utils->log(NULL, SASL_LOG_ERR,
-			       "server challenge not 4 bytes long");
-	    return SASL_FAIL; 
+	    text->utils->seterror(text->utils->conn, 0,
+				  "server challenge not 4 bytes long");
+	    return SASL_BADPROT; 
 	}
 
 	memcpy(&text->challenge, serverin, 4);
@@ -928,11 +952,13 @@ static int client_continue_step (void *conn_context,
 	if (cparams->serverFQDN == NULL) {
 	    cparams->utils->log(NULL, SASL_LOG_ERR,
 				"no 'serverFQDN' set");
+	    SETERROR(text->utils, "paramater error");
 	    return SASL_BADPARAM;
 	}
 	if (cparams->service == NULL) {
 	    cparams->utils->log(NULL, SASL_LOG_ERR,
 				"no 'service' set");
+	    SETERROR(text->utils, "paramater error");
 	    return SASL_BADPARAM;
 	}
 
@@ -966,8 +992,7 @@ static int client_continue_step (void *conn_context,
 	    KRB_UNLOCK_MUTEX(cparams->utils);
 	    
 	    text->utils->seterror(text->utils->conn,SASL_NOLOG,
-			  "krb_mk_req() failed: %s (%d)",
-			  krb_err_txt[result], result);
+			  "krb_mk_req() failed");
 	    
 	    cparams->utils->log(NULL, SASL_LOG_ERR, 
 			       "krb_mk_req() failed: %s (%d)",
@@ -1014,8 +1039,10 @@ static int client_continue_step (void *conn_context,
 	    for (prompt = *prompt_need;
 		 prompt->id != SASL_CB_LIST_END;
 		 ++prompt)
-		if (! prompt->result)
+		if (! prompt->result) {
+		    PARAMERROR(cparams->utils);
 		    return SASL_BADPARAM;
+		}
 
 	    /* Get the username */
 	    if (! text->user) {
@@ -1024,7 +1051,11 @@ static int client_continue_step (void *conn_context,
 		     ++prompt)
 		    if (prompt->id == SASL_CB_USER) {
 			text->user = cparams->utils->malloc(strlen(prompt->result) + 1);
-			if(!text->user) return SASL_NOMEM;
+			if(!text->user) {
+			    MEMERROR(cparams->utils);
+			    return SASL_NOMEM;
+			}
+			
 			strcpy(text->user, prompt->result);
 			
 			break;
@@ -1056,15 +1087,22 @@ static int client_continue_step (void *conn_context,
 				    SASL_CB_USER,
 				    &userid,
 				    NULL);
-		if (result != SASL_OK)
+		if (result != SASL_OK) {
+		    SETERROR(cparams->utils, "getuser callback failed");
 		    return result;
+		}
+		
 		if (userid) {		    
 		    text->user = cparams->utils->malloc(strlen(userid) + 1);
-		    if (!text->user) return SASL_NOMEM;
+		    if (!text->user) {
+			MEMERROR(cparams->utils);
+			return SASL_NOMEM;
+		    }
 		    strcpy(text->user, userid);
 		}
 		break;
 	    default:
+		SETERROR(cparams->utils, "couldn't get callback");
 		return result;
 	    }
 	}
@@ -1075,8 +1113,10 @@ static int client_continue_step (void *conn_context,
 	    if (! prompt_need)
 		return SASL_INTERACT;
 	    *prompt_need = cparams->utils->malloc(sizeof(sasl_interact_t) * 2);
-	    if (! *prompt_need)
+	    if (! *prompt_need) {
+		MEMERROR(cparams->utils);
 		return SASL_NOMEM;
+	    }
 	    prompt = *prompt_need;
 	    prompt->id = SASL_CB_USER;
 	    prompt->prompt = "Remote Userid";
@@ -1088,8 +1128,8 @@ static int client_continue_step (void *conn_context,
       
 	/* must be 8 octets */
 	if (serverinlen!=8) {
-	    cparams->utils->log(NULL, SASL_LOG_ERR,
-			        "server response not 8 bytes long");
+	    SETERROR(cparams->utils,
+		     "server response not 8 bytes long");
 	    return SASL_BADAUTH;
 	}
 
@@ -1108,6 +1148,7 @@ static int client_continue_step (void *conn_context,
 	    cparams->utils->log(NULL, SASL_LOG_ERR,
 				"krb_get_cred() failed: %s (%d)",
 				krb_err_txt[result], result);
+	    SETERROR(cparams->utils, "krb_get_cred() failed");
 	    return SASL_BADAUTH;
 	}
 #endif
@@ -1128,8 +1169,7 @@ static int client_continue_step (void *conn_context,
 	/* verify data 1st 4 octets must be equal to chal+1 */
 	if (testnum != text->challenge+1)
 	{
-	    cparams->utils->log(NULL, SASL_LOG_ERR,
-				"server response incorrect");
+	    SETERROR(cparams->utils,"server response incorrect");
 	    return SASL_BADAUTH;
 	}
 
@@ -1140,17 +1180,21 @@ static int client_continue_step (void *conn_context,
 	 */
 	if (cparams->props.min_ssf > 
 	       KRB_DES_SECURITY_BITS + cparams->external_ssf) {
-	    cparams->utils->log(NULL, SASL_LOG_ERR,
+	    SETERROR(cparams->utils,
 			       "minimum ssf too strong for this mechanism");
 	    return SASL_TOOWEAK;
 	} else if (cparams->props.min_ssf > cparams->props.max_ssf) {
-	    cparams->utils->log(NULL, SASL_LOG_ERR,
+	    SETERROR(cparams->utils,
 			       "minimum ssf larger than maximum ssf");
 	    return SASL_BADPARAM;
 	}
 
 	/* create stuff to send to server */
 	sout = (char *) cparams->utils->malloc(9+strlen(text->user)+9);
+	if(!sout) {
+	    MEMERROR(cparams->utils);
+	    return SASL_NOMEM;
+	}
 
 	nchal=htonl(text->challenge);
 	memcpy(sout, &nchal, 4);
@@ -1184,7 +1228,7 @@ static int client_continue_step (void *conn_context,
 	    oparams->mech_ssf=0;
 	    sout[4] = KRB_SECFLAG_NONE;
 	} else {
-	    cparams->utils->log(NULL, SASL_LOG_ERR,
+	    SETERROR(cparams->utils,
 				"unable to agree on layers with server");
 	    return SASL_BADPROT;
 	}
@@ -1220,7 +1264,10 @@ static int client_continue_step (void *conn_context,
 			 (des_cblock *)text->session,
 			 DES_ENCRYPT);
 
-	_plug_buf_alloc(text->utils, &text->out_buf, &text->out_buf_len, len);
+	result = _plug_buf_alloc(text->utils, &text->out_buf,
+				 &text->out_buf_len, len);
+	if(result != SASL_OK)
+	    return result;
 
 	memcpy(text->out_buf, sout, len);
 
@@ -1251,8 +1298,10 @@ static int client_continue_step (void *conn_context,
 	buf = cparams->utils->malloc(strlen(text->credentials.pname)
 				   + strlen(text->credentials.pinst)
 				   + 2);
-	if (!buf)
+	if (!buf) {
+	    MEMERROR(cparams->utils);
 	    return SASL_NOMEM;
+	}
 	strcpy(buf, text->credentials.pname);
 	if (text->credentials.pinst[0]) {
 	    strcat(buf, ".");
@@ -1295,6 +1344,7 @@ static int client_continue_step (void *conn_context,
 	return SASL_OK;
     }
 
+    SETERROR(cparams->utils, "shouldn't ever get here");
     return SASL_FAIL; /* should never get here */
 }
 
@@ -1323,22 +1373,24 @@ static sasl_client_plug_t client_plugins[] =
 };
 
 int kerberos4_client_plug_init(
-    const sasl_utils_t *utils __attribute__((unused)),
+    const sasl_utils_t *utils,
     int maxversion,
     int *out_version,
     sasl_client_plug_t **pluglist,
     int *plugcount)
 {
-  if (maxversion < SASL_CLIENT_PLUG_VERSION)
-    return SASL_BADVERS;
+    if (maxversion < SASL_CLIENT_PLUG_VERSION) {
+	SETERROR(utils, "Wrong KERBEROS_V4 version");
+	return SASL_BADVERS;
+    }
 
-  *pluglist=client_plugins;
+    *pluglist=client_plugins;
 
-  *plugcount=1;
-  *out_version=SASL_CLIENT_PLUG_VERSION;
+    *plugcount=1;
+    *out_version=SASL_CLIENT_PLUG_VERSION;
 
-  refcount++;
+    refcount++;
 
-  return SASL_OK;
+    return SASL_OK;
 }
 
