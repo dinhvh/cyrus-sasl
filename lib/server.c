@@ -1,6 +1,6 @@
 /* SASL server API implementation
  * Tim Martin
- * $Id: server.c,v 1.84.2.15 2001/06/12 19:09:46 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.16 2001/06/13 16:44:55 rjs3 Exp $
  */
 
 /* 
@@ -226,6 +226,9 @@ static void server_dispose(sasl_conn_t *pconn)
   pconn->context = NULL;
   
   _sasl_free_utils(&s_conn->sparams->utils);
+
+  if (s_conn->propctx)
+      prop_dispose(&s_conn->propctx);
 
   if (s_conn->mechlist_buf)
       sasl_FREE(s_conn->mechlist_buf);
@@ -754,6 +757,10 @@ int sasl_server_new(const char *service,
 
   serverconn->mech = NULL;
 
+  /* We'll assume the default size */
+  serverconn->propctx = prop_new(0);
+  if(!serverconn->propctx) return SASL_NOMEM;
+
   /* make sparams */
   serverconn->sparams=sasl_ALLOC(sizeof(sasl_server_params_t));
   if (serverconn->sparams==NULL) return SASL_NOMEM;
@@ -811,7 +818,7 @@ static int mech_permitted(sasl_conn_t *conn,
     sasl_server_conn_t *s_conn = (sasl_server_conn_t *)conn;
     const sasl_server_plug_t *plug = mech->plug;
     int myflags;
-    sasl_ssf_t minssf = 0; /* FIXME: this was for comparing external foo */
+    sasl_ssf_t minssf = 0;
 
     /* Can this plugin meet the application's security requirements? */
     if (! plug || ! conn)
@@ -823,8 +830,6 @@ static int mech_permitted(sasl_conn_t *conn,
 	    || ! conn->external.auth_id)
 	    return 0;
     } else {
-	sasl_ssf_t minssf;
-
 	if (conn->props.min_ssf < conn->external.ssf) {
 	    minssf = 0;
 	} else {
@@ -887,10 +892,12 @@ static int do_authorization(sasl_server_conn_t *s_conn)
 			  &authproc, &auth_context) != SASL_OK) {
 	return SASL_NOAUTHZ;
     }
-    ret = authproc(&s_conn->base, auth_context,
+
+    ret = authproc(&(s_conn->base), auth_context,
 		   s_conn->base.oparams.authid, s_conn->base.oparams.alen,
 		   s_conn->base.oparams.user, s_conn->base.oparams.ulen,
-		   s_conn->user_realm, strlen(s_conn->user_realm),
+		   s_conn->user_realm,
+		   (s_conn->user_realm ? strlen(s_conn->user_realm) : 0),
 		   s_conn->sparams->propctx);
     
     return ret;
@@ -1319,12 +1326,14 @@ int sasl_checkapop(sasl_conn_t *conn,
     if (!conn || !response || !challenge)
 	return SASL_BADPARAM;
 
+    /* Parse out username */
     user_end = strrchr(response, ' ');
     user_len = (size_t)(user_end - response);
     user = sasl_ALLOC(user_len + 1);
     memcpy(user, response, user_len);
     user[user_len] = '\0';
 
+    /* Cannonify it */
     ret = _sasl_canon_user(conn,
 			   user, user_len,
 			   user, user_len,
@@ -1333,11 +1342,13 @@ int sasl_checkapop(sasl_conn_t *conn,
     sasl_FREE(user);
 
     if(ret != SASL_OK) return ret;
-    
+
+    /* Do APOP verification */
     result = _sasl_sasldb_verify_apop(conn, conn->oparams.user,
 				      challenge, user_end + 1,
 				      s_conn->user_realm);
 
+    /* If verification failed, we don't want to encourage getprop to work */
     if(result != SASL_OK) {
 	conn->oparams.user = NULL;
 	conn->oparams.authid = NULL;
@@ -1345,6 +1356,4 @@ int sasl_checkapop(sasl_conn_t *conn,
 
     return result;
 }
-
-
  

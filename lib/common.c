@@ -959,27 +959,29 @@ _sasl_verifyfile(void *context __attribute__((unused)),
 
 
 static int
-_sasl_proxy_policy(void *context __attribute__((unused)),
-		   const char *auth_identity,
-		   const char *requested_user,
-		   const char **user,
-		   const char **errstr)
+_sasl_proxy_policy(sasl_conn_t *conn,
+		   void *context __attribute__((unused)),
+		   const char *requested_user, unsigned rlen,
+		   const char *auth_identity, unsigned alen,
+		   const char *def_realm __attribute__((unused)),
+		   unsigned urlen __attribute__((unused)),
+		   struct propctx *propctx __attribute__((unused)))
 {
-    int r = 0;
+    if (!conn) return SASL_BADPARAM;
 
-    *user = NULL;
     if (!requested_user || *requested_user == '\0') {
 	requested_user = auth_identity;
     }
-    if (!auth_identity || !requested_user || 
-	(strcmp(auth_identity, requested_user) != 0)) {
-	if (errstr)
-	    *errstr = "Requested identity not authenticated identity";
+
+    if (!auth_identity || !requested_user || rlen != alen ||
+	(memcmp(auth_identity, requested_user, rlen) != 0)) {
+	printf("failed with %s, %s\n", auth_identity, requested_user);
+	sasl_seterror(conn, 0,
+		      "Requested identity not authenticated identity");
 	return SASL_BADAUTH;
     }
-    r = _sasl_strdup(requested_user, (char **) user, NULL);
-    
-    return r;
+
+    return SASL_OK;
 }
 
 int
@@ -1291,9 +1293,20 @@ _sasl_alloc_utils(sasl_conn_t *conn,
   utils->log=&_sasl_log;
 
   utils->seterror=&sasl_seterror;
-  
-  /* FIXME: Not setting up aux property utilities */
 
+  /* Aux Property Utilities */
+  utils->prop_new=&prop_new;
+  utils->prop_dup=&prop_dup;
+  utils->prop_request=&prop_request;
+  utils->prop_get=&prop_get;
+  utils->prop_getnames=&prop_getnames;
+  utils->prop_clear=&prop_clear;
+  utils->prop_dispose=&prop_dispose;
+  utils->prop_format=&prop_format;
+  utils->prop_set=&prop_set;
+  utils->prop_setvals=&prop_setvals;
+
+  /* Spares */
   utils->spare_fptr = NULL;
   utils->spare_fptr1 = utils->spare_fptr2 = 
       utils->spare_fptr3 = utils->spare_fptr4 = NULL;
