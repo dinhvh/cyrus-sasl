@@ -1,7 +1,7 @@
 /* db_berkeley.c--SASL berkeley db interface
  * Rob Siemborski
  * Tim Martin
- * $Id: db_berkeley.c,v 1.1.2.4 2001/07/25 17:37:42 rjs3 Exp $
+ * $Id: db_berkeley.c,v 1.1.2.5 2001/07/26 22:12:14 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -66,18 +66,19 @@ static int db_ok = 0;
  *
  */
 static int berkeleydb_open(const sasl_utils_t *utils,
-			   sasl_conn_t *conn, int rdwr, DB **mbdb)
+			   sasl_conn_t *conn,
+			   int rdwr, DB **mbdb)
 {
     const char *path = SASL_DB_PATH;
     int ret;
+    int flags;
     void *cntxt;
     sasl_getopt_t *getopt;
-    int flags;
 
     if (utils->getcallback(conn, SASL_CB_GETOPT,
-			   &getopt, &cntxt) == SASL_OK) {
+			  &getopt, &cntxt) == SASL_OK) {
 	const char *p;
-      	if (getopt(cntxt, NULL, "sasldb_path", &p, NULL) == SASL_OK 
+	if (getopt(cntxt, NULL, "sasldb_path", &p, NULL) == SASL_OK 
 	    && p != NULL && *p != 0) {
 	    path = p;
 	}
@@ -266,11 +267,7 @@ putsecret(const sasl_utils_t *utils,
       result = SASL_FAIL;
       goto cleanup;
     }
-
-
-
   } else {        /* removing secret */
-
     result=mbdb->del(mbdb, NULL, &dbkey, 0);
 
     if (result != 0)
@@ -283,7 +280,6 @@ putsecret(const sasl_utils_t *utils,
 	  result = SASL_FAIL;
       goto cleanup;
     }
-
   }
 
  cleanup:
@@ -298,7 +294,8 @@ putsecret(const sasl_utils_t *utils,
 sasl_server_getsecret_t *_sasl_db_getsecret = &getsecret;
 sasl_server_putsecret_t *_sasl_db_putsecret = &putsecret;
 
-int _sasl_check_db(const sasl_utils_t *utils)
+int _sasl_check_db(const sasl_utils_t *utils,
+		   sasl_conn_t *conn)
 {
     const char *path = SASL_DB_PATH;
     int ret;
@@ -306,7 +303,9 @@ int _sasl_check_db(const sasl_utils_t *utils)
     sasl_getopt_t *getopt;
     sasl_verifyfile_t *vf;
 
-    if (utils->getcallback(NULL, SASL_CB_GETOPT,
+    if(!utils) return SASL_BADPARAM;
+
+    if (utils->getcallback(conn, SASL_CB_GETOPT,
 			  &getopt, &cntxt) == SASL_OK) {
 	const char *p;
 	if (getopt(cntxt, NULL, "sasldb_path", &p, NULL) == SASL_OK 
@@ -330,4 +329,114 @@ int _sasl_check_db(const sasl_utils_t *utils)
     } else {
 	return ret;
     }
+}
+
+typedef struct berkeleydb_handle 
+{
+    DB *mbdb;
+    DBC *cursor;
+} handle_t;
+
+sasldb_handle _sasldb_getkeyhandle(const sasl_utils_t *utils,
+				   sasl_conn_t *conn) 
+{
+    int ret;
+    DB *mbdb;
+    handle_t *handle;
+    
+    if(!utils || !conn) return NULL;
+
+    ret = berkeleydb_open(utils, conn, 0, &mbdb);
+
+    if (ret != SASL_OK) {
+	return NULL;
+    }
+
+    handle = utils->malloc(sizeof(handle_t));
+    if(!handle) {
+	(void)mbdb->close(mbdb, 0);
+	return NULL;
+    }
+    
+    handle->mbdb = mbdb;
+    handle->cursor = NULL;
+
+    return (sasldb_handle)handle;
+}
+
+int _sasldb_getnextkey(const sasl_utils_t *utils __attribute__((unused)),
+		       sasldb_handle handle, char *out,
+		       const size_t max_out, size_t *out_len) 
+{
+    DB *mbdb;
+    int result;
+    handle_t *dbh = (handle_t *)handle;
+    DBT key, data;
+
+    if(!utils || !handle || !out || !max_out)
+	return SASL_BADPARAM;
+
+    mbdb = dbh->mbdb;
+
+    memset(&key,0, sizeof(key));
+    memset(&data,0,sizeof(data));
+
+    if(!dbh->cursor) {
+        /* make cursor */
+#if DB_VERSION_MAJOR < 3
+#if DB_VERSION_MINOR < 6
+	result = mbdb->cursor(mbdb, NULL,&dbh->cursor); 
+#else
+	result = mbdb->cursor(mbdb, NULL,&dbh->cursor, 0); 
+#endif /* DB_VERSION_MINOR < 7 */
+#else /* DB_VERSION_MAJOR < 3 */
+	result = mbdb->cursor(mbdb, NULL,&dbh->cursor, 0); 
+#endif /* DB_VERSION_MAJOR < 3 */
+
+	if (result!=0) {
+	    return SASL_FAIL;
+	}
+
+	/* loop thru */
+	result = dbh->cursor->c_get(dbh->cursor, &key, &data,
+				    DB_FIRST);
+    } else {
+	result = dbh->cursor->c_get(dbh->cursor, &key, &data,
+				    DB_NEXT);
+    }
+
+    if(result == DB_NOTFOUND) return SASL_OK;
+
+    if(result != 0)
+	return SASL_FAIL;
+    
+    if(key.size > max_out)
+	return SASL_BUFOVER;
+    
+    memcpy(out, key.data, key.size);
+    if(out_len) *out_len = key.size;
+    
+    return SASL_CONTINUE;
+}
+
+int _sasldb_releasekeyhandle(const sasl_utils_t *utils,
+			     sasldb_handle handle) 
+{
+    handle_t *dbh = (handle_t *)handle;
+    int ret = 0;
+    
+    if(!utils || !dbh) return SASL_BADPARAM;
+
+    if(dbh->cursor)
+	dbh->cursor->c_close(dbh->cursor);
+
+    if(dbh->mbdb)
+	ret = dbh->mbdb->close(dbh->mbdb, 0);
+    
+    utils->free(dbh);
+    
+    if(ret)
+	return SASL_FAIL;
+    else
+	return SASL_OK;
 }

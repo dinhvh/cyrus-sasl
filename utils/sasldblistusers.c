@@ -47,258 +47,118 @@
 #include <stdlib.h>
 
 #include <sasl.h>
+#include "../sasldb/sasldb.h"
 
-typedef void *listcb_t(const char *, const char *);
-
-void listusers_cb(const char *authid, const char *realm)
-{
-    if ( !authid || !realm) {
-	fprintf(stderr,"userlist callback has bad param");
-	return;
-    }
-
-    /* the entries that just say the mechanism exists */
-    if (strlen(authid)==0) return;
-
-    printf("user: %s realm: %s\n",authid,realm);
-}
+/* Cheating to make the utils work out right */
+extern const sasl_utils_t *sasl_global_utils;
 
 /*
  * List all users in database
  */
-
-#ifdef SASL_GDBM
-
-#include <gdbm.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-
-int listusers(const char *path, listcb_t *cb)
-{
-    GDBM_FILE indb, outdb;
-    datum dkey, nextkey, ekey;
-
-    indb = gdbm_open(path, 0, GDBM_READER, S_IRUSR | S_IWUSR, NULL);
-
-    if (!indb) {
-	fprintf(stderr, "can't open %s\n", path);
-	return 1;
-    }
-
-    dkey = gdbm_firstkey(indb);
-
-    while (dkey.dptr != NULL) {
-	char *authid = dkey.dptr;
-	char *realm  = dkey.dptr+strlen(authid)+1;
-
-	if (*authid) {
-	    /* don't check return values */
-	    cb(authid,realm);
-	}
-
-	nextkey=gdbm_nextkey(indb, dkey);
-	dkey=nextkey;
-    }
-
-    gdbm_close(indb);
-}
-
-#endif /* SASL_GDBM */
-
-#ifdef SASL_NDBM
-
-#include <ndbm.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-
-int listusers(const char *path, listcb_t *cb)
-{
-    DBM *indb;
-    datum dkey, nextkey;
-
-    indb = dbm_open(path, O_RDONLY, S_IRUSR | S_IWUSR);
-
-    if (!indb) {
-	fprintf(stderr, "can't open %s\n", path);
-	return 1;
-    }
-
-    dkey = dbm_firstkey(indb);
-
-    while (dkey.dptr != NULL) {
-	char *authid = dkey.dptr;
-	char *realm  = dkey.dptr+strlen(authid)+1;
-
-	if (*authid) {
-	    /* don't check return values */
-	    cb(authid,realm);
-	}
-
-	nextkey=dbm_nextkey(indb);
-	dkey=nextkey;
-    }
-
-    dbm_close(indb);
-}
-
-#endif /* SASL_NDBM */
-
-#ifdef SASL_BERKELEYDB
-
-#ifdef HAVE_DB3_DB_H
-#include <db3/db.h>
-#else
-#include <db.h>
-#endif
-
-/*
- * Open the database
- *
- */
-static int berkeleydb_open(const char *path,DB **mbdb)
-{
-    int ret;
-
-#if DB_VERSION_MAJOR < 3
-    ret = db_open(path, DB_HASH, DB_CREATE, 0664, NULL, NULL, mbdb);
-#else /* DB_VERSION_MAJOR < 3 */
-    ret = db_create(mbdb, NULL, 0);
-    if (ret == 0 && *mbdb != NULL)
-    {
-	    ret = (*mbdb)->open(*mbdb, path, NULL, DB_HASH, DB_CREATE, 0664);
-	    if (ret != 0)
-	    {
-		    (void) (*mbdb)->close(*mbdb, 0);
-		    *mbdb = NULL;
-	    }
-    }
-#endif /* DB_VERSION_MAJOR < 3 */
-
-    if (ret != 0) {
-	fprintf(stderr,"Error opening password file %s\n", path);
-	return SASL_FAIL;
-    }
-
-    return SASL_OK;
-}
-
-/*
- * Close the database
- *
- */
-
-static void berkeleydb_close(DB *mbdb)
-{
-    int ret;
-    
-    ret = mbdb->close(mbdb, 0);
-    if (ret!=0) {
-	fprintf(stderr,"error closing sasldb: %s",
-		strerror(ret));
-    }
-}
-
-int listusers(const char *path, listcb_t *cb)
+int listusers(sasl_conn_t *conn)
 {
     int result;
-    DB *mbdb = NULL;
-    DBC *cursor;
-    DBT key, data;
+    char key_buf[32768];
+    size_t key_len;
+    sasldb_handle dbh;
+    
+    dbh = _sasldb_getkeyhandle(sasl_global_utils, conn);
 
-    /* open the db */
-    result=berkeleydb_open(path, &mbdb);
-    if (result!=SASL_OK) goto cleanup;
+    if(!dbh) return SASL_FAIL;
 
-    /* make cursor */
-#if DB_VERSION_MAJOR < 3
-#if DB_VERSION_MINOR < 6
-    result = mbdb->cursor(mbdb, NULL,&cursor); 
-#else
-    result = mbdb->cursor(mbdb, NULL,&cursor, 0); 
-#endif /* DB_VERSION_MINOR < 7 */
-#else /* DB_VERSION_MAJOR < 3 */
-    result = mbdb->cursor(mbdb, NULL,&cursor, 0); 
-#endif /* DB_VERSION_MAJOR < 3 */
+    result = _sasldb_getnextkey(sasl_global_utils, dbh,
+				key_buf, 32768, &key_len);
 
-    if (result!=0) {
-	fprintf(stderr,"Making cursor failure: %s\n",strerror(result));
-      result = SASL_FAIL;
-      goto cleanup;
-    }
-
-    memset(&key,0, sizeof(key));
-    memset(&data,0,sizeof(data));
-
-    /* loop thru */
-    result = cursor->c_get(cursor, &key, &data,
-			   DB_FIRST);
-
-    while (result != DB_NOTFOUND)
+    while (result == SASL_CONTINUE)
     {
-	char *authid;
-	char *realm;
-	char realm_buf[2048];
-	int numnulls = 0;
-	unsigned int lup;
+	char authid_buf[16384];
+	char realm_buf[16384];
+	int ret;
 
-	/* make sure there is exactly 1 null */
-	for (lup=0;lup<key.size;lup++)
-	    if (((char *)key.data)[lup]=='\0')
-		numnulls++;
+	ret = _sasldb_parse_key(key_buf, key_len,
+				authid_buf, 16384,
+				realm_buf, 16384,
+				NULL, 0);
 
-	authid = key.data;
-	realm  = authid + strlen(authid)+1;
-	memcpy(realm_buf, realm, key.size - (strlen(authid)+1));
-	realm_buf[key.size - (strlen(authid)+1)] = '\0';
-
-	if (*authid) {
-	    /* don't check return values */
-	    cb(authid,realm_buf);
+	if(ret == SASL_BUFOVER) {
+	    printf("Key too large\n");
+	    continue;
+	} else if(ret != SASL_OK) {
+	    printf("Bad Key!\n");
+	    continue;
 	}
+	
+	printf("user: %s realm: %s\n",authid_buf,realm_buf);
 
-	memset(&key,0, sizeof(key));
-	memset(&data,0,sizeof(data));
-
-	result = cursor->c_get(cursor, &key, &data, DB_NEXT);
+	result = _sasldb_getnextkey(sasl_global_utils, dbh,
+				    key_buf, 32768, &key_len);
     }
 
-    if (result != DB_NOTFOUND) {
-	fprintf(stderr,"failure: %s\n",strerror(result));
-	result = SASL_FAIL;
-	goto cleanup;
+    if (result == SASL_BUFOVER) {
+	fprintf(stderr, "Key too large!\n");
+    } else if (result != SASL_OK) {
+	fprintf(stderr,"db failure\n");
     }
 
-    result = cursor->c_close(cursor);
-    if (result!=0) result = SASL_FAIL;
-
-    result = SASL_OK;
-
- cleanup:
-
-    if (mbdb != NULL) berkeleydb_close(mbdb);
-    return result;
+    return _sasldb_releasekeyhandle(sasl_global_utils, dbh);
 }
 
-#endif /* BERKELEY */
+char *sasldb_path = SASL_DB_PATH;
 
-#if !defined(SASL_GDBM) && !defined(SASL_NDBM) && !defined(SASL_BERKELEYDB)
-int listusers(const char *path, listcb_t *cb)
+int good_getopt(void *context __attribute__((unused)), 
+		const char *plugin_name __attribute__((unused)), 
+		const char *option,
+		const char **result,
+		unsigned *len)
 {
-    fprintf(stderr,"Unsupported DB format");
-    exit(1);
+    if (sasldb_path && !strcmp(option, "sasldb_path")) {
+	*result = sasldb_path;
+	if (len)
+	    *len = strlen(sasldb_path);
+	return SASL_OK;
+    }
+
+    return SASL_FAIL;
 }
 
-#endif /* BERKELEY */
-
+static struct sasl_callback goodsasl_cb[] = {
+    { SASL_CB_GETOPT, &good_getopt, NULL },
+    { SASL_CB_LIST_END, NULL, NULL }
+};
 
 int main(int argc, char **argv)
 {
-    char *db= SASL_DB_PATH;
-    
+    int result;
+    sasl_conn_t *conn;
     if (argc > 1)
-	db = argv[1];
+	sasldb_path = argv[1];
 
-    listusers(db, (listcb_t *) &listusers_cb);
+    result = sasl_server_init(goodsasl_cb, "sasldblistusers");
+    if(result != SASL_OK) {
+	fprintf(stderr, "Couldn't init server\n");
+	return 1;
+    }
+    
+    result = sasl_server_new("sasldb",
+			     "localhost",
+			     NULL,
+			     NULL,
+			     NULL,
+			     NULL,
+			     0,
+			     &conn);
 
-    exit(0);
+    if(_sasl_check_db(sasl_global_utils, conn) != SASL_OK) {
+	fprintf(stderr, "check_db unsuccessful\n");
+	return 1;
+    }
+
+    if(listusers(conn) != SASL_OK) {
+	fprintf(stderr, "listusers failed\n");
+    }
+
+    sasl_dispose(&conn);
+    sasl_done();
+
+    return 0;
 }

@@ -1,7 +1,7 @@
 /* db_none.c--provides linkage for systems which lack a backend db lib
  * Rob Siemborski
  * Rob Earhart
- * $Id: db_none.c,v 1.1.2.1 2001/07/17 21:48:48 rjs3 Exp $
+ * $Id: db_none.c,v 1.1.2.2 2001/07/26 22:12:14 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -70,7 +70,29 @@ static int putsecret(const sasl_utils_t *utils __attribute__((unused)),
 sasl_server_getsecret_t *_sasl_db_getsecret = &getsecret;
 sasl_server_putsecret_t *_sasl_db_putsecret = &putsecret;
 
-int _sasl_check_db(const sasl_utils_t *utils __attribute__((unused)))
+int _sasl_check_db(const sasl_utils_t *utils __attribute__((unused)),
+		   sasl_conn_t *conn __attribute__((unused)))
+{
+    return SASL_FAIL;
+}
+
+sasldb_handle _sasldb_getkeyhandle(const sasl_utils_t *utils __attribute__((unused)),
+                                   sasl_conn_t *conn __attribute__((unused))) 
+{
+    return NULL;
+}
+
+int _sasldb_getnextkey(const sasl_utils_t *utils __attribute__((unused)),
+                       sasldb_handle handle __attribute__((unused)),
+		       char *out __attribute__((unused)),
+                       const size_t max_out __attribute__((unused)),
+		       size_t *out_len __attribute__((unused))) 
+{
+    return SASL_FAIL;
+}
+
+int _sasldb_releasekeyhandle(const sasl_utils_t *utils __attribute__((unused)),
+                             sasldb_handle handle __attribute__((unused)))  
 {
     return SASL_FAIL;
 }

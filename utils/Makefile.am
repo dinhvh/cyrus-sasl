@@ -45,12 +45,15 @@
 all_sasl_libs = ../lib/libsasl2.la $(SASL_DB_LIB) $(LIB_SOCKET)
 all_sasl_static_libs = ../lib/libsasl2.a $(SASL_DB_LIB) $(LIB_SOCKET) $(GSSAPIBASE_LIBS) $(GSSAPI_LIBS) $(SASL_KRB_LIB) $(LIB_DES) $(PLAIN_LIBS) $(SRP_LIBS)
 
-sbin_PROGRAMS = saslpasswd sasldblistusers
-man_MANS = saslpasswd.8 sasldblistusers.8
-saslpasswd_LDADD = $(all_sasl_libs) ../sasldb/libsasldb.la
-sasldblistusers_LDADD = $(SASL_DB_LIB)
+sbin_PROGRAMS = @SASL_DB_UTILS@
+EXTRA_PROGRAMS = saslpasswd sasldblistusers testsuite testsuitestatic smtptest
 
-EXTRA_PROGRAMS = testsuite testsuitestatic smtptest
+man_MANS = @SASL_DB_MANS@
+EXTRA_MANS = saslpasswd.8 sasldblistusers.8
+
+saslpasswd_LDADD = $(all_sasl_libs) ../sasldb/libsasldb.la
+sasldblistusers_LDADD = $(all_sasl_libs) ../sasldb/libsasldb.la
+
 testsuite_LDADD = $(all_sasl_libs) @DMALLOC_LIBS@
 
 CLEANFILES=$(EXTRA_PROGRAMS)

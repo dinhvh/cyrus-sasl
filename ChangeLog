@@ -1,6 +1,25 @@
 2001-07-26  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* lib/common.c (_sasl_getcallback): fixed reference to
-	  possibly NULL conn
+	  	possibly NULL conn
+
+	* configure.in: only build saslpasswd and sasldblistusers
+		if we have a meaningfull libsasldb (e.g. not db_none)
+	* utils/Makefile.am: only build saslpasswd and sasldblistusers
+		if we have a meaningfull libsasldb (e.g. not db_none)
+
+	* sasldb/allockey.c (_sasldb_parse_key): added
+
+	* sasldb/sasldb.h: New key list access API, added  parameter to
+		sasl_check_db (all callers updated, all callees updated)
+	* sasldb/db_berkeley.c: Implement key list access API
+	* sasldb/db_gdbm.c: Implement key list access API
+	* sasldb/db_ndbm.c: Implement key list access API
+	* sasldb/db_none.c: Implement key list access API
+
+	* utils/sasldblistuser.c: Use libsasldb instead of internal
+	  	functions.
+	* utils/saslpasswd.c: No longer have separate global_utils,
+		call sasl_dispose and sasl_done
 
 2001-07-25  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* lib/saslint.h: changed "sasldb" verifier to "auxprop"

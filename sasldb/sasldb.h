@@ -1,7 +1,7 @@
-/* saslint.h - internal SASL library definitions
+/* sasldb.h - SASLdb library header
  * Rob Siemborski
  * Tim Martin
- * $Id: sasldb.h,v 1.1.2.3 2001/07/25 17:37:42 rjs3 Exp $
+ * $Id: sasldb.h,v 1.1.2.4 2001/07/26 22:12:14 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -49,6 +49,14 @@
 #include "sasl.h"
 #include "saslplug.h"
 
+/*
+ * Note that some of these require a sasl_conn_t in order for
+ * the getcallback stuff to work correctly.  This is great for
+ * when they are called from a plugin or the library but makes
+ * for much wierdness when an otherwise non-sasl application needs
+ * to make use of this functionality.
+ */
+
 /* Get a secret from sasldb for the given authid/realm */
 typedef int sasl_server_getsecret_t(const sasl_utils_t *utils,
 				    sasl_conn_t *context,
@@ -67,7 +75,24 @@ typedef int sasl_server_putsecret_t(const sasl_utils_t *utils,
 extern sasl_server_getsecret_t *_sasl_db_getsecret;
 extern sasl_server_putsecret_t *_sasl_db_putsecret;
 
-int _sasl_check_db(const sasl_utils_t *utils);
+int _sasl_check_db(const sasl_utils_t *utils,
+		   sasl_conn_t *conn);
+
+/* These allow iterating through the keys of the database */
+typedef void* sasldb_handle;
+
+sasldb_handle _sasldb_getkeyhandle(const sasl_utils_t *utils,
+				   sasl_conn_t *conn);
+int _sasldb_getnextkey(const sasl_utils_t *utils,
+		       sasldb_handle handle, char *out,
+		       const size_t max_out, size_t *out_len);
+int _sasldb_releasekeyhandle(const sasl_utils_t *utils,
+			     sasldb_handle handle);
+
+int _sasldb_parse_key(const char *key, const size_t key_len,
+		      char *authid, const size_t max_authid,
+		      char *realm, const size_t max_realm,
+		      char *propName, const size_t max_propname);
 
 /* This function is internal, but might be useful to have around */
 int _sasldb_alloc_key(const sasl_utils_t *utils,
@@ -76,6 +101,5 @@ int _sasldb_alloc_key(const sasl_utils_t *utils,
 		      const char *propName,
 		      char **key,
 		      size_t *key_len);
-
 
 #endif /* SASLDB_H */

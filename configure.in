@@ -1,6 +1,6 @@
 dnl configure.in for the SASL library
 dnl Rob Earhart
-dnl $Id: configure.in,v 1.106.2.25 2001/07/25 18:37:32 rjs3 Exp $
+dnl $Id: configure.in,v 1.106.2.26 2001/07/26 22:12:11 rjs3 Exp $
 dnl
 dnl Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
 dnl
@@ -251,26 +251,25 @@ LIBS="$cmu_save_LIBS"
 AC_MSG_CHECKING(DB library to use)
 AC_MSG_RESULT($dblib)
 
+SASL_DB_BACKEND="db_${dblib}.lo"
+SASL_DB_BACKEND_STATIC="../sasldb/db_${dblib}.o"
+SASL_DB_UTILS="saslpasswd sasldblistusers"
+SASL_DB_MANS="saslpasswd.8 sasldblistusers.8"
+
 case "$dblib" in
   gdbm) 
-    SASL_DB_BACKEND="db_${dblib}.lo"
-    SASL_DB_BACKEND_STATIC="../sasldb/db_${dblib}.o"
     SASL_MECHS="$SASL_MECHS libsasldb.la"
     SASL_STATIC_OBJS="$SASL_STATIC_OBJS ../plugins/sasldb.o"
     AC_DEFINE(STATIC_SASLDB)
     AC_DEFINE(SASL_GDBM)
     ;;
   ndbm)
-    SASL_DB_BACKEND="db_${dblib}.lo"
-    SASL_DB_BACKEND_STATIC="../sasldb/db_${dblib}.o"
     SASL_MECHS="$SASL_MECHS libsasldb.la"
     SASL_STATIC_OBJS="$SASL_STATIC_OBJS ../plugins/sasldb.o"
     AC_DEFINE(STATIC_SASLDB)
     AC_DEFINE(SASL_NDBM)
     ;;
   berkeley)
-    SASL_DB_BACKEND="db_${dblib}.lo"
-    SASL_DB_BACKEND_STATIC="../sasldb/db_${dblib}.o"
     SASL_MECHS="$SASL_MECHS libsasldb.la"
     SASL_STATIC_OBJS="$SASL_STATIC_OBJS ../plugins/sasldb.o"
     AC_DEFINE(STATIC_SASLDB)
@@ -280,9 +279,13 @@ case "$dblib" in
     AC_MSG_WARN([Disabling SASL authentication database support])
     SASL_DB_BACKEND="db_none.lo"
     SASL_DB_BACKEND_STATIC="../sasldb/db_none.o"
+    SASL_DB_UTILS=""
+    SASL_DB_MANS=""
     SASL_DB_LIB=""
     ;;
 esac
+AC_SUBST(SASL_DB_UTILS)
+AC_SUBST(SASL_DB_MANS)
 AC_SUBST(SASL_DB_BACKEND)
 AC_SUBST(SASL_DB_BACKEND_STATIC)
 AC_SUBST(SASL_DB_LIB)

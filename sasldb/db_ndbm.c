@@ -1,7 +1,7 @@
 /* db_ndbm.c--SASL ndbm interface
  * Rob Siemborski
  * Rob Earhart
- * $Id: db_ndbm.c,v 1.1.2.3 2001/07/25 17:37:42 rjs3 Exp $
+ * $Id: db_ndbm.c,v 1.1.2.4 2001/07/26 22:12:14 rjs3 Exp $
  */
 /*
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -193,7 +193,8 @@ sasl_server_putsecret_t *_sasl_db_putsecret = &putsecret;
 #define SUFLEN 5
 #endif
 
-int _sasl_check_db(const sasl_utils_t *utils)
+int _sasl_check_db(const sasl_utils_t *utils,
+		   sasl_conn_t *conn)
 {
     const char *path = SASL_DB_PATH;
     void *cntxt;
@@ -202,7 +203,9 @@ int _sasl_check_db(const sasl_utils_t *utils)
     int ret = SASL_OK;
     char *db;
 
-    if (utils->getcallback(NULL, SASL_CB_GETOPT,
+    if(!utils) return SASL_BADPARAM;
+
+    if (utils->getcallback(conn, SASL_CB_GETOPT,
 			   &getopt, &cntxt) == SASL_OK) {
 	const char *p;
 	if (getopt(cntxt, NULL, "sasldb_path", &p, NULL) == SASL_OK 
@@ -248,4 +251,92 @@ int _sasl_check_db(const sasl_utils_t *utils)
     } else {
 	return ret;
     }
+}
+
+typedef struct ndbm_handle 
+{
+    DBM *db;
+    datum dkey;
+    int first;
+} handle_t;
+
+sasldb_handle _sasldb_getkeyhandle(const sasl_utils_t *utils,
+				   sasl_conn_t *conn) 
+{
+    const char *path = SASL_DB_PATH;
+    sasl_getopt_t *getopt;
+    void *cntxt;
+    DBM *db;
+    handle_t *handle;
+    
+    if(!utils || !conn) return NULL;
+
+    if (utils->getcallback(conn, SASL_CB_GETOPT,
+			   &getopt, &cntxt) == SASL_OK) {
+	const char *p;
+	if (getopt(cntxt, NULL, "sasldb_path", &p, NULL) == SASL_OK 
+	    && p != NULL && *p != 0) {
+	    path = p;
+	}
+    }
+
+    db = dbm_open(path, O_RDONLY, S_IRUSR | S_IWUSR);
+
+    if(!db)
+	return NULL;
+
+    handle = utils->malloc(sizeof(handle_t));
+    if(!handle) {
+	dbm_close(db);
+	return NULL;
+    }
+    
+    handle->db = db;
+    handle->first = 1;
+
+    return (sasldb_handle)handle;
+}
+
+int _sasldb_getnextkey(const sasl_utils_t *utils __attribute__((unused)),
+		       sasldb_handle handle, char *out,
+		       const size_t max_out, size_t *out_len) 
+{
+    handle_t *dbh = (handle_t *)handle;
+    datum nextkey;
+
+    if(!utils || !handle || !out || !max_out)
+	return SASL_BADPARAM;
+
+    if(dbh->first) {
+	dbh->dkey = dbm_firstkey(dbh->db);
+	dbh->first = 0;
+    } else {
+	nextkey = dbm_nextkey(dbh->db, dbh->dkey);
+	dbh->dkey = nextkey;
+    }
+
+    if(dbh->dkey.dptr == NULL)
+	return SASL_OK;
+    
+    if((unsigned)dbh->dkey.dsize > max_out)
+	return SASL_BUFOVER;
+    
+    memcpy(out, dbh->dkey.dptr, dbh->dkey.dsize);
+    if(out_len) *out_len = dbh->dkey.dsize;
+    
+    return SASL_CONTINUE;
+}
+
+int _sasldb_releasekeyhandle(const sasl_utils_t *utils,
+			     sasldb_handle handle) 
+{
+    handle_t *dbh = (handle_t *)handle;
+    
+    if(!utils || !dbh) return SASL_BADPARAM;
+
+    if(dbh->db) dbm_close(dbh->db);
+
+    utils->free(dbh);
+    
+    return SASL_OK;
 }

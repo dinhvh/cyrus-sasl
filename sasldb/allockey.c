@@ -1,7 +1,7 @@
 /* db_berkeley.c--SASL berkeley db interface
  * Rob Siemborski
  * Tim Martin
- * $Id: allockey.c,v 1.1.2.1 2001/07/25 17:37:42 rjs3 Exp $
+ * $Id: allockey.c,v 1.1.2.2 2001/07/26 22:12:14 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -80,4 +80,54 @@ int _sasldb_alloc_key(const sasl_utils_t *utils,
   memcpy(*key + auth_id_len + realm_len + 2, propName, prop_len);
 
   return SASL_OK;
+}
+
+/*
+ * decode a key
+ */
+int _sasldb_parse_key(const char *key, const size_t key_len,
+		      char *authid, const size_t max_authid,
+		      char *realm, const size_t max_realm,
+		      char *propName, const size_t max_propname) 
+{
+    unsigned i = 0;
+    unsigned numnulls = 0;
+    unsigned alen = 0, rlen = 0, pnlen = 0;
+
+    if(!key || !key_len
+       || (authid && !max_authid)
+       || (realm && !max_realm)
+       || (propName && !max_propname))
+	return SASL_BADPARAM;
+
+    for(i=0; i<key_len; i++) {
+	if(key[i] == '\0') numnulls++;
+    }
+
+    if(numnulls != 2) return SASL_BADPARAM;
+
+    alen = strlen(key);
+    rlen = strlen(key + alen + 1);
+    pnlen = key_len - alen - rlen - 2;
+    
+
+    if(authid) {
+	if(alen >= max_authid)
+	    return SASL_BUFOVER;
+	strncpy(authid, key, max_authid);
+    }
+
+    if(realm) {
+	if(rlen >= max_realm)
+	    return SASL_BUFOVER;
+	strncpy(realm, key + alen + 1, max_realm);
+    }
+    
+    if(propName) {
+	if(pnlen >= max_propname)
+	    return SASL_BUFOVER;
+	strncpy(propName, key + alen + rlen + 2, pnlen);
+    }
+
+    return SASL_OK;
 }

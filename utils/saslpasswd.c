@@ -63,10 +63,7 @@ __declspec(dllimport) int getsubopt(char **optionp, char * const *tokens, char *
 #include "../sasldb/sasldb.h"
 
 /* Cheating to make the utils work out right */
-extern sasl_utils_t *_sasl_alloc_utils(void *conn,
-				       void *global_callbacks);
-extern int _sasl_free_utils(const sasl_utils_t ** utils);
-const sasl_utils_t *global_utils = NULL;
+extern const sasl_utils_t *sasl_global_utils;
 
 char myhostname[1025];
 
@@ -264,7 +261,7 @@ int _sasl_sasldb_set_pass(sasl_conn_t *conn,
 	/* if SASL_SET_CREATE is set, we don't want to overwrite an
 	   existing account */
 	if (flags & SASL_SET_CREATE) {
-	    ret = _sasl_db_getsecret(global_utils,
+	    ret = _sasl_db_getsecret(sasl_global_utils,
 				     conn, userid, realm, &sec);
 	    if (ret == SASL_OK) {
 		memset(sec->data, 0, sec->len);
@@ -290,7 +287,7 @@ int _sasl_sasldb_set_pass(sasl_conn_t *conn,
 	    }
 	}
 	if (ret == SASL_OK) {
-	    ret = _sasl_db_putsecret(global_utils,
+	    ret = _sasl_db_putsecret(sasl_global_utils,
 				     conn, userid, realm, sec);
 	}
 	if ( ret != SASL_OK ) {
@@ -303,7 +300,7 @@ int _sasl_sasldb_set_pass(sasl_conn_t *conn,
 	}
     } else { 
 	/* SASL_SET_DISABLE specified */
-	ret = _sasl_db_putsecret(global_utils, conn, userid, realm, NULL);
+	ret = _sasl_db_putsecret(sasl_global_utils, conn, userid, realm, NULL);
 
 	if (ret != SASL_OK) {
 	    printf("failed to disable account for %s", userid);
@@ -382,7 +379,7 @@ main(int argc, char *argv[])
 
   if (flag_error) {
     (void)fprintf(stderr,
-		  "%s: usage: %s [-a appname] [-p] [-c] [-d] [-f sasldb] [-u DOM] userid\n"
+		  "%s: usage: %s [-p] [-c] [-d] [-a appname] [-f sasldb] [-u DOM] userid\n"
 		  "\t-p\tpipe mode -- no prompt, password read on stdin\n"
 		  "\t-c\tcreate -- ask mechs to create the account\n"
 		  "\t-d\tdisable -- ask mechs to disable/delete the account\n"
@@ -399,11 +396,7 @@ main(int argc, char *argv[])
   if (result != SASL_OK)
     exit_sasl(result, NULL);
 
-  global_utils = _sasl_alloc_utils(NULL, goodsasl_cb);
-  if(!global_utils)
-      exit_sasl(SASL_NOMEM, NULL);
-
-  result = sasl_server_new("saslpasswd",
+  result = sasl_server_new("sasldb",
 			   myhostname,
 			   user_domain,
 			   NULL,
@@ -434,7 +427,7 @@ main(int argc, char *argv[])
       }
   }
 
-  if((result = _sasl_check_db(global_utils)) == SASL_OK) {
+  if((result = _sasl_check_db(sasl_global_utils,conn)) == SASL_OK) {
     result = _sasl_sasldb_set_pass(conn, myhostname, userid, password, passlen,
 				   user_domain,
 				   (flag_create ? SASL_SET_CREATE : 0)
@@ -455,8 +448,9 @@ main(int argc, char *argv[])
   if (result != SASL_OK)
     exit_sasl(result, errstr);
 
-  _sasl_free_utils(&global_utils);
-  
+  sasl_dispose(&conn);
+  sasl_done();
+
   return 0;
 }
 
