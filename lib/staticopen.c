@@ -1,7 +1,7 @@
 /* dlopen.c--Unix dlopen() dynamic loader interface
  * Rob Siemborski
  * Rob Earhart
- * $Id: staticopen.c,v 1.1.2.1 2001/07/02 22:50:07 rjs3 Exp $
+ * $Id: staticopen.c,v 1.1.2.2 2001/07/06 15:22:56 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -70,6 +70,12 @@ int _sasl_get_mech_list(const char *entryname,
 	type = SASL_CONN_SERVER;
     } else if (!strcmp(entryname, "sasl_client_plug_init")) {
 	type = SASL_CONN_CLIENT;
+    } else if (!strcmp(entryname, "sasl_auxprop_plug_init")) {
+	/* NOT IMPLEMENTED */
+	return SASL_OK;
+    } else if (!strcmp(entryname, "sasl_canonuser_init")) {
+	/* NOT IMPLEMENTED */
+	return SASL_OK;
     } else {
 	/* What are we looking for then? */
 	return SASL_FAIL;

@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: checkpw.c,v 1.41.2.15 2001/07/05 17:52:29 rjs3 Exp $
+ * $Id: checkpw.c,v 1.41.2.16 2001/07/06 15:22:55 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -399,10 +399,10 @@ int sasldb_auxprop_plug_init(const sasl_utils_t *utils __attribute__((unused)),
                              sasl_auxprop_plug_t **plug,
                              const char *plugname) 
 {
-    if(!out_version || !plug || !plugname) return SASL_BADPARAM;
+    if(!out_version || !plug) return SASL_BADPARAM;
 
     /* We only support the "SASLDB" plugin */
-    if(strcmp(plugname, "SASLDB")) return SASL_NOMECH;
+    if(plugname && strcmp(plugname, "SASLDB")) return SASL_NOMECH;
 
     if(max_version < SASL_AUXPROP_PLUG_VERSION) return SASL_BADVERS;
     

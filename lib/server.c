@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: server.c,v 1.84.2.36 2001/07/03 18:00:56 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.37 2001/07/06 15:22:55 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -634,7 +634,7 @@ int sasl_server_init(const sasl_callback_t *callbacks,
     /* check db */
     ret = _sasl_server_check_db(vf);
 
-    /* load plugins */
+    /* load internal plugins */
     sasl_auxprop_add_plugin("SASLDB", &sasldb_auxprop_plug_init);
     add_plugin((void *)&external_server_init, NULL);
 
@@ -663,11 +663,19 @@ int sasl_server_init(const sasl_callback_t *callbacks,
 	    ret = parse_mechlist_file(pluginfile);
 	}
     } else {
+	const sasl_callback_t *getpath_cb, *verifyfile_cb;
+
+	getpath_cb = _sasl_find_getpath_callback(callbacks);
+	verifyfile_cb = _sasl_find_verifyfile_callback(callbacks);
+	
 	/* load all plugins now */
 	ret = _sasl_get_mech_list("sasl_server_plug_init",
-				  _sasl_find_getpath_callback(callbacks),
-				  _sasl_find_verifyfile_callback(callbacks),
+				  getpath_cb, verifyfile_cb,
 				  &add_plugin);
+	if(ret == SASL_OK)
+	    ret = _sasl_get_mech_list("sasl_auxprop_plug_init",
+				      getpath_cb, verifyfile_cb,
+				      &_sasl_auxprop_add_plugin);
     }
 
     if (ret == SASL_OK)	ret = _sasl_common_init();

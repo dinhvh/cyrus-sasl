@@ -1,6 +1,6 @@
 /* auxprop.c - auxilliary property support
  * Rob Siemborski
- * $Id: auxprop.c,v 1.1.2.13 2001/07/03 18:00:55 rjs3 Exp $
+ * $Id: auxprop.c,v 1.1.2.14 2001/07/06 15:22:55 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -77,7 +77,14 @@ typedef struct auxprop_plug_list
     const sasl_auxprop_plug_t *plug;
 } auxprop_plug_list_t;
 
+typedef struct auxprop_plug_lib_list 
+{
+    struct auxprop_plug_lib_list *next;
+    void *library;
+} auxprop_plug_lib_list_t;
+
 static auxprop_plug_list_t *auxprop_head = NULL;
+static auxprop_plug_lib_list_t *auxprop_lib_head = NULL;
 
 static struct proppool *alloc_proppool(size_t size) 
 {
@@ -790,9 +797,48 @@ int sasl_auxprop_add_plugin(const char *plugname,
     return SASL_OK;
 }
 
+int _sasl_auxprop_add_plugin(void *p, void *library) 
+{
+    sasl_auxprop_init_t *entry_point = NULL;
+    auxprop_plug_lib_list_t *newhead = NULL;
+    int result;
+
+    if(!p) {
+	_sasl_log(NULL, SASL_LOG_DEBUG,
+		  "null entry point given to _sasl_auxprop_add_plugin");
+	return SASL_BADPARAM;
+    }
+
+    if(!library) {
+	_sasl_log(NULL, SASL_LOG_DEBUG,
+		  "null library given to _sasl_auxprop_add_plugin");
+	return SASL_BADPARAM;
+    }
+
+    newhead = sasl_ALLOC(sizeof(auxprop_plug_lib_list_t));
+    if(!newhead) {
+	return SASL_NOMEM;
+    }
+
+    entry_point = (sasl_auxprop_init_t *)p;
+
+    result = sasl_auxprop_add_plugin(NULL, entry_point);
+    if(result != SASL_OK) {
+	sasl_FREE(newhead);
+	return result;
+    }
+        
+    newhead->library = library;
+    newhead->next = auxprop_lib_head;
+    auxprop_lib_head = newhead;
+
+    return SASL_OK;
+}
+
 void _sasl_auxprop_free() 
 {
     auxprop_plug_list_t *ptr, *ptr_next;
+    auxprop_plug_lib_list_t *libptr, *libptr_next;
     
     for(ptr = auxprop_head; ptr; ptr = ptr_next) {
 	ptr_next = ptr->next;
@@ -801,6 +847,14 @@ void _sasl_auxprop_free()
 	sasl_FREE(ptr);
     }
 
+    for(libptr = auxprop_lib_head; libptr; libptr = libptr_next) {
+	libptr_next = libptr->next;
+	if(libptr->library)
+	    _sasl_done_with_plugin(libptr->library);
+	sasl_FREE(libptr);
+    }
+
+    auxprop_lib_head = NULL;
     auxprop_head = NULL;
 }
 
