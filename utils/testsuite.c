@@ -1,7 +1,7 @@
 /* testsuite.c -- Stress the library a little
  * Rob Siemborski
  * Tim Martin
- * $Id: testsuite.c,v 1.13.2.13 2001/06/25 18:44:45 rjs3 Exp $
+ * $Id: testsuite.c,v 1.13.2.14 2001/06/26 15:31:11 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -1669,10 +1669,10 @@ void create_ids(void)
 	fatal("sasl_user_exists found nonexistant username");
 
     /* Test sasl_checkapop */
-    MD5Init(&ctx);
-    MD5Update(&ctx,challenge,strlen(challenge));
-    MD5Update(&ctx,password,strlen(password));
-    MD5Final(digest, &ctx);
+    _sasl_MD5Init(&ctx);
+    _sasl_MD5Update(&ctx,challenge,strlen(challenge));
+    _sasl_MD5Update(&ctx,password,strlen(password));
+    _sasl_MD5Final(digest, &ctx);
                             
     /* convert digest from binary to ASCII hex */
     for (i = 0; i < 16; i++)
@@ -1688,14 +1688,15 @@ void create_ids(void)
     /* End checkapop test */
 
     /* now delete user and make sure can't find him anymore */
-    result = sasl_setpass(saslconn, username, password, strlen(password), NULL, 0, SASL_SET_DISABLE);
+    result = sasl_setpass(saslconn, username, password,
+			  strlen(password), NULL, 0, SASL_SET_DISABLE);
     if (result != SASL_OK)
 	fatal("Error disabling password. Do we have write access to sasldb?");
     
     result = sasl_checkpass(saslconn, username, strlen(username),
 			    password, strlen(password));
-    if (result != SASL_NOUSER)
-	fatal("Didn't get SASL_NOUSER");
+    if (result == SASL_OK)
+	fatal("sasl_checkpass got SASL_OK after disableing");
 
     /* And checkapop... */
     result = sasl_checkapop(saslconn,
