@@ -1,6 +1,7 @@
 #include <config.h>
 
 /*
+ * $Id: getopt.c,v 1.1.2.2 2001/08/25 00:44:58 rbraun Exp $
  * Copyright (c) 1987, 1993, 1994
  *	The Regents of the University of California.  All rights reserved.
  *

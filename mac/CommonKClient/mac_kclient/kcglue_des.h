@@ -1,5 +1,5 @@
 
-/*
+/* $Id: kcglue_des.h,v 1.1.2.2 2001/08/25 00:44:49 rbraun Exp $
  * kclient and des have different definitions for key schedules
  * this file is to include in the kclient code without dragging in the des definitions
  */
