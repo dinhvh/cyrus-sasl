@@ -75,6 +75,9 @@
 /* This is where plugins will live at runtime */
 #undef PLUGINDIR
 
+/* Do we need a leading _ for dlsym? */
+#undef DLSYM_NEEDS_UNDERSCORE
+
 /* Make autoheader happy */
 #undef WITH_SYMBOL_UNDERSCORE
 
