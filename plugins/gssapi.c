@@ -1,7 +1,7 @@
 /* GSSAPI SASL plugin
  * Leif Johansson
  * Rob Siemborski (SASL v2 Conversion)
- * $Id: gssapi.c,v 1.41.2.18 2001/07/09 16:11:19 rjs3 Exp $
+ * $Id: gssapi.c,v 1.41.2.19 2001/07/09 19:06:46 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -928,6 +928,7 @@ int gssapiv2_server_plug_init(
 {
 #ifdef HAVE_GSSKRB5_REGISTER_ACCEPTOR_IDENTITY
     const char *keytab;
+    char keytab_path[1024];
     unsigned int rl;
 #endif
 
@@ -948,8 +949,16 @@ int gssapiv2_server_plug_init(
 		       "can't access keytab file %s: %m", keytab, errno);
 	    return SASL_FAIL;
 	}
+
+	if(strlen(keytab) > 1024) {
+	    utils->log(NULL, SASL_LOG_ERR,
+		       "path to keytab is > 1024 characters");
+	    return SASL_BUFOVER;
+	}
 	
-	gsskrb5_register_acceptor_identity(keytab);
+	strncpy(keytab_path, keytab, 1024);
+	
+	gsskrb5_register_acceptor_identity(keytab_path);
     }
 #endif
 
