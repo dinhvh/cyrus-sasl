@@ -1095,7 +1095,6 @@ void create_ids(void)
     int result;
     struct sockaddr_in addr;
     struct hostent *hp;
-    unsigned len;
     char buf[8192];
 
     if (sasl_server_init(goodsasl_cb,"TestSuite")!=SASL_OK) fatal("");
