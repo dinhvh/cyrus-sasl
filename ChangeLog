@@ -3,6 +3,8 @@
 	* lib/server.c (sasl_server_step): corrected maxoutbuf handleing
 	* lib/saslint.h (DEFAULT_MAXOUTBUF): removed
 
+	* lib/common.c (sasl_encodev, sasl_decode): maxbufsize checking
+
 	* utils/testsuite.c (testseclayer,doauth): more security layer
 	  checking.  Added parameter to doauth to disable fatal() calls,
 	  updated all callers.

@@ -1,7 +1,7 @@
 /* common.c - Functions that are common to server and clinet
  * Rob Siemborski
  * Tim Martin
- * $Id: common.c,v 1.64.2.51 2001/08/06 18:05:36 rjs3 Exp $
+ * $Id: common.c,v 1.64.2.52 2001/08/07 21:57:15 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -193,6 +193,12 @@ int sasl_encodev(sasl_conn_t *conn,
     if (! invec || ! output || ! outputlen || numiov < 1)
 	PARAMERROR(conn);
 
+    if(!conn->props.maxbufsize) {
+	sasl_seterror(conn, 0,
+		      "called sasl_encode[v] with application that does not support security layers");
+	return SASL_TOOWEAK;
+    }
+
     /* This might be better to check on a per-plugin basis, but I think
      * it's cleaner and more effective here.  It also encourages plugins
      * to be honest about what they accept */
@@ -228,6 +234,12 @@ int sasl_decode(sasl_conn_t *conn,
     if(!conn) return SASL_BADPARAM;
     if(!input || !output || !outputlen)
 	PARAMERROR(conn);
+
+    if(!conn->props.maxbufsize) {
+	sasl_seterror(conn, 0,
+		      "called sasl_decode with application that does not support security layers");
+	return SASL_TOOWEAK;
+    }
 
     if(inputlen > conn->oparams.maxoutbuf)
 	PARAMERROR(conn);
