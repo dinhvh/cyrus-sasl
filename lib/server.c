@@ -1,6 +1,6 @@
 /* SASL server API implementation
  * Tim Martin
- * $Id: server.c,v 1.84.2.10 2001/06/07 20:11:45 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.11 2001/06/08 16:25:37 rjs3 Exp $
  */
 
 /* 
@@ -147,13 +147,8 @@ int sasl_setpass(sasl_conn_t *conn,
 	return SASL_BADPARAM;
 
     /* set/create password for PLAIN usage */
-#if 0 /* FIXME */
     tmpresult = _sasl_sasldb_set_pass(conn, user, pass, passlen, 
 				      s_conn->user_realm, flags);
-#else
-    tmpresult = SASL_OK;
-#endif
-
     
     if (tmpresult != SASL_OK && tmpresult != SASL_NOCHANGE) {
 	result = tmpresult;
@@ -617,10 +612,8 @@ int sasl_server_init(const sasl_callback_t *callbacks,
 	return ret;
     }
 
-#if 0 /* FIXME? */
     /* check db */
     ret = _sasl_server_check_db(vf);
-#endif
 
     /* load plugins */
     add_plugin((void *)&external_server_init, NULL);
@@ -1236,10 +1229,8 @@ static int _sasl_checkpass(sasl_conn_t *conn, const char *service,
     sasl_server_conn_t *s_conn = (sasl_server_conn_t *) conn;
     int result = SASL_NOMECH;
     struct sasl_verify_password_s *v;
-#if 0
+
     for (v = _sasl_verify_password; v->name; v++) {
-#endif
-    for(v = NULL; v; v++) {
 	if (is_mech(DEFAULT_PLAIN_MECHANISM, v->name)) {
 	    /* FIXME: this reply paramter that is currently NULL can go away? */
 	    result = v->verify(conn, user, pass, service, s_conn->user_realm, NULL);
@@ -1283,7 +1274,8 @@ int sasl_checkpass(sasl_conn_t *conn,
     void *context;
 
     /* check params */
-    if (_sasl_server_active==0) return SASL_FAIL;
+    if (_sasl_server_active==0) return SASL_NOTINIT;
+    
     if ((conn == NULL) || (user == NULL) || (pass == NULL)) return SASL_BADPARAM;
 
     if (user == NULL) return SASL_NOUSER;

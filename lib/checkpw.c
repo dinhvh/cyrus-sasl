@@ -106,33 +106,24 @@ static void _sasl_free_secret(sasl_secret_t **secret)
   *secret=NULL;
 }
 
-/* we store the following secret to check plaintext passwords:
- *
- * <salt> \0 <secret>
- *
- * where <secret> = MD5(<salt>, "sasldb", <pass>)
+/*
+ * We don't do anything here now, and just store plaintext passwords
+ * because they are easier to deal with, and mechanisms should implement
+ * their own database support if this is not good enough for them.
  */
-static int _sasl_make_plain_secret(const char *salt, 
+static int _sasl_make_plain_secret(const char *salt __attribute__((unused)), 
 				   const char *passwd, int passlen,
 				   sasl_secret_t **secret)
 {
-    MD5_CTX ctx;
-    unsigned sec_len = 16 + 1 + 16; /* salt + "\0" + hash */
-
     *secret = (sasl_secret_t *) sasl_ALLOC(sizeof(sasl_secret_t) +
-					   sec_len * sizeof(char));
+					   passlen);
     if (*secret == NULL) {
 	return SASL_NOMEM;
     }
 
-    MD5Init(&ctx);
-    MD5Update(&ctx, salt, 16);
-    MD5Update(&ctx, "sasldb", 6);
-    MD5Update(&ctx, passwd, passlen);
-    memcpy((*secret)->data, salt, 16);
-    memcpy((*secret)->data + 16, "\0", 1);
-    MD5Final((*secret)->data + 17, &ctx);
-    (*secret)->len = sec_len;
+    memcpy((*secret)->data, passwd, passlen);
+    (*secret)->data[passlen] = '\0';
+    (*secret)->len = passlen + 1;
     
     return SASL_OK;
 }
@@ -255,7 +246,6 @@ int _sasl_sasldb_set_pass(sasl_conn_t *conn,
     if (pass != NULL && !(flags & SASL_SET_DISABLE)) {
 	/* set the password */
 	sasl_secret_t *sec = NULL;
-	char salt[16];
 	sasl_rand_t *rpool = NULL;
 
 	/* if SASL_SET_CREATE is set, we don't want to overwrite an
@@ -266,7 +256,9 @@ int _sasl_sasldb_set_pass(sasl_conn_t *conn,
 		_sasl_free_secret(&sec);
 		ret = SASL_NOCHANGE;
 	    }
-	    if (ret == SASL_NOUSER) {
+/* FIXME this needs to be the way it was before*/
+/*	    if (ret == SASL_NOUSER) { */
+	    else {
 		/* hmmm, don't want to change this */
 		ret = SASL_OK;
 	    }
@@ -274,11 +266,7 @@ int _sasl_sasldb_set_pass(sasl_conn_t *conn,
 	
 	/* ret == SASL_OK iff we still want to set this password */
 	if (ret == SASL_OK) {
-	    ret = sasl_randcreate(&rpool);
-	}
-	if (ret == SASL_OK) {
-	    sasl_rand(rpool, salt, 16);
-	    ret = _sasl_make_plain_secret(salt, pass, passlen, &sec);
+	    ret = _sasl_make_plain_secret(NULL, pass, passlen, &sec);
 	}
 	if (ret == SASL_OK) {
 	    ret = _sasl_db_putsecret(conn, "PLAIN", userid, realm, sec);

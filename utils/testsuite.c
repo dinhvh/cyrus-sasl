@@ -1084,14 +1084,13 @@ void test_serverstart(int steps)
 	tosend.type = rand() % CORRUPT_SIZE;
 	tosend.step = lup % MAX_STEPS;
 
-	printf("trying random crap (%s in step %d) (%d of %d)\n",corrupt_types[tosend.type],tosend.step,lup,steps);
+	printf("trying random crap (%s in step %d) (%d of %d)\n",corrupt_types[tosend.type],tosend.step,lup+1,steps);
 	foreach_mechanism((foreach_t *) &sendbadsecond,&tosend);
     }
 }
 
 void create_ids(void)
 {
-#if 0 /* FIXME */
     sasl_conn_t *saslconn;
     int result;
     struct sockaddr_in addr;
@@ -1119,9 +1118,13 @@ void create_ids(void)
     
     /* Try to set password then check it */
     
-    result = sasl_setpass(saslconn, username, password, strlen(password), NULL, 0, SASL_SET_CREATE);
-    if (result != SASL_OK)
+    result = sasl_setpass(saslconn, username, password, strlen(password),
+			  NULL, 0, SASL_SET_CREATE);
+    if (result != SASL_OK) {
+	printf("error was %s (%d)\n",sasl_errstring(result,NULL,NULL),result);
 	fatal("Error setting password. Do we have write access to sasldb?");
+    }
+    
     
     result = sasl_checkpass(saslconn, username, strlen(username),
 			    password, strlen(password));
@@ -1129,37 +1132,38 @@ void create_ids(void)
 	fatal("Unable to verify password we just set");
 
     /* now delete user and make sure can't find him anymore */
-    result = sasl_setpass(saslconn, username, password, strlen(password), SASL_SET_DISABLE, NULL);
+    result = sasl_setpass(saslconn, username, password, strlen(password), NULL, 0, SASL_SET_DISABLE);
     if (result != SASL_OK)
 	fatal("Error disabling password. Do we have write access to sasldb?");
     
     result = sasl_checkpass(saslconn, username, strlen(username),
-			    password, strlen(password), NULL);
+			    password, strlen(password));
     if (result != SASL_NOUSER)
 	fatal("Didn't get SASL_NOUSER");
 
     /* try bad params */
-    if (sasl_setpass(NULL,username, password, strlen(password), SASL_SET_CREATE, NULL)==SASL_OK)
+    if (sasl_setpass(NULL,username, password, strlen(password), NULL, 0, SASL_SET_CREATE)==SASL_OK)
 	fatal("Didn't specify saslconn");
-    if (sasl_setpass(saslconn,username, password, 0, SASL_SET_CREATE, NULL)==SASL_OK)
+    if (sasl_setpass(saslconn,username, password, 0, NULL, 0, SASL_SET_CREATE)==SASL_OK)
 	fatal("Allowed password of zero length");
-    if (sasl_setpass(saslconn,username, password, strlen(password), 43, NULL)==SASL_OK)
+    if (sasl_setpass(saslconn,username, password, strlen(password), NULL, 0, 43)==SASL_OK)
 	fatal("Gave weird code");
 
 #ifndef SASL_NDBM
     if (sasl_setpass(saslconn,really_long_string, password, strlen(password), 
-		     SASL_SET_CREATE, NULL)!=SASL_OK)
+		     NULL, 0, SASL_SET_CREATE)!=SASL_OK)
 	fatal("Didn't allow really long username");
 #else
     printf("WARNING: skipping sasl_setpass() on really_long_string with NDBM\n");
 #endif
 
-    if (sasl_setpass(saslconn,"bob" ,really_long_string, strlen(really_long_string), 
-		     SASL_SET_CREATE, NULL)!=SASL_OK)
+    if (sasl_setpass(saslconn,"bob",really_long_string,
+		     strlen(really_long_string),NULL, 0,
+		     SASL_SET_CREATE)!=SASL_OK)
 	fatal("Didn't allow really long password");
 
     result = sasl_setpass(saslconn,"frank" ,password, strlen(password), 
-		     SASL_SET_DISABLE, NULL);
+			  NULL, 0, SASL_SET_DISABLE);
 
     if ((result!=SASL_NOUSER) && (result!=SASL_OK))
 	{
@@ -1169,15 +1173,14 @@ void create_ids(void)
     
 
     /* Now set the user again (we use for rest of program) */
-    result = sasl_setpass(saslconn, username, password, strlen(password), SASL_SET_CREATE, NULL);
+    result = sasl_setpass(saslconn, username, password, strlen(password),
+			  NULL, 0, SASL_SET_CREATE);
     if (result != SASL_OK)
 	fatal("Error setting password. Do we have write access to sasldb?");
 
     /* cleanup */
     sasl_dispose(&saslconn);
     sasl_done();
-
-#endif
 }
 
 /*
@@ -1186,44 +1189,44 @@ void create_ids(void)
 
 void test_checkpass(void)
 {
-#if 0 /* FIXME */
     sasl_conn_t *saslconn;
 
     /* try without initializing anything */
-    sasl_checkpass(NULL, username, strlen(username),
-		   password, strlen(password), NULL);
+    if(sasl_checkpass(NULL, username, strlen(username),
+		      password, strlen(password)) != SASL_NOTINIT) {
+	fatal("sasl_checkpass() when library not initialized");
+    }    
 
     if (sasl_server_init(goodsasl_cb,"TestSuite")!=SASL_OK) fatal("");
 
     if (sasl_server_new("rcmd", myhostname,
-			NULL, NULL, SASL_SECURITY_LAYER, 
+			NULL, NULL, NULL, NULL, 0, 
 			&saslconn) != SASL_OK)
 	fatal("");
 
     /* make sure works for general case */
 
     if (sasl_checkpass(saslconn, username, strlen(username),
-		       password, strlen(password), NULL)!=SASL_OK)
+		       password, strlen(password))!=SASL_OK)
 	fatal("sasl_checkpass() failed on simple case");
 
     /* NULL saslconn */
     if (sasl_checkpass(NULL, username, strlen(username),
-		   password, strlen(password), NULL) == SASL_OK)
+		   password, strlen(password)) == SASL_OK)
 	fatal("Suceeded with NULL saslconn");
 
     /* NULL username */
     if (sasl_checkpass(saslconn, NULL, strlen(username),
-		   password, strlen(password), NULL) == SASL_OK)
+		   password, strlen(password)) == SASL_OK)
 	fatal("Suceeded with NULL username");
 
     /* NULL password */
     if (sasl_checkpass(saslconn, username, strlen(username),
-		   NULL, strlen(password), NULL) == SASL_OK)
+		   NULL, strlen(password)) == SASL_OK)
 	fatal("Suceeded with NULL password");
 
     sasl_dispose(&saslconn);
     sasl_done();
-#endif
 }
 
 
@@ -1279,10 +1282,10 @@ int main(int argc, char **argv)
     init(seed);
 
     create_ids();
-    printf("Created id's in sasldb... ok (disabled)\n");
+    printf("Created id's in sasldb... ok\n");
 
     test_checkpass();
-    printf("Checking plaintext passwords... ok (disabled)\n");
+    printf("Checking plaintext passwords... ok\n");
 
     test_random();
     printf("Random number functions... ok\n");

@@ -1,6 +1,6 @@
 /* db_berkeley.c--SASL berkeley db interface
  * Tim Martin
- * $Id: db_berkeley.c,v 1.16.2.1 2001/06/07 20:11:44 rjs3 Exp $
+ * $Id: db_berkeley.c,v 1.16.2.2 2001/06/08 16:25:37 rjs3 Exp $
  */
 
 /* 
@@ -79,6 +79,7 @@ static int berkeleydb_open(sasl_conn_t *conn, int rdwr, DB **mbdb)
 
     if (rdwr) flags = DB_CREATE;
     else flags = DB_RDONLY;
+
 #if DB_VERSION_MAJOR < 3
     ret = db_open(path, DB_HASH, flags, 0660, NULL, NULL, mbdb);
 #else /* DB_VERSION_MAJOR < 3 */
@@ -95,8 +96,7 @@ static int berkeleydb_open(sasl_conn_t *conn, int rdwr, DB **mbdb)
 #endif /* DB_VERSION_MAJOR < 3 */
 
     if (ret != 0) {
-	_sasl_log (NULL, SASL_LOG_ERR, NULL,
-		   SASL_FAIL,	/* %z */ 0,	/* %m */
+	_sasl_log (NULL, SASL_LOG_ERR,
 		   "unable to open Berkeley db %s: %s",
 		   path, strerror(ret));
 	VL(("error opening password file. Do you have write permissions?\n"));
@@ -118,8 +118,7 @@ static void berkeleydb_close(DB *mbdb)
     ret = mbdb->close(mbdb, 0);
     if (ret!=0) {
 	/* error closing! */
-	_sasl_log (NULL, SASL_LOG_ERR, NULL,
-		   SASL_FAIL, /* %z */ 0, /* %m */
+	_sasl_log (NULL, SASL_LOG_ERR,
 		   "error closing sasldb: %s",
 		   strerror(ret));
     }
@@ -208,8 +207,7 @@ getsecret(sasl_conn_t *context,
     goto cleanup;
     break;
   default:
-    _sasl_log (NULL, SASL_LOG_ERR, NULL,
-	       SASL_FAIL,	/* %z */ 0,	/* %m */
+    _sasl_log (NULL, SASL_LOG_ERR,
 	       "error fetching from sasldb: %s",
 	       strerror(result));
     result = SASL_FAIL;
@@ -261,7 +259,7 @@ putsecret(sasl_conn_t *context,
       return SASL_FAIL;
 
   VL(("Entering putsecret for %s\n",mechanism));
-
+  
   result = alloc_key(mechanism, auth_identity, realm,
 		     &key, &key_len);
   if (result != SASL_OK)
@@ -276,7 +274,6 @@ putsecret(sasl_conn_t *context,
   dbkey.data = key;
   dbkey.size = key_len;
 
-
   if (secret) {   /* putting secret */
     DBT data;
 
@@ -289,8 +286,7 @@ putsecret(sasl_conn_t *context,
 
     if (result != 0)
     {
-      _sasl_log (NULL, SASL_LOG_ERR, NULL,
-		 SASL_FAIL, /* %z */ 0,	/* %m */
+      _sasl_log (NULL, SASL_LOG_ERR,
 		 "error updating sasldb: %s", strerror(result));
       VL(("DBERROR: error updating database for %s: %s",
 	  key, strerror(result)));
@@ -306,8 +302,7 @@ putsecret(sasl_conn_t *context,
 
     if (result != 0)
     {
-      _sasl_log (NULL, SASL_LOG_ERR, NULL,
-		 SASL_FAIL, /* %z */ 0,	/* %m */
+      _sasl_log (NULL, SASL_LOG_ERR,
 		 "error deleting entry from sasldb: %s", strerror(result));
       VL(("DBERROR: error deleting entry for database for %s: %s",
 	  key, strerror(result)));
