@@ -589,6 +589,8 @@ typedef int sasl_server_userdb_setpass_t(sasl_conn_t *conn,
  *  SASL_OK         on success
  *  SASL_BADPROT    username contains invalid character
  */
+/* FIXME: Current behavior allows a NULL to be passed as user_realm, esp
+   in the case of client.  how to resolve this? */
 typedef int sasl_server_canon_user_t(sasl_conn_t *conn,
 				     void *context,
 				     const char *user, unsigned ulen,
@@ -599,7 +601,8 @@ typedef int sasl_server_canon_user_t(sasl_conn_t *conn,
 				     unsigned out_umax, unsigned *out_ulen,
 				     char *out_authid,
 				     unsigned out_amax, unsigned *out_alen);
-#define SASL_CB_SERVER_CANON_USER (0x8007)
+/* In chris newman's API this is SASL_CB_SSERVER_CANON_USER */
+#define SASL_CB_CANON_USER (0x8007)
 
 /**********************************
  * Common Client/server functions *
