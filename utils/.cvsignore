@@ -7,5 +7,6 @@ smtptest
 testsuite
 testsuitestatic
 sasldblistusers
+dbconverter-2
 dbconverter-1.5.9
 saslpasswd
