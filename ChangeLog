@@ -1,8 +1,9 @@
 2000-07-09  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Removed dependency on "name" in canonuser plugin structure
 	* Update configure.in from a new configure.scan
-	* Update copyright info in man pages, add auxprop man pages
+	* Update copyright info in man pages, finished all API man pages
 	* Added auxprop tests to testsuite
+	* Added userdb callback support
 
 2000-07-09  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* First attempt at making the java code work again

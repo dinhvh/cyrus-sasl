@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: server.c,v 1.84.2.41 2001/07/10 19:22:20 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.42 2001/07/10 22:13:23 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -135,6 +135,8 @@ int sasl_setpass(sasl_conn_t *conn,
 {
     int result=SASL_OK, tmpresult;
     sasl_server_conn_t *s_conn = (sasl_server_conn_t *) conn;
+    sasl_server_userdb_setpass_t *setpass_cb = NULL;
+    void *context = NULL;
     mechanism_t *m;
      
     if (!mechlist) return SASL_NOTINIT;
@@ -165,6 +167,22 @@ int sasl_setpass(sasl_conn_t *conn,
     } else {
 	_sasl_log(conn, SASL_LOG_NOTE,
 		  "set secret for %s", user);
+    }
+
+    /* call userdb callback function */
+    result = _sasl_getcallback(conn, SASL_CB_SERVER_USERDB_SETPASS,
+			       &setpass_cb, &context);
+    if(result == SASL_OK && setpass_cb) {
+	tmpresult = setpass_cb(conn, context, user, pass, passlen,
+			    s_conn->sparams->propctx, flags);
+	if(tmpresult != SASL_OK) {
+	    _sasl_log(conn, SASL_LOG_ERR,
+		      "setpass callback failed for %s: %z",
+		      user, tmpresult);
+	} else {
+	    _sasl_log(conn, SASL_LOG_NOTE,
+		      "setpass callback succeeded for %s", user);
+	}
     }
 
     /* copy info into sparams */
@@ -1242,11 +1260,22 @@ static int _sasl_checkpass(sasl_conn_t *conn, const char *service,
 			   const char *user, const char *pass)
 {
     sasl_server_conn_t *s_conn = (sasl_server_conn_t *) conn;
-    int result = SASL_NOMECH;
+    int result;
     sasl_getopt_t *getopt;
+    sasl_server_userdb_checkpass_t *checkpass_cb;
     void *context;
     const char *mech;
     struct sasl_verify_password_s *v;
+
+    /* call userdb callback function, if available */
+    result = _sasl_getcallback(conn, SASL_CB_SERVER_USERDB_CHECKPASS,
+			       &checkpass_cb, &context);
+    if(result == SASL_OK && checkpass_cb) {
+	result = checkpass_cb(conn, context, user, pass, strlen(pass),
+			      s_conn->sparams->propctx);
+	if(result == SASL_OK)
+	    return SASL_OK;
+    }
 
     /* figure out how to check (i.e. sasldb or saslauthd or pwcheck) */
     if (_sasl_getcallback(conn, SASL_CB_GETOPT, &getopt, &context)
@@ -1255,6 +1284,8 @@ static int _sasl_checkpass(sasl_conn_t *conn, const char *service,
     }
 
     if(!mech) mech = DEFAULT_CHECKPASS_MECH;
+
+    result = SASL_NOMECH;
 
     for (v = _sasl_verify_password; v->name; v++) {
 	if(is_mech(mech, v->name)) {
