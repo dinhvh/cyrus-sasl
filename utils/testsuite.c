@@ -1,7 +1,7 @@
 /* testsuite.c -- Stress the library a little
  * Rob Siemborski
  * Tim Martin
- * $Id: testsuite.c,v 1.13.2.23 2001/07/09 19:03:06 rjs3 Exp $
+ * $Id: testsuite.c,v 1.13.2.24 2001/07/09 21:59:04 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -283,7 +283,7 @@ int mem_stat()
     }
     return SASL_FAIL;
 #else
-    return SASL_OK
+    return SASL_OK;
 #endif /* WITH_DMALLOC */
 }
 
