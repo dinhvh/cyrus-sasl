@@ -1,7 +1,7 @@
 /* testsuite.c -- Stress the library a little
  * Rob Siemborski
  * Tim Martin
- * $Id: testsuite.c,v 1.13.2.28 2001/07/17 21:48:49 rjs3 Exp $
+ * $Id: testsuite.c,v 1.13.2.29 2001/07/18 20:54:37 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -542,6 +542,17 @@ void test_listmech(void)
     if (result != SASL_OK) fatal("Failed sasl_listmech() with long user");
 
     if (str[0]!='[') fatal("Failed sasl_listmech() with long user (didn't start with '['");
+
+    result = sasl_listmech(saslconn,
+			   really_long_string,
+			   "[",
+			   ",",
+			   "]",
+			   &str,
+			   NULL,
+			   NULL);
+
+    if (result != SASL_OK) fatal("Failed sasl_listmech() with different params");
 
     printf("We have the following mechs:\n %s\n",str);
 
