@@ -64,6 +64,15 @@ sasl_auxprop \- How to work with SASL auxilliary properties
 .BI "void prop_erase(struct propctx " *ctx ", const char " *name ")"
 
 .BI "void prop_dispose(struct propctx " **ctx ")"
+
+.BI "int prop_format(struct propctx " *ctx ", const char " *sep ", int " seplen ", "
+.BI "                char " *outbuf ", unsigned " outmax ", unsigned " *outlen ")"
+
+.BI "int prop_set(struct propctx " *ctx ", const char " *name ","
+.BI "             const char " *value ", int " vallen ")"
+
+.BI "int prop_setvals(struct propctx " *ctx ", const char " *name ","
+.BI "                 const char " **values ")"
 .SH DESCRIPTION
 
 .B SASL auxilliary properties
@@ -144,6 +153,53 @@ is the name of the property to erase.
 void prop_dispose(struct propctx **ctx)
 
 Disposes of a property context and NULLifys the pointer.
+
+.TP 0.8i
+int prop_format(struct propctx *ctx, const char *sep, int seplen,
+                char *outbuf, unsigned outmax, unsigned *outlen)
+
+Format the requested property names into a string.  This not intended
+for use by the application (only by auxprop plugins).
+
+.I sep
+Is the seperator to use for the string
+
+.I outbuf
+Is the caller-allocated buffer of length
+.I outmax
+that the resulting string will be placed in (including NUL terminator).
+
+.I outlen
+if non-NULL, will contain the length of the resulting string (excluding NUL terminator).
+
+.TP 0.8i
+int prop_set(struct propctx *ctx, const char *name, const char *value,
+             int vallen)
+
+Adds a property vaue to the context.  This is intended for use by auxprop
+plugins only.
+
+.I name
+is the name of the property to recieve the new value, or NULL, which
+implies that the value will be added to the same property as the last
+call to either prop_set or prop_setvals.
+
+.I value
+is a value for the property of length
+.I vallen
+
+.TP 0.8i
+int prop_setvals(struct propctx *ctx, const char *name, const char **values)
+
+Adds multiple values to a single property.  This is intended for use by
+auxprop plugins only.
+
+.I name
+has the same meaning as in 
+.B prop_set
+
+.I values
+are a NULL-terminated array of values to be added the property.
 
 .SH "RETURN VALUE"
 The property functions that return an int return SASL error codes.
