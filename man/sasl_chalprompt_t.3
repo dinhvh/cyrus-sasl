@@ -15,41 +15,46 @@
 .\" the source, must acknowledge the copyright and authors of this work.
 .\"
 .\"
-.TH sasl_getrealm_t "26 March 2000" SASL "SASL man pages"
+.TH sasl_chalprompt_t "26 March 2000" SASL "SASL man pages"
 .SH NAME
-sasl_getrealm_t \- Realm Acquisition Callback
+sasl_chalprompt_t \- Realm Acquisition Callback
 
 .SH SYNOPSIS
 .nf
 .B #include <sasl/sasl.h>
 
 .sp
-.BI "int sasl_getrealm_t(void " *context ", int " id ", "
-.BI "			 const char " **availrealms ","
-.BI "                    const char " **result ")"
+.BI "int sasl_chalprompt_t(void " *context ", int " id ", "
+.BI "			   const char " *challenge ","
+.BI "                      const char " *prompt ", const char " *defresult ","
+.BI "                      const char " **result ", unsigned " *len ")"
 
 .fi
 .SH DESCRIPTION
 
-.B sasl_getrealm_t
-is used when there is an interaction with SASL_CB_GETREALM as the type.
-
-If a mechanism would use this callback, but it is not present, then the first
-realm listed is automatically selected.  (Note that a mechanism may still
-force the existance of a getrealm callback by SASL_CB_GETREALM to its
-required_prompts list).
+.B sasl_chalprompt_t
+is used to prompt for input in response to a server challenge.
 
 .I context
 context from the callback record
 
 .I id
-callback ID (SASL_CB_GETREALM)
+callback id (either SASL_CB_ECHOPROMPT or SASL_CB_NOECHOPROMPT)
 
-.I availrealms
-A string list of the available realms.  NULL terminated, may be empty.
+.I challenge
+the server's challenge
+
+.I prompt
+A prompt for the user
+
+.I defresult
+Default result (may be NULL)
 
 .I result
-The chosen realm. (a NUL terminated string)
+The user's response (a NUL terminated string)
+
+.I len
+Length of the user's response.
 
 .SH "RETURN VALUE"
 SASL callback functions should return SASL return codes. See sasl.h for a complete list. SASL_OK indicates success.
