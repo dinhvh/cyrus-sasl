@@ -1,6 +1,6 @@
 /* Generic SASL plugin utility functions
  * Rob Siemborski
- * $Id: plugin_common.c,v 1.1.2.1 2001/06/01 17:59:18 rjs3 Exp $
+ * $Id: plugin_common.c,v 1.1.2.2 2001/06/01 20:08:00 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
@@ -67,7 +67,7 @@
 #include "plugin_common.h"
 
 /* FIXME: This only parses IPV4 addresses */
-int _sasl_ipfromstring(const char *addr, struct sockaddr_in *out) 
+int _plug_ipfromstring(const char *addr, struct sockaddr_in *out) 
 {
     int i;
     unsigned int val = 0;
@@ -111,21 +111,34 @@ int _sasl_ipfromstring(const char *addr, struct sockaddr_in *out)
     return SASL_OK;
 }
 
-int _iovec_to_buf(const sasl_utils_t *utils, const struct iovec *vec,
-		  unsigned numiov, char **output, unsigned *outputlen) 
+int _plug_iovec_to_buf(const sasl_utils_t *utils, const struct iovec *vec,
+		       unsigned numiov, buffer_info_t **output) 
 {
     unsigned i;
+    int ret;
+    buffer_info_t *out;
     char *pos;
-    
-    *outputlen = 0;
-    for(i=0; i<numiov; i++)
-	*outputlen += vec[i].iov_len;
 
-    *output = utils->malloc(*outputlen);
-    if(!output) return SASL_NOMEM;
+    if(!vec || !output) return SASL_BADPARAM;
+
+    if(!(*output)) {
+	*output = utils->malloc(sizeof(buffer_info_t));
+	if(!*output) return SASL_NOMEM;
+	memset(*output,0,sizeof(buffer_info_t));
+    }
+
+    out = *output;
     
-    bzero(*output, *outputlen);
-    pos = *output;
+    out->curlen = 0;
+    for(i=0; i<numiov; i++)
+	out->curlen += vec[i].iov_len;
+
+    ret = _plug_buf_alloc(utils, &out->data, &out->reallen, out->curlen);
+
+    if(ret != SASL_OK) return SASL_NOMEM;
+    
+    bzero(out->data, out->reallen);
+    pos = out->data;
     
     for(i=0; i<numiov; i++) {
 	memcpy(pos, vec[i].iov_base, vec[i].iov_len);
@@ -136,8 +149,8 @@ int _iovec_to_buf(const sasl_utils_t *utils, const struct iovec *vec,
 }
 
 /* Basically a conditional call to realloc(), if we need more */
-int _buf_alloc(const sasl_utils_t *utils, char **rwbuf,
-	       unsigned *curlen, unsigned newlen) 
+int _plug_buf_alloc(const sasl_utils_t *utils, char **rwbuf,
+		    unsigned *curlen, unsigned newlen) 
 {
     if(!(*rwbuf)) {
 	*rwbuf = utils->malloc(newlen);

@@ -1,6 +1,6 @@
 /* Generic SASL plugin utility functions
  * Rob Siemborski
- * $Id: plugin_common.h,v 1.1.2.1 2001/06/01 17:59:18 rjs3 Exp $
+ * $Id: plugin_common.h,v 1.1.2.2 2001/06/01 20:08:00 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
@@ -63,10 +63,17 @@
 
 #include <sys/uio.h>
 
-int _sasl_ipfromstring(const char *addr, struct sockaddr_in *out);
-int _iovec_to_buf(const sasl_utils_t *utils, const struct iovec *vec,
-		  unsigned numiov, char **output, unsigned *outputlen);
-int _buf_alloc(const sasl_utils_t *utils, char **rwbuf,
-	       unsigned *curlen, unsigned newlen);
+typedef struct buffer_info 
+{
+    char *data;
+    unsigned curlen;
+    unsigned reallen;
+} buffer_info_t;
+
+int _plug_ipfromstring(const char *addr, struct sockaddr_in *out);
+int _plug_iovec_to_buf(const sasl_utils_t *utils, const struct iovec *vec,
+		       unsigned numiov, buffer_info_t **output);
+int _plug_buf_alloc(const sasl_utils_t *utils, char **rwbuf,
+		    unsigned *curlen, unsigned newlen);
 
 #endif /* _PLUGIN_COMMON_H_ */

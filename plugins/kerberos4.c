@@ -1,6 +1,6 @@
 /* Kerberos4 SASL plugin
  * Tim Martin 
- * $Id: kerberos4.c,v 1.65.2.4 2001/06/01 17:59:15 rjs3 Exp $
+ * $Id: kerberos4.c,v 1.65.2.5 2001/06/01 20:08:00 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
@@ -142,9 +142,11 @@ typedef struct context {
 
   char *encode_buf;                /* For encoding/decoding mem management */
   char *decode_buf;
-  char *out_buf;
   unsigned encode_buf_len;
   unsigned decode_buf_len;
+  buffer_info_t *enc_in_buf;
+
+  char *out_buf;                   /* per-step mem management */
   unsigned out_buf_len;
 
   char *user;                      /* used by client */
@@ -173,31 +175,24 @@ static int privacy_encode(void *context,
 			  const char **output,
 			  unsigned *outputlen)
 {
-  unsigned inputlen;
   int len, ret;
-  char *input;
-  context_t *text;
-  text=context;
+  context_t *text = (context_t *)context;
 
-  ret = _iovec_to_buf(text->utils, invec, numiov, &input, &inputlen);
+  ret = _plug_iovec_to_buf(text->utils, invec, numiov, &text->enc_in_buf);
   if(ret != SASL_OK) return ret;
 
-  ret = _buf_alloc(text->utils, &(text->encode_buf), &text->encode_buf_len,
-		   inputlen+40);
-  if(ret != SASL_OK) {
-      text->utils->free(input);
-      return ret;
-  }
+  ret = _plug_buf_alloc(text->utils, &(text->encode_buf),
+			&text->encode_buf_len, text->enc_in_buf->curlen+40);
 
-  len=krb_mk_priv((char *) input, text->encode_buf+4,
-		  inputlen,  text->init_keysched, 
+  if(ret != SASL_OK) return ret;
+
+  len=krb_mk_priv((char *) text->enc_in_buf->data, text->encode_buf+4,
+		  text->enc_in_buf->curlen,  text->init_keysched, 
 		  &text->session, &text->ip_local,
 		  &text->ip_remote);
 
   /* returns -1 on error */
   if (len==-1) return SASL_FAIL;
-
-  text->utils->free(input);
 
   /* now copy in the len of the buffer in network byte order */
   *outputlen=len+4;
@@ -332,8 +327,8 @@ static int privacy_decode(void *context,
 
       if (tmp!=NULL) /* if received 2 packets merge them together */
       {
-	  ret = _buf_alloc(text->utils, &text->decode_buf,
-			   &text->decode_buf_len, *outputlen + tmplen);
+	  ret = _plug_buf_alloc(text->utils, &text->decode_buf,
+				&text->decode_buf_len, *outputlen + tmplen);
 	  if(ret != SASL_OK) return ret;
 
 	  *output = text->decode_buf;
@@ -353,30 +348,24 @@ integrity_encode(void *context,
 		 const char **output,
 		 unsigned *outputlen)
 {
-  unsigned inputlen;
   int len, ret;
-  char *input;
   context_t *text;
   text=context;
 
-  ret = _iovec_to_buf(text->utils, invec, numiov, &input, &inputlen);
+  ret = _plug_iovec_to_buf(text->utils, invec, numiov, &text->enc_in_buf);
   if(ret != SASL_OK) return ret;
 
-  ret = _buf_alloc(text->utils, &text->encode_buf, &text->encode_buf_len,
-		   inputlen+40);
+  ret = _plug_buf_alloc(text->utils, &text->encode_buf, &text->encode_buf_len,
+			text->enc_in_buf->curlen+40);
 
-  if(ret != SASL_OK) {
-      text->utils->free(input);
-      return ret;
-  }
+  if(ret != SASL_OK) return ret;
   
-  len=krb_mk_safe((char *) input, (text->encode_buf+4), inputlen,
+  len=krb_mk_safe(text->enc_in_buf->data, (text->encode_buf+4),
+		  text->enc_in_buf->curlen,
 		  &text->session, &text->ip_local, &text->ip_remote);
 
   /* returns -1 on error */
   if (len==-1) return SASL_FAIL;
-
-  text->utils->free(input);
 
   /* now copy in the len of the buffer in network byte order */
   *outputlen=len+4;
@@ -506,8 +495,8 @@ static int integrity_decode(void *context,
 
       if (tmp!=NULL) /* if received 2 packets merge them together */
       {
-	  ret = _buf_alloc(text->utils, &text->decode_buf,
-			   &text->decode_buf_len, *outputlen + tmplen);
+	  ret = _plug_buf_alloc(text->utils, &text->decode_buf,
+				&text->decode_buf_len, *outputlen + tmplen);
 
 	  *output = text->decode_buf;
 	  memcpy(text->decode_buf + *outputlen, tmp, tmplen);
@@ -524,27 +513,12 @@ static int
 new_text(const sasl_utils_t *utils, context_t **text)
 {
     context_t *ret = (context_t *) utils->malloc(sizeof(context_t));
-
     if (ret==NULL) return SASL_NOMEM;
+
+    memset(ret, 0, sizeof(context_t));
 
     ret->utils = utils;
 
-    ret->encode_buf = NULL;
-    ret->decode_buf = NULL;
-    ret->out_buf = NULL;
-    ret->encode_buf_len = 0;
-    ret->decode_buf_len = 0;
-    ret->out_buf_len = 0;
-    
-    ret->user = NULL;
-
-    ret->buffer = NULL;
-    ret->bufsize = 0;
-
-    ret->time_sec = 0;
-    ret->time_5ms = 0;
-
-    ret->state = 0;  
     *text = ret;
 
     return SASL_OK;
@@ -571,6 +545,10 @@ static void dispose(void **conn_context, const sasl_utils_t *utils)
     if (text->encode_buf) utils->free(text->encode_buf);
     if (text->decode_buf) utils->free(text->decode_buf);
     if (text->out_buf) utils->free(text->out_buf);
+    if (text->enc_in_buf) {
+	if(text->enc_in_buf->data) utils->free(text->enc_in_buf->data);
+	utils->free(text->enc_in_buf);
+    }
     if (text->user) utils->free(text->user);
     
     utils->free(text);
@@ -637,7 +615,8 @@ static int server_continue_step (void *conn_context,
     text->challenge=randocts; 
     nchal=htonl(text->challenge);
 
-    result = _buf_alloc(text->utils, &text->out_buf, &text->out_buf_len, 5);
+    result = _plug_buf_alloc(text->utils, &text->out_buf,
+			     &text->out_buf_len, 5);
     if(result != SASL_OK)
 	return result;
 
@@ -737,7 +716,8 @@ static int server_continue_step (void *conn_context,
 		    text->init_keysched,
 		    DES_ENCRYPT);
    
-    result = _buf_alloc(text->utils, &text->out_buf, &text->out_buf_len, 9);
+    result = _plug_buf_alloc(text->utils, &text->out_buf,
+			     &text->out_buf_len, 9);
     if(result != SASL_OK)
 	return result;
 
@@ -809,13 +789,13 @@ static int server_continue_step (void *conn_context,
 
     /* get ip data */
     /* get ip number in addr*/
-    result = _sasl_ipfromstring(sparams->iplocalport, &(text->ip_local));
+    result = _plug_ipfromstring(sparams->iplocalport, &(text->ip_local));
     if (result != SASL_OK) {
 	/* couldn't get local IP address */
 	return result;
     }
 
-    result = _sasl_ipfromstring(sparams->ipremoteport, &(text->ip_remote));
+    result = _plug_ipfromstring(sparams->ipremoteport, &(text->ip_remote));
     if (result != SASL_OK) {
 	/* couldn't get remote IP address */
 	return result;
@@ -1055,8 +1035,8 @@ static int client_continue_step (void *conn_context,
 	    return SASL_FAIL;
 	}
 
-	ret = _buf_alloc(text->utils, &(text->out_buf), &(text->out_buf_len),
-			 ticket.length);
+	ret = _plug_buf_alloc(text->utils, &(text->out_buf),
+			      &(text->out_buf_len), ticket.length);
 	if(ret != SASL_OK) return ret;
 	
 	memcpy(text->out_buf, ticket.dat, ticket.length);
@@ -1289,7 +1269,7 @@ static int client_continue_step (void *conn_context,
 			 (des_cblock *)text->session,
 			 DES_ENCRYPT);
 
-	_buf_alloc(text->utils, &text->out_buf, &text->out_buf_len, len);
+	_plug_buf_alloc(text->utils, &text->out_buf, &text->out_buf_len, len);
 
 	memcpy(text->out_buf, sout, len);
 
@@ -1299,7 +1279,7 @@ static int client_continue_step (void *conn_context,
 	/* nothing more to do; should be authenticated */
 	/* FIXME: Is ignoring IP here really correct behavior? */
 	if(cparams->iplocalport) {   
-	    result = _sasl_ipfromstring(cparams->iplocalport, &(text->ip_local));
+	    result = _plug_ipfromstring(cparams->iplocalport, &(text->ip_local));
 	    if (result != SASL_OK) {
 		/* couldn't get local IP address */
 		return result;
@@ -1307,7 +1287,7 @@ static int client_continue_step (void *conn_context,
 	}
 	
 	if(cparams->ipremoteport) {
-	    result = _sasl_ipfromstring(cparams->ipremoteport, &(text->ip_remote));
+	    result = _plug_ipfromstring(cparams->ipremoteport, &(text->ip_remote));
 	    if (result != SASL_OK) {
 		/* couldn't get local IP address */
 		return result;

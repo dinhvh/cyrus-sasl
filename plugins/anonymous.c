@@ -337,7 +337,8 @@ client_continue_step(void *conn_context,
   
   *clientoutlen = userlen + strlen(hostname) + 1;
 
-  result = _buf_alloc(cparams->utils, &text->out_buf, &text->out_buf_len, *clientoutlen);
+  result = _plug_buf_alloc(cparams->utils, &text->out_buf,
+			   &text->out_buf_len, *clientoutlen);
 
   if(result != SASL_OK) return result;
 
