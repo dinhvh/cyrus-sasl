@@ -124,7 +124,7 @@ void interaction (int id, const char *prompt,
     char result[1024];
     
     if (id==SASL_CB_PASS) {
-	printf("%s: ", prompt);
+	fprintf(stderr, "%s: ", prompt);
 	*tresult = strdup(getpass("")); /* leaks! */
 	*tlen=   strlen(*tresult);
 	return;
@@ -145,7 +145,7 @@ void interaction (int id, const char *prompt,
     } else {
 	int c;
 	
-	printf("%s: ",prompt);
+	fprintf(stderr, "%s: ",prompt);
 	fgets(result, sizeof(result) - 1, stdin);
 	c = strlen(result);
 	result[c - 1] = '\0';
