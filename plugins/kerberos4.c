@@ -1,6 +1,6 @@
 /* Kerberos4 SASL plugin
  * Tim Martin 
- * $Id: kerberos4.c,v 1.65.2.9 2001/06/07 14:56:10 rjs3 Exp $
+ * $Id: kerberos4.c,v 1.65.2.10 2001/06/08 21:36:51 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
@@ -659,7 +659,7 @@ static int server_continue_step (void *conn_context,
     text->instance[sizeof(text->instance)-1] = 0;
 
     memset(&addr, 0, sizeof(struct sockaddr_in));
-#define KRB4_IGNORE_IP_ADDRESS
+
 #ifndef KRB4_IGNORE_IP_ADDRESS
     /* (we ignore IP addresses in krb4 tickets at CMU to facilitate moving
         from machine to machine) */
