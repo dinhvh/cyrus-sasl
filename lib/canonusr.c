@@ -1,6 +1,6 @@
 /* canonusr.c - user canonicalization support
  * Rob Siemborski
- * $Id: canonusr.c,v 1.1.2.13 2001/07/06 21:06:15 rjs3 Exp $
+ * $Id: canonusr.c,v 1.1.2.14 2001/07/10 14:48:28 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -54,6 +54,7 @@
 typedef struct canonuser_plug_list 
 {
     struct canonuser_plug_list *next;
+    char name[PATH_MAX];
     const sasl_canonuser_plug_t *plug;
 } canonuser_plug_list_t;
 
@@ -123,7 +124,7 @@ int _sasl_canon_user(sasl_conn_t *conn,
     }
     
     for(ptr = canonuser_head; ptr; ptr = ptr->next) {
-	if(!strcmp(plugin_name, ptr->plug->name)) break;
+	if(!strcmp(plugin_name, ptr->name)) break;
     }
 
     /* We clearly don't have this one! */
@@ -168,12 +169,32 @@ int _sasl_canon_user(sasl_conn_t *conn,
     return SASL_OK;
 }
 
+void _sasl_canonuser_free() 
+{
+    canonuser_plug_list_t *ptr, *ptr_next;
+    
+    for(ptr = canonuser_head; ptr; ptr = ptr_next) {
+	ptr_next = ptr->next;
+	if(ptr->plug->canon_user_free)
+	    ptr->plug->canon_user_free(ptr->plug->glob_context, global_utils);
+	sasl_FREE(ptr);
+    }
+
+    canonuser_head = NULL;
+}
+
 int sasl_canonuser_add_plugin(const char *plugname,
 			      sasl_canonuser_init_t *canonuserfunc) 
 {
     int result, out_version;
     canonuser_plug_list_t *new_item;
     sasl_canonuser_plug_t *plug;
+
+    if(!plugname || strlen(plugname) > (PATH_MAX - 1)) {
+	sasl_seterror(NULL, 0,
+		      "bad plugname passed to sasl_canonuser_add_plugin\n");
+	return SASL_BADPARAM;
+    }
     
     result = canonuserfunc(global_utils, SASL_AUXPROP_PLUG_VERSION,
 			   &out_version, &plug, plugname);
@@ -193,52 +214,13 @@ int sasl_canonuser_add_plugin(const char *plugname,
     new_item = sasl_ALLOC(sizeof(canonuser_plug_list_t));
     if(!new_item) return SASL_NOMEM;
 
+    strncpy(new_item->name, plugname, PATH_MAX);
+
     new_item->plug = plug;
     new_item->next = canonuser_head;
     canonuser_head = new_item;
 
     return SASL_OK;
-}
-
-int _sasl_canonuser_add_plugin(void *p, void *library) 
-{
-    sasl_canonuser_init_t *entry_point = NULL;
-    int result;
-
-    if(!p) {
-	_sasl_log(NULL, SASL_LOG_DEBUG,
-		  "null entry point given to _sasl_canonuser_add_plugin");
-	return SASL_BADPARAM;
-    }
-
-    if(!library) {
-	_sasl_log(NULL, SASL_LOG_DEBUG,
-		  "null library given to _sasl_canonuser_add_plugin");
-	return SASL_BADPARAM;
-    }
-
-    entry_point = (sasl_canonuser_init_t *)p;
-
-    result = sasl_canonuser_add_plugin(NULL, entry_point);
-    if(result != SASL_OK) {
-	return result;
-    }
-        
-    return SASL_OK;
-}
-
-void _sasl_canonuser_free() 
-{
-    canonuser_plug_list_t *ptr, *ptr_next;
-    
-    for(ptr = canonuser_head; ptr; ptr = ptr_next) {
-	ptr_next = ptr->next;
-	if(ptr->plug->canon_user_free)
-	    ptr->plug->canon_user_free(ptr->plug->glob_context, global_utils);
-	sasl_FREE(ptr);
-    }
-
-    canonuser_head = NULL;
 }
 
 #ifdef MIN
@@ -386,7 +368,7 @@ int internal_canonuser_init(const sasl_utils_t *utils __attribute__((unused)),
     if(!out_version || !plug || !plugname) return SASL_BADPARAM;
 
     /* We only support the "INTERNAL" plugin */
-    if(plugname && strcmp(plugname, canonuser_internal_plugin.name))
+    if(plugname && strcmp(plugname, "INTERNAL"))
 	return SASL_NOMECH;
 
     if(max_version < SASL_CANONUSER_PLUG_VERSION) return SASL_BADVERS;

@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: client.c,v 1.34.4.22 2001/07/09 20:29:54 rjs3 Exp $
+ * $Id: client.c,v 1.34.4.23 2001/07/10 14:48:29 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -99,31 +99,33 @@ static void client_done(void) {
   cmechlist = NULL;
 }
 
-static int add_plugin(void *p, void *library) {
+int sasl_client_add_plugin(const char *plugname,
+			   sasl_client_plug_init_t *entry_point)
+{
   int plugcount;
   sasl_client_plug_t *pluglist;
   cmechanism_t *mech;
-  sasl_client_plug_init_t *entry_point;
   int result;
   int version;
   int lupe;
 
-  if(!p) return SASL_BADPARAM;
-
-  entry_point = (sasl_client_plug_init_t *)p;
+  if(!entry_point) return SASL_BADPARAM;
 
   result = entry_point(cmechlist->utils, SASL_CLIENT_PLUG_VERSION, &version,
 		       &pluglist, &plugcount);
 
   if (result != SASL_OK)
   {
-    _sasl_log(NULL, SASL_LOG_WARN, "entry_point failed in add_plugin");
+    _sasl_log(NULL, SASL_LOG_WARN,
+	      "entry_point failed in sasl_client_add_plugin for %s",
+	      plugname);
     return result;
   }
 
   if (version != SASL_CLIENT_PLUG_VERSION)
   {
-    _sasl_log(NULL, SASL_LOG_WARN, "version conflict in add_plugin");
+    _sasl_log(NULL, SASL_LOG_WARN,
+	      "version conflict in sasl_client_add_plugin for %s", plugname);
     return SASL_BADVERS;
   }
 
@@ -133,10 +135,6 @@ static int add_plugin(void *p, void *library) {
       if (! mech) return SASL_NOMEM;
 
       mech->plug=pluglist++;
-      if (lupe==0)
-	mech->library = library;
-      else
-	mech->library = NULL;
       mech->version = version;
       mech->next = cmechlist->mech_list;
       cmechlist->mech_list = mech;
@@ -144,12 +142,6 @@ static int add_plugin(void *p, void *library) {
     }
 
   return SASL_OK;
-}
-
-int sasl_client_add_plugin(const char *plugname __attribute__((unused)),
-			   sasl_client_plug_init_t *entry)
-{
-    return add_plugin(entry, NULL);
 }
 
 static int

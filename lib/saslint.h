@@ -1,7 +1,7 @@
 /* saslint.h - internal SASL library definitions
  * Rob Siemborski
  * Tim Martin
- * $Id: saslint.h,v 1.33.2.31 2001/07/06 21:06:16 rjs3 Exp $
+ * $Id: saslint.h,v 1.33.2.32 2001/07/10 14:48:29 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -55,6 +55,16 @@
 /* #define'd constants */
 #define DEFAULT_MAXOUTBUF 8192
 #define CANON_BUF_SIZE 256
+
+#ifndef PATH_MAX
+# ifdef _POSIX_PATH_MAX
+#  define PATH_MAX _POSIX_PATH_MAX
+# else
+#  define PATH_MAX 1024         /* arbitrary; probably big enough will
+                                 * probably only be 256+64 on
+                                 * pre-posix machines */
+# endif
+#endif
 
 /* Datatype Definitions */
 typedef struct {
@@ -166,7 +176,6 @@ typedef struct cmechanism
 {
   int version;
   const sasl_client_plug_t *plug;
-  void *library;
 
   struct cmechanism *next;  
 } cmechanism_t;
@@ -422,7 +431,6 @@ extern void _sasl_auxprop_lookup(sasl_server_params_t *sparams,
 /*
  * canonusr.c
  */
-extern int _sasl_canonuser_add_plugin(void *p, void *library);
 void _sasl_canonuser_free();
 extern int internal_canonuser_init(const sasl_utils_t *utils,
 				   int max_version,

@@ -1,7 +1,7 @@
 /* dlopen.c--Unix dlopen() dynamic loader interface
  * Rob Siemborski
  * Rob Earhart
- * $Id: dlopen.c,v 1.32.2.5 2001/07/09 22:13:39 rjs3 Exp $
+ * $Id: dlopen.c,v 1.32.2.6 2001/07/10 14:48:29 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -71,16 +71,6 @@ const int _is_sasl_server_static = 0;
 #  include <ndir.h>
 # endif
 #endif /* ! HAVE_DIRENT_H */
-
-#ifndef PATH_MAX
-# ifdef _POSIX_PATH_MAX
-#  define PATH_MAX _POSIX_PATH_MAX
-# else
-#  define PATH_MAX 1024		/* arbitrary; probably big enough will
-				 * probably only be 256+64 on
-				 * pre-posix machines */
-# endif
-#endif
 
 #ifndef NAME_MAX
 # ifdef _POSIX_NAME_MAX
