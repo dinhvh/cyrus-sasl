@@ -43,38 +43,47 @@ struct propctx;
 /* create a property context
  *  estimate -- an estimate of the storage needed for requests & responses
  *              0 will use module default
- * returns NULL on error -- FIXME chris newman returns -1
+ * returns a new property context on success and NULL on any error
  */
 struct propctx *prop_new(unsigned estimate);
 
 /* create new propctx which duplicates the contents of an existing propctx
- * returns -1 on error
+ * returns SASL_OK on success
+ * possible other return values include: SASL_NOMEM, SASL_BADPARAM
  */
 int prop_dup(struct propctx *src_ctx, struct propctx **dst_ctx);
 
 /* Add property names to request
  *  ctx       -- context from prop_new()
  *  names     -- list of property names; must persist until context freed
- *               or requests cleared
+ *               or requests cleared (This extends to other contexts that
+ *               are dup'ed from this one, and their children, etc)
  *
  * NOTE: may clear values from context as side-effect
- * returns -1 on error
+ * returns SASL_OK on success
+ * possible other return values include: SASL_NOMEM, SASL_BADPARAM
  */
 int prop_request(struct propctx *ctx, const char **names);
 
 /* return array of struct propval from the context
  *  return value persists until next call to
  *   prop_request, prop_clear or prop_dispose on context
+ *
+ *  returns NULL on error
  */
 const struct propval *prop_get(struct propctx *ctx);
 
 /* Fill in an array of struct propval based on a list of property names
  *  return value persists until next call to
  *   prop_request, prop_clear or prop_dispose on context
- *  returns -1 on error (no properties ever requested, ctx NULL, etc)
  *  returns number of matching properties which were found (values != NULL)
  *  if a name requested here was never requested by a prop_request, then
  *  the name field of the associated vals entry will be set to NULL
+ *
+ * The vals array MUST be atleast as long as the names array.
+ *
+ * returns SASL_OK on success
+ * possible other return values include: SASL_BADPARAM
  */
 int prop_getnames(struct propctx *ctx, const char **names,
 		  struct propval *vals);
@@ -104,7 +113,8 @@ void prop_dispose(struct propctx **ctx);
  *  outbuf -- output buffer
  *  outmax -- maximum length of output buffer including NUL terminator
  *  outlen -- set to length of output string excluding NUL terminator
- * returns 0 on success and amount of additional space needed on failure
+ * returns SASL_OK on success
+ * returns SASL_BADPARAM or amount of additional space needed on failure
  */
 int prop_format(struct propctx *ctx, const char *sep, int seplen,
 		char *outbuf, unsigned outmax, unsigned *outlen);
@@ -116,6 +126,8 @@ int prop_format(struct propctx *ctx, const char *sep, int seplen,
  *  value  -- a value for the property; will be copied into context
  *            if NULL, remove existing values
  *  vallen -- length of value, if < 0 then strlen(value) will be used
+ * returns SASL_OK on success
+ * possible error return values include: SASL_BADPARAM, SASL_NOMEM
  */
 int prop_set(struct propctx *ctx, const char *name,
 	     const char *value, int vallen);
@@ -126,6 +138,8 @@ int prop_set(struct propctx *ctx, const char *name,
  *            if NULL, add to the same name as previous prop_set/setvals call
  *  values -- array of values, ending in NULL.  Each value is a NUL terminated
  *            string
+ * returns SASL_OK on success
+ * possible error return values include: SASL_BADPARAM, SASL_NOMEM
  */
 int prop_setvals(struct propctx *ctx, const char *name,
 		 const char **values);
