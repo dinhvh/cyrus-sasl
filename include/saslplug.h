@@ -737,6 +737,8 @@ typedef struct sasl_canonuser {
      *  out_amax         -- max length of authid
      *  out_alen         -- set to length of authid (0 = same as user name)
      *
+     *  note that the output buffers MAY be the same as the input buffers.
+     *
      * returns
      *  SASL_OK         on success
      *  SASL_BADPROT    username contains invalid character
