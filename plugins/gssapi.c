@@ -975,16 +975,6 @@ sasl_gss_client_start(void *glob_context __attribute__((unused)),
   return SASL_OK;
 }
 
-static void 
-free_prompts(sasl_client_params_t *params,
-	     sasl_interact_t **prompts)
-{
-    if(!params || !prompts || !*prompts) return;
-
-    params->utils->free(*prompts);
-    *prompts=NULL;
-}
-
 static int
 make_prompts(sasl_client_params_t *params,
 	     sasl_interact_t **prompts_res,
@@ -1172,8 +1162,10 @@ sasl_gss_client_step (void *conn_context,
 	      }
 
 	    /* free prompts we got */
-	    if (prompt_need)
-	      free_prompts(params,prompt_need);
+	    if (prompt_need) {
+		params->utils->free(*prompt_need);
+		*prompt_need = NULL;
+	    }
 
 	    /* if there are prompts not filled in */
 	    if (  (auth_result==SASL_INTERACT))

@@ -1,6 +1,6 @@
 /* Kerberos4 SASL plugin
  * Tim Martin 
- * $Id: kerberos4.c,v 1.65.2.12 2001/06/18 15:38:38 rjs3 Exp $
+ * $Id: kerberos4.c,v 1.65.2.13 2001/06/20 20:34:06 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
@@ -955,16 +955,6 @@ static int client_start(void *glob_context __attribute__((unused)),
   return new_text(params->utils, (context_t **) conn);
 }
 
-/* FIXME?: Freeing results is responsibility of caller */
-static void free_prompts(sasl_client_params_t *params,
-			 sasl_interact_t **prompts)
-{
-    if(!params || !prompts || !(*prompts)) return;
-
-    params->utils->free(*prompts);
-    *prompts = NULL;
-}
-
 static int client_continue_step (void *conn_context,
 				 sasl_client_params_t *cparams,
 				 const char *serverin,
@@ -1103,8 +1093,11 @@ static int client_continue_step (void *conn_context,
 			break;
 		    }
 	    }
-	    
-	    free_prompts(cparams, prompt_need);
+
+	    if(prompt_need) {
+		cparams->utils->free(*prompt_need);
+		*prompt_need = NULL;
+	    }
 	}
 
 	/* Now, try to get the userid by normal means... */
