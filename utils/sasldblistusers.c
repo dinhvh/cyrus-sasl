@@ -128,7 +128,6 @@ int listusers(const char *path, listcb_t *cb)
     while (dkey.dptr != NULL) {
 	char *authid = dkey.dptr;
 	char *realm  = dkey.dptr+strlen(authid)+1;
-	char *tmp    = realm + strlen(realm)+1;
 
 	if (*authid) {
 	    /* don't check return values */
@@ -241,12 +240,6 @@ int listusers(const char *path, listcb_t *cb)
 	for (lup=0;lup<key.size;lup++)
 	    if (((char *)key.data)[lup]=='\0')
 		numnulls++;
-
-	if (numnulls != 1) {
-	    fprintf(stderr,"warning: probable database corruption\n");
-	    result = cursor->c_get(cursor, &key, &data, DB_NEXT);
-	    continue;
-	}
 
 	authid = key.data;
 	realm  = authid + strlen(authid)+1;
