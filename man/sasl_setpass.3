@@ -38,40 +38,49 @@
 .\" AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\" 
-.TH sasl_setprop "10 July 2001" SASL "SASL man pages"
+.TH sasl_setpass "10 July 2001" SASL "SASL man pages"
 .SH NAME
-sasl_setprop \- Set a SASL property
+sasl_setpass \- Check a plaintext password
 .SH SYNOPSIS
 .nf
 .B #include <sasl/sasl.h>
 
-.sp
-.BI "int sasl_setprop(sasl_conn_t " *conn ", "
-.BI "			 int " propnum ", " 
-.BI "			 const void * " pvalue ")"  
+.BI "int sasl_setpass(sasl_conn_t *" conn ", "
+.BI "		       const char *" user ", "
+.BI "		       const char *" pass ", unsigned " passlen ","
+.BI "                  const char *" oldpass ", unsigned " oldpasslen ","
+.BI "                  unsigned " flags ")"
 
-.fi
 .SH DESCRIPTION
 
-.B sasl_setprop
-sets the value of a SASL property. For example an application should tell the SASL library about any external negotiated security layer (i.e. TLS).
+.B sasl_setpass
+will set passwords in the sasldb, and trigger the setpass callbacks for all
+available mechanisms.
 
-.I conn
-is the SASL connection object.
-.I propnum
-is the identifier for the property requested and
-.I pvalue
-contains a pointer to the data. It is the applications job to make sure this type is correct. This is an easy way to crash a program.
+.I user
+is the username to set the password for.
 
-.nf
-SASL_AUTH_EXTERNAL - external authentication ID (const char *)
-SASL_SSF_EXTERNAL -  external SSF active -- (sasl_ssf_t)
-SASL_SEC_PROPS  -    sasl_security_properties_t 
-SASL_IPLOCALPORT -   string describing the local ip and port in the form
-                     "a.b.c.d;p"
-SASL_IPREMOTEPORT -  string describing the remote ip and port in the form
-                     "a.b.c.d;p"
-.fi
+.I pass
+and
+.I passlen
+are the password to set and its length
+
+.I oldpass
+and
+.I oldpasslen
+are the old password & its length (and are optional)
+
+.I flags
+Are flags including SASL_SET_CREATE and SASL_SET_DISABLE (to cause the
+creating of nonexistant accounts and the disableing of an account,
+respectively)
+
+.SH NOTES
+.I oldpass
+and
+.I oldpasslen
+are unused in the Cyrus SASL implementation, though are passed on to
+any mechanisms that may require them.
 
 .SH "RETURN VALUE"
 Returns SASL_OK on success. SASL error code on failure.
@@ -79,4 +88,4 @@ Returns SASL_OK on success. SASL error code on failure.
 .SH "CONFORMING TO"
 RFC 2222
 .SH "SEE ALSO"
-sasl(3), sasl_errors(3)
+sasl(3), sasl_errors(3), sasl_checkpass(3)
