@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.1.2.4 2001/07/18 21:27:34 rjs3 Exp $ */
+/* $Id: server.c,v 1.1.2.5 2001/07/19 13:05:30 rjs3 Exp $ */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
  *
@@ -293,6 +293,11 @@ int main(int argc, char *argv[])
 	saslfail(SASL_FAIL, "allocating listensock");
     }
 
+    for (i = 1; i <= l[0]; i++) {
+       if (l[i] > maxfd)
+           maxfd = l[i];
+    }
+
     for (;;) {
 	char localaddr[NI_MAXHOST | NI_MAXSERV],
 	     remoteaddr[NI_MAXHOST | NI_MAXSERV];
@@ -303,17 +308,23 @@ int main(int argc, char *argv[])
 	FILE *in, *out;
 	fd_set readfds;
 
-	for (i = 1; i <= l[0]; i++) {
+
+        memset(&readfds, 0, sizeof(readfds));
+	for (i = 1; i <= l[0]; i++)
 	    FD_SET(l[i], &readfds);
-	    if (l[i] > maxfd)
-		maxfd = l[i];
-	}
+
 	nfds = select(maxfd + 1, &readfds, 0, 0, 0);
 	if (nfds <= 0) {
 	    if (nfds < 0 && errno != EINTR)
 		perror("select");
 	    continue;
 	}
+
+       for (i = 1; i <= l[0]; i++) 
+           if (FD_ISSET(l[i], &readfds)) {
+               fd = accept(l[i], NULL, NULL);
+               break;
+           }
 
 	if (fd < 0) {
 	    if (errno != EINTR)
