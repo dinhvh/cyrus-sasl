@@ -46,6 +46,7 @@ INCLUDES=-I$(top_srcdir)/include
 
 noinst_PROGRAMS = client server
 EXTRA_PROGRAMS = sample-client sample-server
+CLEANFILES=sample-client sample-server ./.libs/*sample-client ./.libs/*sample-server
 
 sample_client_SOURCES = sample-client.c
 sample_server_SOURCES = sample-server.c
