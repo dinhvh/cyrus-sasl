@@ -269,14 +269,12 @@ client_continue_step(void *conn_context,
       *clientout = NULL;
       *clientoutlen = 0;
       VL(("Verify we're done step"));
-      fprintf(stderr,"ANON: VRFY-DONE\n");
       text->state++;
       return SASL_OK;      
   }
 
   if (clientout == NULL && text->state == 1) {
       /* no initial client send */
-      fprintf(stderr, "ANON: NO INIT SEND\n");
       *clientout = NULL;
       *clientoutlen = 0;
       text->state = 2;
@@ -290,7 +288,6 @@ client_continue_step(void *conn_context,
   }
 
   VL(("ANONYMOUS: step 1\n"));
-  fprintf(stderr, "ANON: 1\n");
 
   if (!cparams
       || !clientout
@@ -362,8 +359,6 @@ client_continue_step(void *conn_context,
   hostname[sizeof(hostname)-1] = '\0';
   
   *clientoutlen = userlen + strlen(hostname) + 1;
-
-  fprintf(stderr, "looking for %d\n",*clientoutlen);
 
   result = _buf_alloc(cparams->utils, &text->out_buf, &text->out_buf_len, *clientoutlen);
 
