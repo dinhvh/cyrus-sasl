@@ -1,6 +1,6 @@
 /* Kerberos4 SASL plugin
  * Tim Martin 
- * $Id: kerberos4.c,v 1.65.2.14 2001/06/22 15:37:54 rjs3 Exp $
+ * $Id: kerberos4.c,v 1.65.2.15 2001/06/25 14:56:39 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
@@ -550,7 +550,7 @@ new_text(const sasl_utils_t *utils, context_t **text)
     return SASL_OK;
 }
 
-#ifndef macintosh /* FIXME: is this for real? */
+#ifndef macintosh
 static int
 server_start(void *glob_context __attribute__((unused)),
 	     sasl_server_params_t *sparams,
@@ -1323,9 +1323,9 @@ static int client_continue_step (void *conn_context,
 	*clientoutlen=len;
 
 	/* nothing more to do; should be authenticated */
-	/* FIXME: Is ignoring IP here really correct behavior? */
 	if(cparams->iplocalport) {   
-	    result = _plug_ipfromstring(cparams->iplocalport, &(text->ip_local));
+	    result = _plug_ipfromstring(cparams->iplocalport,
+					&(text->ip_local));
 	    if (result != SASL_OK) {
 		/* couldn't get local IP address */
 		return result;
@@ -1333,7 +1333,8 @@ static int client_continue_step (void *conn_context,
 	}
 	
 	if(cparams->ipremoteport) {
-	    result = _plug_ipfromstring(cparams->ipremoteport, &(text->ip_remote));
+	    result = _plug_ipfromstring(cparams->ipremoteport,
+					&(text->ip_remote));
 	    if (result != SASL_OK) {
 		/* couldn't get local IP address */
 		return result;
@@ -1401,7 +1402,7 @@ static const sasl_client_plug_t client_plugins[] =
     "KERBEROS_V4",
     KRB_DES_SECURITY_BITS,
     SASL_SEC_NOPLAINTEXT | SASL_SEC_NOACTIVE | SASL_SEC_NOANONYMOUS,
-    0,
+    SASL_FEAT_NEEDSERVERFQDN,
     client_required_prompts,
     NULL,
     &client_start,

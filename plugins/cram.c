@@ -1,6 +1,6 @@
 /* CRAM-MD5 SASL plugin
  * Tim Martin 
- * $Id: cram.c,v 1.55.2.4 2001/06/22 15:37:53 rjs3 Exp $
+ * $Id: cram.c,v 1.55.2.5 2001/06/25 14:56:39 rjs3 Exp $
  */
 
 /* 
@@ -287,10 +287,10 @@ static int server_continue_step (void *conn_context,
   context_t *text;
   text=conn_context;
 
-  /* FIXME: is this limit acceptable? */
-  if (clientinlen > 2048) {
+  /* this should be well more than is ever needed */
+  if (clientinlen > 1024) {
 	sparams->utils->seterror(sparams->utils->conn, 0,
-				 "CRAM-MD5 input longer than 2048 bytes");
+				 "CRAM-MD5 input longer than 1024 bytes");
 	return SASL_BADPROT;
   }
 
@@ -303,7 +303,6 @@ static int server_continue_step (void *conn_context,
      */
     VL(("CRAM-MD5 step 1\n"));
 
-    /* (FIXME should we mend this?) */
     /* we shouldn't have received anything */
     if (clientinlen!=0)
     {
@@ -835,9 +834,9 @@ static int c_continue_step (void *conn_context,
      */
 
     /* First check for absurd lengths */
-    if(serverinlen > 2048) {
+    if(serverinlen > 1024) {
 	params->utils->seterror(params->utils->conn, 0,
-				"CRAM-MD5 input longer than 2048 bytes");
+				"CRAM-MD5 input longer than 1024 bytes");
 	return SASL_BADPROT;
     }
 

@@ -205,7 +205,6 @@ static void dispose(void *conn_context, const sasl_utils_t *utils)
   utils->free(text);
 }
 
-/* FIXME: put in SASL_WRONGMECH check */
 static int
 client_start(void *glob_context __attribute__((unused)),
 	sasl_client_params_t *cparams,

@@ -1,6 +1,6 @@
 /* SASL server API implementation
  * Tim Martin
- * $Id: server.c,v 1.84.2.22 2001/06/22 18:59:35 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.23 2001/06/25 14:56:37 rjs3 Exp $
  */
 
 /* 
@@ -879,6 +879,12 @@ static int mech_permitted(sasl_conn_t *conn,
 	return 0;
     }
 
+    /* Check Features */
+    if(plug->features & SASL_FEAT_GETSECRET) {
+	/* We no longer support sasl_server_{get,put}secret */
+	return 0;
+    }
+
     return 1;
 }
 
@@ -1130,7 +1136,6 @@ static unsigned mech_names_len()
 /*
  * The default behavior is to seperate with spaces if sep==NULL
  */
-
 int sasl_listmech(sasl_conn_t *conn,
 		  const char *user __attribute__((unused)),
 		  const char *prefix,

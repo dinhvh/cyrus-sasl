@@ -348,6 +348,7 @@ int _sasl_conn_init(sasl_conn_t *conn,
   conn->decode_buf_len = 0;
 
   if (serverFQDN==NULL) {
+      /* FIXME: this isn't valid if we are the client */
     char name[MAXHOSTNAMELEN];
     memset(name, 0, sizeof(name));
     gethostname(name, MAXHOSTNAMELEN);

@@ -248,7 +248,6 @@ static void client_dispose(sasl_conn_t *pconn)
  *  SASL_NOMECH   -- no mechanism meets requested properties
  *  SASL_NOMEM    -- not enough memory
  */
-
 int sasl_client_new(const char *service,
 		    const char *serverFQDN,
 		    const char *iplocalport,
@@ -367,7 +366,6 @@ static int have_prompts(sasl_conn_t *conn,
  * Apps should be encouraged to simply use space or comma space
  * though
  */
-
 int sasl_client_start(sasl_conn_t *conn,
 		      const char *mechlist,
 		      sasl_interact_t **prompt_need,
@@ -385,9 +383,7 @@ int sasl_client_start(sasl_conn_t *conn,
 
     /* verify parameters */
     if (mechlist == NULL)
-    {
 	return SASL_BADPARAM;
-    }
 
     VL(("in sasl_client_start\n"));
 
@@ -395,8 +391,7 @@ int sasl_client_start(sasl_conn_t *conn,
        and just need to do the continue step again */
 
     /* do a step */
-    /* FIXME: this is not smart, if prompt_need was a pointer that
-     * was not initialized to null this can in fact be very bad. */
+    /* FIXME: Hopefully they only give us our own prompt_need back */
     if (prompt_need && *prompt_need != NULL) {
 	result = sasl_client_step(conn, NULL, 0, prompt_need,
 				  clientout, clientoutlen);
@@ -457,6 +452,12 @@ int sasl_client_start(sasl_conn_t *conn,
 		break;
 	    }
 
+	    /* Can we meet it's features? */
+	    if ((m->plug->features & SASL_FEAT_NEEDSERVERFQDN)
+		&& !conn->serverFQDN) {
+		break;
+	    }
+	    
 #ifdef PREFER_MECH
 	    if (strcasecmp(m->plug->mech_name, PREFER_MECH) &&
 		bestm && m->plug->max_ssf <= bestssf) {
