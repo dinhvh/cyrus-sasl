@@ -1,6 +1,6 @@
 /* SASL server API implementation
  * Tim Martin
- * $Id: server.c,v 1.84.2.13 2001/06/11 18:26:06 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.14 2001/06/12 15:52:16 rjs3 Exp $
  */
 
 /* 
@@ -1291,8 +1291,6 @@ int sasl_checkpass(sasl_conn_t *conn,
 /* check if an APOP exchange is valid
  *  (note this is an optional part of the SASL API)
  * inputs:
- *  user          -- user to query in current user_realm
- *  userlen       -- length of username, 0 = strlen(user)
  *  challenge     -- challenge which was sent to client
  *  challen       -- length of challenge, 0 = strlen(challenge)
  *  response      -- client response string: "32HEXDIGIT"
@@ -1305,22 +1303,48 @@ int sasl_checkpass(sasl_conn_t *conn,
  *  SASL_NOUSER   -- user not found
  */
 int sasl_checkapop(sasl_conn_t *conn,
- 		   const char *user,
- 		   unsigned userlen __attribute__((unused)),
  		   const char *challenge,
  		   unsigned challen __attribute__((unused)),
  		   const char *response,
- 		   unsigned resplen __attribute__((unused)))
+ 		   unsigned resplen)
 {
     sasl_server_conn_t *s_conn = (sasl_server_conn_t *) conn;
+    char user[255];
+    unsigned i,j;
     int result = SASL_FAIL;
  
     /* check params */
     if (_sasl_server_active==0) return SASL_NOTINIT;
-    if (!conn || !user || !response || !challenge)
+    if (!conn || !response || !challenge)
 	return SASL_BADPARAM;
 
-    result = _sasl_sasldb_verify_apop(conn, user, challenge, response,
+    /* Get rid of leading whitespace */
+    for(i=0;i<resplen;i++)
+	if(!isspace(response[i])) break;
+
+    if(i == resplen) return SASL_BADPARAM;
+
+    /* Copy the username */
+    for(j=0;i<resplen; i++) {
+	if(isspace(response[i])) {
+	    user[j] = '\0';
+	    break;
+	} else {
+	    user[j++] = response[i];
+	}
+	if(j==255) return SASL_FAIL;
+    }
+
+    if(i == resplen) return SASL_BADPARAM;
+
+    /* Get rid of any extra whitespace */
+    for(;i<resplen; i++) {
+	if(!isspace(response[i])) break;
+    }
+    
+    if(i == resplen) return SASL_BADPARAM;
+
+    result = _sasl_sasldb_verify_apop(conn, user, challenge, &(response[i]),
 				      s_conn->user_realm);
 
     return result;

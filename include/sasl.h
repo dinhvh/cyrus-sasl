@@ -954,12 +954,9 @@ LIBSASL_API int sasl_server_step(sasl_conn_t *conn,
  *  (note this is an optional part of the SASL API)
  *  if challenge is NULL, just check if APOP is enabled
  * inputs:
- * FIXME: user and userlen are *not* a part of Chris Newman's API
- *  user          -- user to query in current user_realm
- *  userlen       -- length of user, 0 = strlen(user)
  *  challenge     -- challenge which was sent to client
  *  challen       -- length of challenge, 0 = strlen(challenge)
- *  response      -- client response string
+ *  response      -- client response, "<user> <digest>" (RFC 1939)
  *  resplen       -- length of response, 0 = strlen(response)
  * returns 
  *  SASL_OK       -- success
@@ -971,7 +968,6 @@ LIBSASL_API int sasl_server_step(sasl_conn_t *conn,
  *  SASL_NOUSER   -- user not found
  */
 LIBSASL_API int sasl_checkapop(sasl_conn_t *conn,
-			       const char *user, unsigned userlen,
 			       const char *challenge, unsigned challen,
 			       const char *response, unsigned resplen);
 
