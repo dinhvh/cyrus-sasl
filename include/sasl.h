@@ -43,7 +43,7 @@
  * Utility functions:
  *  sasl_encode64     Encode data to send using security layer
  *  sasl_decode64     Decode data received using security layer
- *  sasl_erasepass    Erase a password
+ *  sasl_erasebuffer  Erase a buffer
  *
  * Client Function Summary:
  *  sasl_client_init  Load and initialize client plug-ins (call once)
