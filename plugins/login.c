@@ -1,7 +1,7 @@
 /* Login SASL plugin
  * contributed by Rainer Schoepf <schoepf@uni-mainz.de>
  * based on PLAIN, by Tim Martin <tmartin@andrew.cmu.edu>
- * $Id: login.c,v 1.6.2.1 2001/06/19 15:38:17 rjs3 Exp $
+ * $Id: login.c,v 1.6.2.2 2001/06/20 16:28:14 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
@@ -48,6 +48,8 @@
 #include <ctype.h>
 #include <sasl.h>
 #include <saslplug.h>
+
+#include "plugin_common.h"
 
 #ifdef WIN32
 /* This must be after sasl.h */
@@ -100,15 +102,8 @@ static void dispose(void *conn_context, const sasl_utils_t *utils)
     return;
 
   /* free sensitive info */
-  if(text->username) {
-      utils->erasebuffer(text->username->data, text->username->len);
-      utils->free(text->username);
-  }
-
-  if(text->password) {
-      utils->erasebuffer(text->password->data, text->password->len);
-      utils->free(text->password);
-  }
+  _plug_free_secret(utils, &(text->username));
+  _plug_free_secret(utils, &(text->password));
 
   utils->free(text);
 }

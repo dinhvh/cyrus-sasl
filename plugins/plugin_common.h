@@ -1,6 +1,6 @@
 /* Generic SASL plugin utility functions
  * Rob Siemborski
- * $Id: plugin_common.h,v 1.1.2.3 2001/06/19 20:50:16 rjs3 Exp $
+ * $Id: plugin_common.h,v 1.1.2.4 2001/06/20 16:28:14 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
@@ -78,5 +78,6 @@ int _plug_buf_alloc(const sasl_utils_t *utils, char **rwbuf,
 int _plug_strdup(const sasl_utils_t * utils, const char *in,
 	         char **out, int *outlen);
 void _plug_free_string(const sasl_utils_t *utils, char **str);
+void _plug_free_secret(const sasl_utils_t *utils, sasl_secret_t **secret);
 
 #endif /* _PLUGIN_COMMON_H_ */

@@ -1,6 +1,6 @@
 /* Plain SASL plugin
  * Tim Martin 
- * $Id: plain.c,v 1.43.2.2 2001/06/19 15:38:17 rjs3 Exp $
+ * $Id: plain.c,v 1.43.2.3 2001/06/20 16:28:14 rjs3 Exp $
  */
 
 /* 
@@ -97,10 +97,7 @@ static void dispose(void *conn_context, const sasl_utils_t *utils)
     return;
 
   /* free sensitive info */
-  if(text->password) {
-      utils->erasebuffer(text->password->data, text->password->len);
-      utils->free(text->password);
-  }
+  _plug_free_secret(utils, &(text->password));
   
   if(text->out_buf)
       utils->free(text->out_buf);
@@ -221,8 +218,7 @@ server_continue_step (void *conn_context,
     /* verify password - return sasl_ok on success*/    
     result = verify_password(params, authen, passcopy);
     
-    params->utils->erasebuffer(passcopy, strlen(passcopy));
-    params->utils->free(passcopy);
+    _plug_free_string(params->utils, &passcopy);
 
     if (result != SASL_OK)
     {

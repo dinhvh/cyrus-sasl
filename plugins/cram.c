@@ -1,6 +1,6 @@
 /* CRAM-MD5 SASL plugin
  * Tim Martin 
- * $Id: cram.c,v 1.55.2.1 2001/06/20 15:37:39 rjs3 Exp $
+ * $Id: cram.c,v 1.55.2.2 2001/06/20 16:28:14 rjs3 Exp $
  */
 
 /* 
@@ -115,11 +115,7 @@ static void dispose(void *conn_context, const sasl_utils_t *utils)
   /* get rid of all sensetive info */
   _plug_free_string(utils,&(text->msgid));
   _plug_free_string(utils,&(text->authid));
-
-  if(text->password) {
-      utils->erasebuffer(text->password->data, text->password->len);
-      utils->free(text->password);
-  }
+  _plug_free_secret(utils,&(text->password));
 
   utils->free(text);
 }

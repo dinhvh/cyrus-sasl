@@ -86,7 +86,7 @@ libdigestmd5_la_SOURCES = digestmd5.c
 libdigestmd5_la_LDFLAGS = -version-info $(digestmd5_version)
 libdigestmd5_la_LIBADD = $(LIB_DES) $(LIB_SOCKET)
 
-liblogin_la_SOURCES = login.c
+liblogin_la_SOURCES = login.c plugin_common.c
 liblogin_la_LDFLAGS = -version-info $(login_version)
 liblogin_la_LIBADD = $(PLAIN_LIBS)
 
