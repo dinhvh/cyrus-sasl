@@ -1,7 +1,7 @@
 /* common.c - Functions that are common to server and clinet
  * Rob Siemborski
  * Tim Martin
- * $Id: common.c,v 1.64.2.32 2001/07/09 16:11:08 rjs3 Exp $
+ * $Id: common.c,v 1.64.2.33 2001/07/09 17:05:14 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -1541,7 +1541,7 @@ int _sasl_iptostring(const struct sockaddr_in *addr,
     
     snprintf(out,outlen,"%d.%d.%d.%d;%d",(int)a[3],(int)a[2],
 	                                 (int)a[1],(int)a[0],
-	                                 (int)addr->sin_port);
+	                                 (int)ntohs(addr->sin_port));
 
     return SASL_OK;
 }
@@ -1586,7 +1586,7 @@ int _sasl_ipfromstring(const char *addr, struct sockaddr_in *out)
     
     memset(out, 0, sizeof(struct sockaddr_in));
     out->sin_addr.s_addr = val;
-    out->sin_port = port;
+    out->sin_port = htons(port);
 
     return SASL_OK;
 }
