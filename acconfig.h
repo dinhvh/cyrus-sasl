@@ -123,6 +123,9 @@
 /* where does saslauthd look for the communication socket? */
 #undef PATH_SASLAUTHD_RUNDIR
 
+/* are we linking against DMALLOC? */
+#undef WITH_DMALLOC
+
 /* should we support sasl_checkapop */
 #undef DO_SASL_CHECKAPOP
 

@@ -1,7 +1,7 @@
 /* testsuite.c -- Stress the library a little
  * Rob Siemborski
  * Tim Martin
- * $Id: testsuite.c,v 1.13.2.22 2001/07/09 16:10:07 rjs3 Exp $
+ * $Id: testsuite.c,v 1.13.2.23 2001/07/09 19:03:06 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -147,6 +147,8 @@ int DETAILED_MEMORY_DEBUGGING = 0;
 
 mem_info_t *head = NULL;
 
+#ifndef WITH_DMALLOC
+
 void *test_malloc(size_t size)
 {
     void *out;
@@ -263,8 +265,11 @@ void test_free(void *ptr)
     free(ptr);
 }
 
+#endif WITH_DMALLOC
+
 int mem_stat() 
 {
+#ifndef WITH_DMALLOC
     mem_info_t *cur;
 
     if(!head) {
@@ -277,7 +282,12 @@ int mem_stat()
 	fprintf(stderr, "    %X\n", (unsigned)cur->addr);
     }
     return SASL_FAIL;
+#else
+    return SASL_OK
+#endif /* WITH_DMALLOC */
 }
+
+
 /************* End Memory Allocation functions ******/
 
 void fatal(char *str)
@@ -432,10 +442,13 @@ void init(unsigned int seed)
 		   (sasl_mutex_unlock_t *) &my_mutex_unlock,
 		   (sasl_mutex_free_t *) &my_mutex_dispose);
 
+#ifndef WITH_DMALLOC
     sasl_set_alloc((sasl_malloc_t *)test_malloc,
 		   (sasl_calloc_t *)test_calloc,
 		   (sasl_realloc_t *)test_realloc,
 		   (sasl_free_t *)test_free);
+#endif
+
 }
 
 /*

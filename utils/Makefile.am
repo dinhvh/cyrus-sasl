@@ -51,15 +51,15 @@ saslpasswd_LDADD = $(all_sasl_libs)
 sasldblistusers_LDADD = $(SASL_DB_LIB)
 
 EXTRA_PROGRAMS = testsuite testsuitestatic smtptest
-testsuite_LDADD = $(all_sasl_libs) 
+testsuite_LDADD = $(all_sasl_libs) @DMALLOC_LIBS@
 
 testsuitestatic_SOURCES = testsuite.c
-testsuitestatic_LDADD = $(all_sasl_static_libs)
+testsuitestatic_LDADD = $(all_sasl_static_libs) @DMALLOC_LIBS@
 testsuitestatic_DEPENDENCIES = ../lib/libsasl2.a
 
 smtptest_SOURCES =
 smtptest_DEPENDENCIES = ./smtptest.lo ./libsfsasl2.la
-smtptest_LDADD = ./smtptest.lo ./libsfsasl2.la @SFIO_LIB_FLAGS@ $(all_sasl_libs)
+smtptest_LDADD = ./smtptest.lo ./libsfsasl2.la @SFIO_LIB_FLAGS@ @DMALLOC_LIBS@ $(all_sasl_libs)
 
 saslincludedir = $(includedir)/sasl
 

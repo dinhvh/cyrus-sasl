@@ -1,6 +1,6 @@
 dnl configure.in for the SASL library
 dnl Rob Earhart
-dnl $Id: configure.in,v 1.106.2.11 2001/07/05 18:26:04 rjs3 Exp $
+dnl $Id: configure.in,v 1.106.2.12 2001/07/09 19:03:04 rjs3 Exp $
 dnl
 dnl Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
 dnl
@@ -78,7 +78,7 @@ if test "$ac_cv_prog_gcc" = yes; then
 fi
 
 AC_ARG_WITH(staticsasl,[  --with-staticsasl       build a static library with all mechs included.                 (Different from enable-static, but probabally the one you want)])
-AC_MSG_CHECKING(checking to build static libsasl2.a)
+AC_MSG_CHECKING(to build static libsasl2.a)
 if test "$with_staticsasl" = yes; then
   AC_MSG_RESULT(yes)
   SASL_STATIC_LIBS="$SASL_STATIC_LIBS libsasl2.a"
@@ -705,7 +705,37 @@ AC_C_INLINE
 
 AC_TYPE_SIGNAL
 
+dnl dmalloc tests
+AC_MSG_CHECKING(for dmalloc library)
+AC_ARG_WITH(dmalloc, [  --with-dmalloc=DIR      with DMALLOC support (for test applications) [no] ],
+	with_dmalloc=$withval,
+	with_dmalloc=no)
 
+DMALLOC_LIBS=""
+
+if test "$with_dmalloc" != "no"; then
+   if test "$with_dmalloc" = "yes"; then
+	with_dmalloc="/usr/local"
+   fi
+
+   if test -r "$with_dmalloc/libdmalloc.a"; then
+	DMALLOC_LIBS="$with_dmalloc/libdmalloc.a"
+	AC_DEFINE(WITH_DMALLOC)
+	AC_MSG_RESULT(yes)
+   elif test -r "$with_dmalloc/lib/libdmalloc.a"; then
+	DMALLOC_LIBS="$with_dmalloc/lib/libdmalloc.a"
+	AC_DEFINE(WITH_DMALLOC)
+	AC_MSG_RESULT(yes)
+   else
+	AC_MSG_ERROR(cannot find dmalloc library, please check your installation.)
+   fi
+else
+   AC_MSG_RESULT(no)
+fi
+
+AC_SUBST(DMALLOC_LIBS)
+
+dnl sfio tests
 AC_MSG_CHECKING(for sfio library)
 AC_ARG_WITH(sfio, [  --with-sfio=DIR         with SFIO support (for smtptest/libsfsasl) [no] ],
 	with_sfio=$withval,
