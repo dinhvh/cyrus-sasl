@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: checkpw.c,v 1.41.2.9 2001/06/25 18:44:37 rjs3 Exp $
+ * $Id: checkpw.c,v 1.41.2.10 2001/06/26 15:30:43 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -47,9 +47,9 @@
 
 /* checkpw stuff */
 
-#include <sasl.h>
-#include <saslutil.h>
-#include <saslplug.h>
+#include "sasl.h"
+#include "saslutil.h"
+#include "saslplug.h"
 #include "saslint.h"
 
 #include <assert.h>
@@ -236,10 +236,10 @@ int _sasl_sasldb_verify_apop(sasl_conn_t *conn,
       goto done;
     }
 
-    MD5Init(&ctx);
-    MD5Update(&ctx, challenge, strlen(challenge));
-    MD5Update(&ctx, secret->data, strlen(secret->data));
-    MD5Final(digest, &ctx);
+    _sasl_MD5Init(&ctx);
+    _sasl_MD5Update(&ctx, challenge, strlen(challenge));
+    _sasl_MD5Update(&ctx, secret->data, strlen(secret->data));
+    _sasl_MD5Final(digest, &ctx);
 
     /* convert digest from binary to ASCII hex */
     for (i = 0; i < 16; i++)

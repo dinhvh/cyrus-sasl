@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: server.c,v 1.84.2.27 2001/06/25 20:28:43 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.28 2001/06/26 15:30:43 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -1231,6 +1231,7 @@ static int _sasl_checkpass(sasl_conn_t *conn, const char *service,
     int result = SASL_NOMECH;
     struct sasl_verify_password_s *v;
 
+    /* FIXME: How to deal with differing results from different mechs? */
     for (v = _sasl_verify_password; v->name; v++) {
 	result = v->verify(conn, user, pass, service, s_conn->user_realm);
 	if(result == SASL_OK) break;

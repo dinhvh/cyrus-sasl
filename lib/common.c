@@ -1,7 +1,7 @@
 /* common.c - Functions that are common to server and clinet
  * Rob Siemborski
  * Tim Martin
- * $Id: common.c,v 1.64.2.22 2001/06/25 18:44:38 rjs3 Exp $
+ * $Id: common.c,v 1.64.2.23 2001/06/26 15:30:43 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -1290,14 +1290,14 @@ _sasl_alloc_utils(sasl_conn_t *conn,
   utils->mutex_unlock = _sasl_mutex_utils.unlock;
   utils->mutex_free = _sasl_mutex_utils.free;
   
-  utils->MD5Init  = &MD5Init;
-  utils->MD5Update= &MD5Update;
-  utils->MD5Final = &MD5Final;
-  utils->hmac_md5 = &hmac_md5;
-  utils->hmac_md5_init = &hmac_md5_init;
-  utils->hmac_md5_final = &hmac_md5_final;
-  utils->hmac_md5_precalc = &hmac_md5_precalc;
-  utils->hmac_md5_import = &hmac_md5_import;
+  utils->MD5Init  = &_sasl_MD5Init;
+  utils->MD5Update= &_sasl_MD5Update;
+  utils->MD5Final = &_sasl_MD5Final;
+  utils->hmac_md5 = &_sasl_hmac_md5;
+  utils->hmac_md5_init = &_sasl_hmac_md5_init;
+  utils->hmac_md5_final = &_sasl_hmac_md5_final;
+  utils->hmac_md5_precalc = &_sasl_hmac_md5_precalc;
+  utils->hmac_md5_import = &_sasl_hmac_md5_import;
   utils->mkchal = &sasl_mkchal;
   utils->utf8verify = &sasl_utf8verify;
   utils->rand=&sasl_rand;

@@ -1,5 +1,7 @@
 /* MD5C.C - RSA Data Security, Inc., MD5 message-digest algorithm
-*/
+ */
+
+/* Function names changed to avoid namespace collisions: Rob Siemborski */
 
 /* Copyright (C) 1991-2, RSA Data Security, Inc. Created 1991. All
 rights reserved.
@@ -92,14 +94,12 @@ Rotation is separate from addition to prevent recomputation.
 /* MD5 initialization. Begins an MD5 operation, writing a new context.
 */
 
-void MD5Init (context)
+void _sasl_MD5Init (context)
 MD5_CTX *context; /* context */
 {
        context->count[0] = context->count[1] = 0; 
 
-         /* Load magic initialization constants.
-
-*/
+       /* Load magic initialization constants. */
        context->state[0] = 0x67452301; 
        context->state[1] = 0xefcdab89; 
        context->state[2] = 0x98badcfe; 
@@ -110,7 +110,7 @@ MD5_CTX *context; /* context */
        operation, processing another message block, and updating the context. 
 */
 
-void MD5Update (context, input, inputLen)
+void _sasl_MD5Update (context, input, inputLen)
 MD5_CTX *context; /* context */
 unsigned char *input; /* input block */
 unsigned int inputLen; /* length of input block */
@@ -153,10 +153,9 @@ unsigned int inputLen; /* length of input block */
 
 /* MD5 finalization. Ends an MD5 message-digest operation, writing the
        the message digest and zeroizing the context. 
+*/
 
-        */
-
-void MD5Final (digest, context)
+void _sasl_MD5Final (digest, context)
 unsigned char digest[16]; /* message digest */
 MD5_CTX *context; /* context */
 {
@@ -166,28 +165,22 @@ MD5_CTX *context; /* context */
          /* Save number of bits */
          Encode (bits, context->count, 8);
 
-         /* Pad out to 56 mod 64.
-
-*/
-       index = (unsigned int)((context->count[0] >> 3) & 0x3f); 
-       padLen = (index < 56) ? (56 - index) : (120 - index); 
-       MD5Update (context, PADDING, padLen); 
+         /* Pad out to 56 mod 64. */
+	 index = (unsigned int)((context->count[0] >> 3) & 0x3f); 
+	 padLen = (index < 56) ? (56 - index) : (120 - index); 
+	 _sasl_MD5Update (context, PADDING, padLen); 
 
          /* Append length (before padding) */
-         MD5Update (context, bits, 8);
+         _sasl_MD5Update (context, bits, 8);
 
          /* Store state in digest */
          Encode (digest, context->state, 16);
 
-         /* Zeroize sensitive information.
-
-*/
+         /* Zeroize sensitive information. */
        MD5_memset ((POINTER)context, 0, sizeof (*context)); 
 }
 
-/* MD5 basic transformation. Transforms state based on block.
-
-        */
+/* MD5 basic transformation. Transforms state based on block. */
 
 static void MD5Transform (state, block)
 UINT4 state[4];
@@ -345,9 +338,9 @@ unsigned int len;
        ((char *)output)[i] = (char)value; 
 }
 
-void hmac_md5_init(HMAC_MD5_CTX *hmac,
-		   const unsigned char *key,
-		   int key_len)
+void _sasl_hmac_md5_init(HMAC_MD5_CTX *hmac,
+			 const unsigned char *key,
+			 int key_len)
 {
   unsigned char k_ipad[65];    /* inner padding -
 				* key XORd with ipad
@@ -362,9 +355,9 @@ void hmac_md5_init(HMAC_MD5_CTX *hmac,
     
     MD5_CTX      tctx;
 
-    MD5Init(&tctx); 
-    MD5Update(&tctx, key, key_len); 
-    MD5Final(tk, &tctx); 
+    _sasl_MD5Init(&tctx); 
+    _sasl_MD5Update(&tctx, key, key_len); 
+    _sasl_MD5Final(tk, &tctx); 
 
     key = tk; 
     key_len = 16; 
@@ -393,11 +386,11 @@ void hmac_md5_init(HMAC_MD5_CTX *hmac,
     k_opad[i] ^= 0x5c;
   }
 
-  MD5Init(&hmac->ictx);                   /* init inner context */
-  MD5Update(&hmac->ictx, k_ipad, 64);     /* apply inner pad */
+  _sasl_MD5Init(&hmac->ictx);                   /* init inner context */
+  _sasl_MD5Update(&hmac->ictx, k_ipad, 64);     /* apply inner pad */
 
-  MD5Init(&hmac->octx);                   /* init outer context */
-  MD5Update(&hmac->octx, k_opad, 64);     /* apply outer pad */
+  _sasl_MD5Init(&hmac->octx);                   /* init outer context */
+  _sasl_MD5Update(&hmac->octx, k_opad, 64);     /* apply outer pad */
 
   /* scrub the pads and key context (if used) */
   MD5_memset(&k_ipad, 0, sizeof(k_ipad));
@@ -415,14 +408,14 @@ void hmac_md5_init(HMAC_MD5_CTX *hmac,
  * buffer fields.  So all we have to do is save the state field; we
  * can zero the others when we reload it.  Which is why the decision
  * was made to pad the key out to 64 bytes in the first place. */
-void hmac_md5_precalc(HMAC_MD5_STATE *state,
-		      const unsigned char *key,
-		      int key_len)
+void _sasl_hmac_md5_precalc(HMAC_MD5_STATE *state,
+			    const unsigned char *key,
+			    int key_len)
 {
   HMAC_MD5_CTX hmac;
   unsigned lupe;
 
-  hmac_md5_init(&hmac, key, key_len);
+  _sasl_hmac_md5_init(&hmac, key, key_len);
   for (lupe = 0; lupe < 4; lupe++) {
     state->istate[lupe] = htonl(hmac.ictx.state[lupe]);
     state->ostate[lupe] = htonl(hmac.octx.state[lupe]);
@@ -431,7 +424,7 @@ void hmac_md5_precalc(HMAC_MD5_STATE *state,
 }
 
 
-void hmac_md5_import(HMAC_MD5_CTX *hmac,
+void _sasl_hmac_md5_import(HMAC_MD5_CTX *hmac,
 		     HMAC_MD5_STATE *state)
 {
   unsigned lupe;
@@ -446,16 +439,16 @@ void hmac_md5_import(HMAC_MD5_CTX *hmac,
   hmac->ictx.count[0] = hmac->octx.count[0] = 0x200;
 }
 
-void hmac_md5_final(unsigned char digest[HMAC_MD5_SIZE],
-		    HMAC_MD5_CTX *hmac)
+void _sasl_hmac_md5_final(unsigned char digest[HMAC_MD5_SIZE],
+			  HMAC_MD5_CTX *hmac)
 {
-  MD5Final(digest, &hmac->ictx);  /* Finalize inner md5 */
-  MD5Update(&hmac->octx, digest, 16); /* Update outer ctx */
-  MD5Final(digest, &hmac->octx); /* Finalize outer md5 */
+  _sasl_MD5Final(digest, &hmac->ictx);  /* Finalize inner md5 */
+  _sasl_MD5Update(&hmac->octx, digest, 16); /* Update outer ctx */
+  _sasl_MD5Final(digest, &hmac->octx); /* Finalize outer md5 */
 }
 
 
-void hmac_md5(text, text_len, key, key_len, digest)
+void _sasl_hmac_md5(text, text_len, key, key_len, digest)
 const unsigned char* text; /* pointer to data stream */
 int text_len; /* length of data stream */
 const unsigned char* key; /* pointer to authentication key */
@@ -477,9 +470,9 @@ unsigned char *digest; /* caller digest to be filled in */
     
     MD5_CTX      tctx;
 
-    MD5Init(&tctx); 
-    MD5Update(&tctx, key, key_len); 
-    MD5Final(tk, &tctx); 
+    _sasl_MD5Init(&tctx); 
+    _sasl_MD5Update(&tctx, key, key_len); 
+    _sasl_MD5Final(tk, &tctx); 
 
     key = tk; 
     key_len = 16; 
@@ -511,20 +504,20 @@ unsigned char *digest; /* caller digest to be filled in */
    * perform inner MD5
    */
 
-  MD5Init(&context);                   /* init context for 1st
+  _sasl_MD5Init(&context);                   /* init context for 1st
 					       * pass */
-  MD5Update(&context, k_ipad, 64);      /* start with inner pad */
-  MD5Update(&context, text, text_len); /* then text of datagram */
-  MD5Final(digest, &context);          /* finish up 1st pass */
+  _sasl_MD5Update(&context, k_ipad, 64);      /* start with inner pad */
+  _sasl_MD5Update(&context, text, text_len); /* then text of datagram */
+  _sasl_MD5Final(digest, &context);          /* finish up 1st pass */
 
   /*
    * perform outer MD5
    */
-  MD5Init(&context);                   /* init context for 2nd
+  _sasl_MD5Init(&context);                   /* init context for 2nd
 					* pass */
-  MD5Update(&context, k_opad, 64);     /* start with outer pad */
-  MD5Update(&context, digest, 16);     /* then results of 1st
+  _sasl_MD5Update(&context, k_opad, 64);     /* start with outer pad */
+  _sasl_MD5Update(&context, digest, 16);     /* then results of 1st
 					* hash */
-  MD5Final(digest, &context);          /* finish up 2nd pass */
+  _sasl_MD5Final(digest, &context);          /* finish up 2nd pass */
 
 }

@@ -2,7 +2,7 @@
  * Rob Siemborski
  * Tim Martin
  * Alexey Melnikov 
- * $Id: digestmd5.c,v 1.97.2.4 2001/06/25 18:44:40 rjs3 Exp $
+ * $Id: digestmd5.c,v 1.97.2.5 2001/06/26 15:30:47 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -811,16 +811,6 @@ add_to_challenge(const sasl_utils_t * utils,
   }
 
   return SASL_OK;
-}
-
-
-static char           *
-strend(char *s)
-{
-  if (s == NULL)
-    return NULL;
-
-  return (s + strlen(s));
 }
 
 static char *skip_lws (char *s)
