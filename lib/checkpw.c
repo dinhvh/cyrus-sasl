@@ -370,7 +370,7 @@ static void sasldb_auxprop_lookup(void *glob_context __attribute__((unused)),
 
     if(!sparams || !user) return;
 
-    sconn = (sasl_server_conn_t *)sparams->utils->conn;
+    sconn = (sasl_server_conn_t *)(sparams->utils->conn);
     
     ret = parseuser(&userid, &realm, sconn->user_realm,
 		    sparams->utils->conn->serverFQDN, user);

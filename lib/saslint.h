@@ -175,8 +175,6 @@ typedef struct sasl_server_conn {
     char *mechlist_buf;
     unsigned mechlist_buf_len;
 
-    struct propctx *propctx;
-    
     char *user_realm; /* domain the user authenticating is in */
     int authenticated;
     mechanism_t *mech; /* mechanism trying to use */

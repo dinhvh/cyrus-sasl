@@ -1,6 +1,6 @@
 /* SASL server API implementation
  * Tim Martin
- * $Id: server.c,v 1.84.2.18 2001/06/19 20:51:11 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.19 2001/06/20 15:36:58 rjs3 Exp $
  */
 
 /* 
@@ -227,8 +227,8 @@ static void server_dispose(sasl_conn_t *pconn)
   
   _sasl_free_utils(&s_conn->sparams->utils);
 
-  if (s_conn->propctx)
-      prop_dispose(&s_conn->propctx);
+  if (s_conn->sparams->propctx)
+      prop_dispose(&s_conn->sparams->propctx);
 
   if (s_conn->mechlist_buf)
       sasl_FREE(s_conn->mechlist_buf);
@@ -758,10 +758,6 @@ int sasl_server_new(const char *service,
 
   serverconn->mech = NULL;
 
-  /* We'll assume the default size */
-  serverconn->propctx = prop_new(0);
-  if(!serverconn->propctx) return SASL_NOMEM;
-
   /* make sparams */
   serverconn->sparams=sasl_ALLOC(sizeof(sasl_server_params_t));
   if (serverconn->sparams==NULL) return SASL_NOMEM;
@@ -772,6 +768,10 @@ int sasl_server_new(const char *service,
   if (!utils)
     return SASL_NOMEM;
   utils->checkpass = &sasl_checkpass;
+
+  /* Setup the propctx -> We'll assume the default size */
+  serverconn->sparams->propctx=prop_new(0);
+  if(!serverconn->sparams->propctx) return SASL_NOMEM;
 
   serverconn->sparams->utils = utils;
   serverconn->sparams->transition = &_sasl_transition;
@@ -1265,23 +1265,13 @@ int sasl_checkpass(sasl_conn_t *conn,
 		   const char *pass,
 		   unsigned passlen)
 {
-    const char *mech = NULL;
-    int result = SASL_NOMECH;
-    sasl_getopt_t *getopt;
-    void *context;
+    int result;
 
     /* check params */
     if (_sasl_server_active==0) return SASL_NOTINIT;
     
-    if ((conn == NULL) || (user == NULL) || (pass == NULL)) return SASL_BADPARAM;
-
-    if (user == NULL) return SASL_NOUSER;
-
-    /* figure out how to check (i.e. PAM or /etc/passwd or kerberos or etc...) */
-    if (_sasl_getcallback(conn, SASL_CB_GETOPT, &getopt, &context)
-	    == SASL_OK) {
-	getopt(context, NULL, "pwcheck_method", &mech, NULL);
-    }
+    if ((conn == NULL) || (user == NULL) || (pass == NULL))
+	return SASL_BADPARAM;
 
     result = _sasl_checkpass(conn, conn->service, user, pass);
 

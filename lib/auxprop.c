@@ -296,7 +296,7 @@ const struct propval *prop_get(struct propctx *ctx)
  *  the name field of the associated vals entry will be set to NULL
  */
 
-/* FIXME: We rely on the fact that the vals array is long enough! */
+/* FIXME?: We rely on the fact that the vals array is long enough! */
 int prop_getnames(struct propctx *ctx, const char **names,
 		  struct propval *vals) 
 {
@@ -689,11 +689,11 @@ int sasl_auxprop_request(sasl_conn_t *conn, const char **propnames)
     sconn = (sasl_server_conn_t *)conn;
 
     if(!propnames) {
-	prop_clear(sconn->propctx,1);
+	prop_clear(sconn->sparams->propctx,1);
 	return SASL_OK;
     }
     
-    return prop_request(sconn->propctx, propnames);
+    return prop_request(sconn->sparams->propctx, propnames);
 }
 
 
@@ -714,7 +714,7 @@ struct propctx *sasl_auxprop_getctx(sasl_conn_t *conn)
 
     sconn = (sasl_server_conn_t *)conn;
 
-    return sconn->propctx;
+    return sconn->sparams->propctx;
 }
 
 /* add an auxiliary property plugin */
