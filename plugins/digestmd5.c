@@ -2,7 +2,7 @@
  * Rob Siemborski
  * Tim Martin
  * Alexey Melnikov 
- * $Id: digestmd5.c,v 1.97.2.9 2001/06/28 19:28:38 rjs3 Exp $
+ * $Id: digestmd5.c,v 1.97.2.10 2001/07/02 16:05:55 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -189,8 +189,8 @@ typedef struct context {
 
     /* for encoding/decoding */
     buffer_info_t  *enc_in_buf;
-    char           *encode_buf, *decode_buf;
-    unsigned       encode_buf_len, decode_buf_len;
+    char           *encode_buf, *decode_buf, *decode_once_buf;
+    unsigned       encode_buf_len, decode_buf_len, decode_once_buf_len;
     char           *encode_tmp_buf, *decode_tmp_buf;
     unsigned       encode_tmp_buf_len, decode_tmp_buf_len;
     char           *MAC_buf;
@@ -1580,11 +1580,7 @@ privacy_decode_once(context_t *text,
 	text->cursize=0;
 	text->size=ntohl(text->size);
 
-	/* No, this is not an error! Maximal size used in GSSAPI K5 is
-	   0xFFFFFF, but not 0xFFFF 
-	   -this is according to john myers at least
-	*/
-	if ((text->size>0xFFFFFF) || (text->size < 0))
+	if ((text->size>0xFFFF) || (text->size < 0))
 	    return SASL_FAIL; /* too big probably error */
 
 	if(!text->buffer)
@@ -1626,8 +1622,13 @@ privacy_decode_once(context_t *text,
       unsigned int seqnum;
       unsigned char checkdigest[16];
 
-      *output = (char *) text->utils->malloc(text->size-6);
-      if (*output == NULL) return SASL_NOMEM;
+      result = _plug_buf_alloc(text->utils, &text->decode_once_buf,
+			       &text->decode_once_buf_len,
+			       text->size-6);
+      if (result != SASL_OK)
+	  return result;
+
+      *output = text->decode_once_buf;
       *outputlen = *inputlen;
       
       result=text->cipher_dec(text,text->buffer,text->size-6,digest,
@@ -1709,6 +1710,7 @@ static int privacy_decode(void *context,
 
     while (inputlen!=0)
     {
+	/* no need to free tmp */
       ret = privacy_decode_once(text, &input, &inputlen,
 				&tmp, &tmplen);
 
@@ -1717,7 +1719,8 @@ static int privacy_decode(void *context,
       if (tmp!=NULL) /* if received 2 packets merge them together */
       {
 	  ret = _plug_buf_alloc(text->utils, &text->decode_buf,
-				&text->decode_buf_len, *outputlen + tmplen + 1);
+				&text->decode_buf_len,
+				*outputlen + tmplen + 1);
 	  if(ret != SASL_OK) return ret;
 
 	  *output = text->decode_buf;
@@ -1727,7 +1730,6 @@ static int privacy_decode(void *context,
 	  *(text->decode_buf + *outputlen + tmplen) = '\0';	  
 
 	  *outputlen+=tmplen;
-	  text->utils->free(tmp);
       }
     }
 
@@ -1862,10 +1864,13 @@ check_integrity(context_t * text,
   text->rec_seqnum++;
 
   /* ok make output message */
-  *output = text->utils->malloc(bufsize - 15);
-  if ((*output) == NULL)
-    return SASL_NOMEM;
+  result = _plug_buf_alloc(text->utils, &text->decode_once_buf,
+			   &text->decode_once_buf_len,
+			   bufsize - 15);
+  if (result != SASL_OK)
+    return result;
 
+  *output = text->decode_once_buf;
   memcpy(*output, buf, bufsize - 16);
   *outputlen = bufsize - 16;
   (*output)[*outputlen] = 0;
@@ -1910,7 +1915,13 @@ integrity_decode_once(void *context,
 
       if ((text->size > 0xFFFF) || (text->size < 0))
 	return SASL_FAIL;	/* too big probably error */
-      text->buffer = realloc(text->buffer, text->size);
+
+
+      if(!text->buffer)
+	  text->buffer=text->utils->malloc(text->size+5);
+      else
+	  text->buffer=text->utils->realloc(text->buffer,text->size+5);
+      if (text->buffer == NULL) return SASL_NOMEM;
     }
     *outputlen = 0;
     *output = NULL;
@@ -1922,9 +1933,13 @@ integrity_decode_once(void *context,
   }
   diff = text->size - text->cursize;	/* bytes need for full message */
 
+  if(! text->buffer)
+      return SASL_FAIL;
+
   if (*inputlen < diff) {	/* not enough for a decode */
     memcpy(text->buffer + text->cursize, *input, *inputlen);
     text->cursize += *inputlen;
+    *inputlen = 0;
     *outputlen = 0;
     *output = NULL;
     return SASL_OK;
@@ -1958,6 +1973,7 @@ static int integrity_decode(void *context,
 
     while (inputlen!=0)
     {
+	/* no need to free tmp */
       ret = integrity_decode_once(text, &input, &inputlen,
 				  &tmp, &tmplen);
 
@@ -1966,12 +1982,17 @@ static int integrity_decode(void *context,
       if (tmp!=NULL) /* if received 2 packets merge them together */
       {
 	  ret = _plug_buf_alloc(text->utils, &text->decode_buf,
-				&text->decode_buf_len, *outputlen + tmplen);
+				&text->decode_buf_len,
+				*outputlen + tmplen + 1);
+	  if(ret != SASL_OK) return ret;
 
 	  *output = text->decode_buf;
 	  memcpy(text->decode_buf + *outputlen, tmp, tmplen);
+
+	  /* Protect stupid clients */
+	  *(text->decode_buf + *outputlen + tmplen) = '\0';
+
 	  *outputlen+=tmplen;
-	  text->utils->free(tmp);
       }
     }
 
@@ -2017,6 +2038,7 @@ dispose(void *conn_context, const sasl_utils_t * utils)
   if (text->encode_buf) utils->free(text->encode_buf);
   if (text->encode_tmp_buf) utils->free(text->encode_tmp_buf);
   if (text->decode_buf) utils->free(text->decode_buf);
+  if (text->decode_once_buf) utils->free(text->decode_once_buf);
   if (text->decode_tmp_buf) utils->free(text->decode_tmp_buf);
   if (text->out_buf) utils->free(text->out_buf);
   if (text->MAC_buf) utils->free(text->MAC_buf);
