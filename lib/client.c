@@ -398,14 +398,8 @@ int sasl_client_start(sasl_conn_t *conn,
     /* FIXME: this is not smart, if prompt_need was a pointer that
      * was not initialized to null this can in fact be very bad. */
     if (prompt_need && *prompt_need != NULL) {
-	result = c_conn->mech->plug->mech_step(conn->context,
-					       c_conn->cparams,
-					       NULL,
-					       0,
-					       prompt_need,
-					       clientout, (int *) clientoutlen,
-					       &conn->oparams);
-
+	result = sasl_client_step(conn, NULL, 0, prompt_need,
+				  clientout, clientoutlen);
 	return result;
     }
 
@@ -507,13 +501,8 @@ int sasl_client_start(sasl_conn_t *conn,
 
 
     /* do a step */
-    result = c_conn->mech->plug->mech_step(conn->context,
-					 c_conn->cparams,
-					 NULL,
-					 0,
-					 prompt_need,
-					 clientout, clientoutlen,
-					 &conn->oparams);    
+    result = sasl_client_step(conn, NULL, 0, prompt_need,
+			      clientout, clientoutlen);
 
  done:
     return result;
@@ -555,6 +544,11 @@ int sasl_client_step(sasl_conn_t *conn,
 					 prompt_need,
 					 clientout, (int *)clientoutlen,
 					 &conn->oparams);
+
+  if (result == SASL_OK && !conn->oparams.maxoutbuf) {
+      conn->oparams.maxoutbuf = DEFAULT_MAXOUTBUF;
+  }
+
   return result;
 }
 

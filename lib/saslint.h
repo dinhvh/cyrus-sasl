@@ -48,6 +48,8 @@
 #include "sasl.h"
 #include "saslplug.h"
 
+#define DEFAULT_MAXOUTBUF 8192
+
 extern int _sasl_common_init(void);
 
 /* dlopen.c */

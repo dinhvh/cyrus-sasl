@@ -131,7 +131,7 @@ server_continue_step (void *conn_context __attribute__((unused)),
     sparams->utils->free(clientdata);
   
   oparams->mech_ssf=0;
-  oparams->maxoutbuf = 0;
+  oparams->maxoutbuf=0;
   oparams->encode=NULL;
   oparams->decode=NULL;
 
@@ -336,7 +336,7 @@ client_continue_step(void *conn_context,
   gethostname(hostname, sizeof(hostname));
   hostname[sizeof(hostname)-1] = '\0';
   
-  *clientoutlen = userlen + strlen(hostname) + 1;
+  *clientoutlen = userlen + strlen(hostname) + 2;
 
   result = _plug_buf_alloc(cparams->utils, &text->out_buf,
 			   &text->out_buf_len, *clientoutlen);

@@ -1,6 +1,6 @@
 /* SASL server API implementation
  * Tim Martin
- * $Id: server.c,v 1.84.2.16 2001/06/13 16:44:55 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.17 2001/06/13 20:48:32 rjs3 Exp $
  */
 
 /* 
@@ -899,7 +899,7 @@ static int do_authorization(sasl_server_conn_t *s_conn)
 		   s_conn->user_realm,
 		   (s_conn->user_realm ? strlen(s_conn->user_realm) : 0),
 		   s_conn->sparams->propctx);
-    
+
     return ret;
 }
 
@@ -1075,6 +1075,9 @@ int sasl_server_step(sasl_conn_t *conn,
 
     if (ret == SASL_OK) {
 	ret = do_authorization(s_conn);
+    }
+    if (ret == SASL_OK && !conn->oparams.maxoutbuf) {
+	conn->oparams.maxoutbuf = DEFAULT_MAXOUTBUF;
     }
 
     return ret;

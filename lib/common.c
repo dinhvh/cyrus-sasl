@@ -158,6 +158,12 @@ int sasl_encode(sasl_conn_t *conn, const char *input,
     if(!conn || !input || !output || !outputlen)
 	return SASL_BADPARAM;
 
+    /* FIXME is this what we want? (valid to check this?  not per-plugin?) */
+    if(inputlen > conn->oparams.maxoutbuf) {
+	printf("%d was bigger than %d\n", inputlen, conn->oparams.maxoutbuf);
+	return SASL_BADPARAM;
+    }
+
     /* Note: We are casting a const pointer here, but it's okay
      * because we believe people downstream of us are well-behaved, and the
      * alternative is an absolute mess, performance-wise. */
@@ -177,6 +183,8 @@ int sasl_encodev(sasl_conn_t *conn,
 
     if (! conn || ! invec || ! output || ! outputlen || numiov < 1)
 	return SASL_BADPARAM;
+
+    /* FIXME: How to check maxoutbuf violations? */
 
     if(conn->oparams.encode == NULL)  {
 	result = _iovec_to_buf(invec, numiov, &conn->encode_buf);
@@ -201,6 +209,9 @@ int sasl_decode(sasl_conn_t *conn,
 
     if(!conn || !input || !output || !outputlen)
 	return SASL_BADPARAM;
+
+    /* FIXME is this what we want? (valid to check this?  not per-plugin?) */
+    if(inputlen > conn->oparams.maxoutbuf) return SASL_BADPARAM;
 
     if(conn->oparams.decode == NULL)
     {
@@ -652,10 +663,10 @@ void sasl_seterror(sasl_conn_t *conn,
   {
     if (fmt[pos]!='%') /* regular character */
     {
-      conn->error_buf[outlen]=fmt[pos];
       result = _buf_alloc(&conn->error_buf, &conn->error_buf_len, outlen+1);
       if (result != SASL_OK)
 	return;
+      conn->error_buf[outlen]=fmt[pos];
       outlen++;
       pos++;
     } else { /* formating thing */
@@ -682,11 +693,11 @@ void sasl_seterror(sasl_conn_t *conn,
 	    break;
 
 	  case '%': /* double % output the '%' character */
-	    conn->error_buf[outlen]='%';
 	    result = _buf_alloc(&conn->error_buf,&conn->error_buf_len,
 				outlen+1);
 	    if (result != SASL_OK)
 	      return;
+	    conn->error_buf[outlen]='%';
 	    outlen++;
 	    done=1;
 	    break;
@@ -969,13 +980,11 @@ _sasl_proxy_policy(sasl_conn_t *conn,
 {
     if (!conn) return SASL_BADPARAM;
 
-    if (!requested_user || *requested_user == '\0') {
-	requested_user = auth_identity;
-    }
+    if (!requested_user || *requested_user == '\0')
+	return SASL_OK;
 
     if (!auth_identity || !requested_user || rlen != alen ||
 	(memcmp(auth_identity, requested_user, rlen) != 0)) {
-	printf("failed with %s, %s\n", auth_identity, requested_user);
 	sasl_seterror(conn, 0,
 		      "Requested identity not authenticated identity");
 	return SASL_BADAUTH;
@@ -1124,10 +1133,10 @@ _sasl_log (sasl_conn_t *conn,
   {
     if (fmt[pos]!='%') /* regular character */
     {
-      out[outlen]=fmt[pos];
       result = _buf_alloc(&out, &alloclen, outlen+1);
       if (result != SASL_OK)
 	return;
+      out[outlen]=fmt[pos];
       outlen++;
       pos++;
 
@@ -1155,10 +1164,10 @@ _sasl_log (sasl_conn_t *conn,
 	    break;
 
 	  case '%': /* double % output the '%' character */
-	    out[outlen]='%';
 	    result = _buf_alloc(&out,&alloclen,outlen+1);
 	    if (result != SASL_OK)
 	      return;
+	    out[outlen]='%';
 	    outlen++;
 	    done=1;
 	    break;
