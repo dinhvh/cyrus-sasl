@@ -1,6 +1,6 @@
 dnl configure.in for the SASL library
 dnl Rob Earhart
-dnl $Id: configure.in,v 1.106.2.24 2001/07/24 21:45:17 rjs3 Exp $
+dnl $Id: configure.in,v 1.106.2.25 2001/07/25 18:37:32 rjs3 Exp $
 dnl
 dnl Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
 dnl
@@ -168,7 +168,7 @@ SASL_DB_LIB=""
 dnl this is unbelievably painful due to confusion over what db-3 should be
 dnl named and where the db-3 header file is located.  arg.
 AC_DEFUN(BERKELEY_DB_CHK_LIB,
-[      for dbname in db-3.2 db3.2 db-3.1 db3.1 db-3 db3 db
+[      for dbname in db-3.3 db3.3 db-3.2 db3.2 db-3.1 db3.1 db-3 db3 db
          do
            AC_CHECK_LIB($dbname, db_create, SASL_DB_LIB="-l$dbname";
              dblib="berkeley"; break, dblib="no")
