@@ -1,6 +1,6 @@
 /* Generic SASL plugin utility functions
  * Rob Siemborski
- * $Id: plugin_common.c,v 1.1.2.17 2001/08/13 19:01:24 rjs3 Exp $
+ * $Id: plugin_common.c,v 1.1.2.18 2001/08/15 20:08:13 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -62,7 +62,6 @@
 
 #include <errno.h>
 #include <ctype.h>
-#include <sys/uio.h>
 
 #ifdef HAVE_INTTYPES_H
 #include <inttypes.h>

@@ -1,7 +1,7 @@
 /* Kerberos4 SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: kerberos4.c,v 1.65.2.40 2001/07/31 21:58:16 rjs3 Exp $
+ * $Id: kerberos4.c,v 1.65.2.41 2001/08/15 20:08:12 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -69,7 +69,6 @@
 
 #include <errno.h>
 #include <ctype.h>
-#include <sys/uio.h>
 
 #include "plugin_common.h"
 

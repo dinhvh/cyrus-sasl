@@ -1,3 +1,11 @@
+2001-08-14  Rob Siemborski <rjs3+@andrew.cmu.edu>
+	* configure.in: Check for sys/uio.h
+	* saslauthd/configure.in: Check for sys/uio.h
+	* config.h: Do the Right Thing for struct iovec (and
+	  no longer include sys/uio.h elsewhere)
+	* saslauthd/config.h: Do the Right Thing for struct iovec (and
+	  no longer include sys/uio.h elsewhere)
+
 2001-08-13  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* plugins/digestmd5.c (init_des, init_3des, enc_des, dec_des,
 	  enc_3des, dec_3des): fixed interoperability problems,

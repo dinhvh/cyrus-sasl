@@ -1,7 +1,7 @@
 /* common.c - Functions that are common to server and clinet
  * Rob Siemborski
  * Tim Martin
- * $Id: common.c,v 1.64.2.54 2001/08/13 19:01:23 rjs3 Exp $
+ * $Id: common.c,v 1.64.2.55 2001/08/15 20:08:11 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -69,8 +69,6 @@
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
-
-#include <sys/uio.h> /* for struct iovec */
 
 static const char build_ident[] = "$Build: libsasl " PACKAGE "-" VERSION " $";
 

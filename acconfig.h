@@ -157,6 +157,9 @@
 /* do we have an inttypes.h? */
 #undef HAVE_INTTYPES_H
 
+/* do we have sys/uio.h? */
+#undef HAVE_SYS_UIO_H
+
 /* define if your system has getnameinfo() */
 #undef HAVE_GETADDRINFO
 
@@ -174,6 +177,17 @@
 #undef HAVE_SOCKADDR_SA_LEN
 
 @BOTTOM@
+
+/* Create a struct iovec if we need one */
+#if !defined(_WIN32) && !defined(HAVE_SYS_SIO_H)
+/* (win32 is handled in sasl.h) */
+struct iovec {
+    long iov_len;
+    char *iov_base;
+};
+#else
+#include <sys/uio.h>
+#endif
 
 /* location of the random number generator */
 #ifndef DEV_RANDOM

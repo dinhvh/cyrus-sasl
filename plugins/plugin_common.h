@@ -1,6 +1,6 @@
 /* Generic SASL plugin utility functions
  * Rob Siemborski
- * $Id: plugin_common.h,v 1.1.2.11 2001/07/18 21:27:33 rjs3 Exp $
+ * $Id: plugin_common.h,v 1.1.2.12 2001/08/15 20:08:13 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -60,8 +60,6 @@
 #include <sasl.h>
 #include <saslutil.h>
 #include <saslplug.h>
-
-#include <sys/uio.h>
 
 #define SASL_CLIENT_PLUG_INIT( x ) \
 extern sasl_client_plug_init_t x##_client_plug_init; \

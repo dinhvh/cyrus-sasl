@@ -24,6 +24,12 @@
 /* Path to saslauthd rundir */
 #undef PATH_SASLAUTHD_RUNDIR
 
+/* do we have pam? */
+#undef HAVE_PAM
+
+/* do we have a sys/sio.h? */
+#undef HAVE_SYS_UIO_H
+
 /* Things SASLAUTHd doesn't really care about */
 #undef HAVE_SASLAUTHD
 #undef STATIC_GSSAPIV2
@@ -31,6 +37,16 @@
 #undef STATIC_PLAIN
 
 @BOTTOM@
+
+/* Create a struct iovec if we need one */
+#if !defined(HAVE_SYS_UIO_H)
+struct iovec {
+    long iov_len;
+    char *iov_base;
+};
+#else
+#include <sys/uio.h>
+#endif
 
 #ifndef NI_WITHSCOPEID
 #define NI_WITHSCOPEID  0
