@@ -144,12 +144,12 @@ typedef struct sasl_utils {
 		    const char *value, int vallen);
     int (*prop_setvals)(struct propctx *ctx, const char *name,
 			const char **values);
+    int (*prop_erase)(struct propctx *ctx, const char *name);
 
     /* for additions which don't require a version upgrade; set to 0 */
     int (*spare_fptr1)();
     int (*spare_fptr2)();
     int (*spare_fptr3)();
-    int (*spare_fptr4)();
 } sasl_utils_t;
 
 /*

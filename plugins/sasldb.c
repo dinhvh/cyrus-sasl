@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: sasldb.c,v 1.1.2.2 2001/07/20 20:39:16 rjs3 Exp $
+ * $Id: sasldb.c,v 1.1.2.3 2001/07/24 15:21:59 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -137,11 +137,11 @@ static void sasldb_auxprop_lookup(void *glob_context __attribute__((unused)),
 	goto done;
     }
 
-    ret = prop_getnames(sparams->propctx, proplookup, values);
+    ret = sparams->utils->prop_getnames(sparams->propctx, proplookup, values);
     /* did we get the one we were looking for? */
     if(ret == 1 && values[0].values && values[0].valsize) {
 	if(flags & SASL_AUXPROP_OVERRIDE) {
-	    prop_erase(sparams->propctx, SASL_AUX_PASSWORD);
+	    sparams->utils->prop_erase(sparams->propctx, SASL_AUX_PASSWORD);
 	} else {
 	    /* We aren't going to override it... */
 	    goto done;
@@ -149,7 +149,7 @@ static void sasldb_auxprop_lookup(void *glob_context __attribute__((unused)),
     }
     
     /* Set the auxprop (the only one we support) */
-    prop_set(sparams->propctx, SASL_AUX_PASSWORD, secret->data, secret->len);
+    sparams->utils->prop_set(sparams->propctx, SASL_AUX_PASSWORD, secret->data, secret->len);
 
  done:
     if (userid) sparams->utils->free(userid);
