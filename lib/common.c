@@ -160,7 +160,6 @@ int sasl_encode(sasl_conn_t *conn, const char *input,
 
     /* FIXME is this what we want? (valid to check this?  not per-plugin?) */
     if(inputlen > conn->oparams.maxoutbuf) {
-	printf("%d was bigger than %d\n", inputlen, conn->oparams.maxoutbuf);
 	return SASL_BADPARAM;
     }
 
