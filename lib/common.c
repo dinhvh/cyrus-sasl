@@ -1,7 +1,7 @@
 /* common.c - Functions that are common to server and clinet
  * Rob Siemborski
  * Tim Martin
- * $Id: common.c,v 1.64.2.47 2001/07/26 21:11:14 rjs3 Exp $
+ * $Id: common.c,v 1.64.2.48 2001/07/30 17:23:30 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -735,12 +735,24 @@ void sasl_seterror(sasl_conn_t *conn,
   int result;
   sasl_log_t *log_cb;
   void *log_ctx;
-  
   int ival;
   char *cval;
   va_list ap; /* varargs thing */
 
-  if(!conn || !fmt) return;    
+  if(!conn) {
+      if(!(flags & SASL_NOLOG)) {
+	  /* See if we have a logging callback... */
+	  result = _sasl_getcallback(NULL, SASL_CB_LOG, &log_cb, &log_ctx);
+	  if (result == SASL_OK && ! log_cb)
+	      result = SASL_FAIL;
+	  if (result != SASL_OK)
+	      return;
+	  
+	  log_cb(log_ctx, SASL_LOG_FAIL,
+		 "No sasl_conn_t passed to sas_seterror");
+      }  
+      return;
+  } else if(!fmt) return;    
 
   formatlen = strlen(fmt);
 
@@ -850,21 +862,20 @@ void sasl_seterror(sasl_conn_t *conn,
     }
   }
 
-
   conn->error_buf[outlen]='\0'; /* put 0 at end */
 
   va_end(ap);  
-
-    if(!(flags & SASL_NOLOG)) {
-	/* See if we have a logging callback... */
-	result = _sasl_getcallback(conn, SASL_CB_LOG, &log_cb, &log_ctx);
-	if (result == SASL_OK && ! log_cb)
-	    result = SASL_FAIL;
-	if (result != SASL_OK)
-	    return;
-
-	result = log_cb(log_ctx, SASL_LOG_FAIL, conn->error_buf);
-    }
+  
+  if(!(flags & SASL_NOLOG)) {
+      /* See if we have a logging callback... */
+      result = _sasl_getcallback(conn, SASL_CB_LOG, &log_cb, &log_ctx);
+      if (result == SASL_OK && ! log_cb)
+	  result = SASL_FAIL;
+      if (result != SASL_OK)
+	  return;
+      
+      result = log_cb(log_ctx, SASL_LOG_FAIL, conn->error_buf);
+  }
 }
 
 
