@@ -1,3 +1,8 @@
+2000-07-02  Rob Siemborski <rjs3+@andrew.cmu.edu>
+	* Improved allocation efficiency of KERBEROS_V4 and DIGEST-MD5
+	* Fixed a decode bug in DIGEST-MD5 (and testsuite improvements to
+	  help find similar ones)
+
 2000-06-30  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Cleanup of some man pages (added sasl_errors.3)
 
