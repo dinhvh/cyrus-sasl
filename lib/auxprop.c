@@ -1,7 +1,6 @@
 /* auxprop.c - auxilliary property support
  * Rob Siemborski
  */
-
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
  *
@@ -70,6 +69,14 @@ struct propctx  {
     struct proppool *mem_base;
     struct proppool *mem_cur;
 };
+
+typedef struct auxprop_plug_list 
+{
+    struct auxprop_plug_list *next;
+    const sasl_auxprop_plug_t *plug;
+} auxprop_plug_list_t;
+
+static auxprop_plug_list_t *auxprop_head = NULL;
 
 static struct proppool *alloc_proppool(size_t size) 
 {
@@ -288,10 +295,36 @@ const struct propval *prop_get(struct propctx *ctx)
  *  if a name requested here was never requested by a prop_request, then
  *  the name field of the associated vals entry will be set to NULL
  */
+
+/* FIXME: We rely on the fact that the vals array is long enough! */
 int prop_getnames(struct propctx *ctx, const char **names,
 		  struct propval *vals) 
 {
-    return SASL_FAIL;
+    int found_names = 0;
+    
+    struct propval *cur = vals;
+    const char **curname;
+
+    if(!ctx || !names || !vals) return SASL_BADPARAM;
+    
+    for(curname = names; *curname; curname++) {
+	struct propval *val;
+	for(val = ctx->values; val->name; val++) {
+	    if(!strcmp(*curname,val->name)) { 
+		found_names++;
+		memcpy(cur, val, sizeof(struct propval));
+		goto next;
+	    }
+	}
+
+	/* If we are here, we didn't find it */
+	memset(cur, 0, sizeof(struct propval));
+	
+	next:
+	cur++;
+    }
+
+    return found_names;
 }
 
 
@@ -344,6 +377,9 @@ void prop_erase(struct propctx *ctx, const char *name)
 		val->values[i] = NULL;
 	    }
 
+	    val->values = NULL;
+	    val->nvalues = 0;
+	    val->valsize = 0;
 	    break;
 	}
     }
@@ -531,6 +567,9 @@ int prop_set(struct propctx *ctx, const char *name,
 	memcpy(ctx->data_end, value, size-1);
 	ctx->data_end[size - 1] = '\0';
 	cur->values[nvalues - 2] = ctx->data_end;
+
+	cur->nvalues++;
+	cur->valsize += (size - 1);
     } else /* Appending an entry */ {
 	char **tmp;
 	size_t size;
@@ -590,6 +629,9 @@ int prop_set(struct propctx *ctx, const char *name,
 	memcpy(ctx->data_end, value, size-1);
 	ctx->data_end[size - 1] = '\0';
 	*tmp = ctx->data_end;
+
+	cur->nvalues++;
+	cur->valsize += (size - 1);
     }
     
     return SASL_OK;
@@ -675,3 +717,75 @@ struct propctx *sasl_auxprop_getctx(sasl_conn_t *conn)
     return sconn->propctx;
 }
 
+/* add an auxiliary property plugin */
+int sasl_auxprop_add_plugin(const char *plugname,
+			    sasl_auxprop_init_t *auxpropfunc)
+{
+    int result, out_version;
+    auxprop_plug_list_t *new_item;
+    const sasl_auxprop_plug_t *plug;
+    sasl_utils_t *utils;
+
+    /* FIXME: This allocation is probabally unnecessary,
+     *        not to mention EVIL. */
+    utils = _sasl_alloc_utils(NULL, NULL);
+    if(utils == NULL) return SASL_NOMEM;
+
+    result = auxpropfunc(utils, SASL_AUXPROP_PLUG_VERSION,
+			 &out_version, &plug, plugname);
+    _sasl_free_utils(&utils);
+
+    if(result != SASL_OK) {
+	VL(("auxpropfunc error %i\n",result));
+	return result;
+    }
+
+    /* We require that this function is implemented */
+    if(!plug->auxprop_lookup) return SASL_BADPROT;
+
+    new_item = sasl_ALLOC(sizeof(auxprop_plug_list_t));
+    if(!new_item) return SASL_NOMEM;    
+
+    /* These will load from least-important to most important */
+    new_item->plug = plug;
+    new_item->next = auxprop_head;
+    auxprop_head = new_item;
+
+    return SASL_OK;
+}
+
+void _sasl_auxprop_free() 
+{
+    auxprop_plug_list_t *ptr, *ptr_next;
+    sasl_utils_t *utils;
+    
+    /* FIXME: This allocation is probabally unnecessary,
+     *        not to mention EVIL. */
+    utils = _sasl_alloc_utils(NULL, NULL);
+    if(utils == NULL) return;
+
+    for(ptr = auxprop_head; ptr; ptr = ptr_next) {
+	ptr_next = ptr->next;
+	if(ptr->plug->auxprop_free)
+	    ptr->plug->auxprop_free(ptr->plug->glob_context, utils);
+	sasl_FREE(ptr);
+    }
+
+    auxprop_head = NULL;
+
+    _sasl_free_utils(&utils);
+}
+
+
+/* Do the callbacks for auxprop lookups */
+void _sasl_auxprop_lookup(sasl_server_params_t *sparams,
+			  unsigned flags,
+			  const char *user, unsigned ulen) 
+{
+    auxprop_plug_list_t *ptr;
+    
+    for(ptr = auxprop_head; ptr; ptr = ptr->next) {
+	ptr->plug->auxprop_lookup(ptr->plug->glob_context,
+				  sparams, flags, user, ulen);
+    }
+}

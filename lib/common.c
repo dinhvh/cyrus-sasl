@@ -49,10 +49,13 @@
 #include <syslog.h>
 #endif
 #include <stdarg.h>
+#include <ctype.h>
+
 #include <sasl.h>
 #include <saslutil.h>
 #include <saslplug.h>
 #include "saslint.h"
+
 #ifdef WIN32
 /* need to handle the fact that errno has been defined as a function
    in a dll, not an extern int */
@@ -1351,6 +1354,122 @@ int sasl_idle(sasl_conn_t *conn)
     return conn->idle_hook(conn);
 
   return 0;
+}
+/* default behavior:
+ *                   eliminate leading & trailing whitespace,
+ *                   null-terminate, and get into the outparams */
+/* Also does auxprop lookups once username is canonoicalized */
+/* a zero ulen or alen indicates that it is strlen(value) */
+int _sasl_canon_user(sasl_conn_t *conn,
+                     const char *user, unsigned ulen,
+                     const char *authid, unsigned alen,
+                     unsigned flags,
+                     sasl_out_params_t *oparams)
+{
+    const char *begin_u, *begin_a;
+    sasl_server_canon_user_t *cuser_cb;
+    int result;
+    void *cuser_ctx;
+    unsigned i;
+
+    if(!conn) return SASL_BADPARAM;    
+
+    /* check to see if we have been overridden by the application */
+    result = _sasl_getcallback(conn, SASL_CB_CANON_USER,
+			       &cuser_cb, &cuser_ctx);
+    if(result == SASL_OK && cuser_cb) {
+	const size_t canon_buf_size = 256;
+	
+	/* Allocate the memory */
+	if(!conn->user_buf) conn->user_buf = sasl_ALLOC(canon_buf_size);
+	else conn->user_buf = sasl_REALLOC(conn->user_buf, canon_buf_size);
+    
+	if(!conn->user_buf) return SASL_NOMEM;
+	
+	if(!conn->authid_buf) conn->authid_buf = sasl_ALLOC(canon_buf_size);
+	else conn->authid_buf = sasl_REALLOC(conn->authid_buf, canon_buf_size);
+
+	if(!conn->authid_buf) {
+	    sasl_FREE(conn->user_buf);
+	    conn->user_buf = NULL;
+	    return SASL_NOMEM;
+	}
+	
+	result = cuser_cb(conn, cuser_ctx,
+			user, ulen, authid, alen,
+			flags, (conn->type == SASL_CONN_SERVER ?
+				((sasl_server_conn_t *)conn)->user_realm :
+				NULL),
+			conn->user_buf, canon_buf_size, &ulen,
+			conn->authid_buf, canon_buf_size, &alen);
+
+	if (result != SASL_OK) return result;
+
+	goto done;
+    }
+    
+    /* FIXME: Plugin Support (also: how does this work with auxpropness?) */
+
+    if(!user || !authid || !oparams) return SASL_BADPARAM;
+
+    if(!ulen) ulen = strlen(user);
+    if(!alen) alen = strlen(authid);
+
+    /* Strip User ID */
+    for(i=0;isspace(user[i]) && i<ulen;i++);
+    begin_u = &(user[i]);
+    if(i>0) ulen -= i;
+
+    for(;isspace(begin_u[ulen-1]) && ulen > 0; ulen--);
+    if(begin_u == &(user[ulen])) return SASL_FAIL;
+
+    /* Strip Auth ID */
+    for(i=0;isspace(authid[i]) && i<alen;i++);
+    begin_a = &(authid[i]);
+    if(i>0) alen -= i;
+
+    for(;isspace(begin_a[alen-1]) && alen > 0; alen--);
+    if(begin_a == &(user[alen])) return SASL_FAIL;
+
+    /* FIXME: Need to append realm if necessary (see sasl.h) */
+    
+    /* Now allocate the memory */
+    if(!conn->user_buf) conn->user_buf = sasl_ALLOC(ulen + 1);
+    else conn->user_buf = sasl_REALLOC(conn->user_buf, ulen + 1);
+    
+    if(!conn->user_buf) return SASL_NOMEM;
+    
+    if(!conn->authid_buf) conn->authid_buf = sasl_ALLOC(alen + 1);
+    else conn->authid_buf = sasl_REALLOC(conn->authid_buf, alen + 1);
+
+    if(!conn->authid_buf) {
+	sasl_FREE(conn->user_buf);
+	conn->user_buf = NULL;
+	return SASL_NOMEM;
+    }
+
+    /* Now copy! */
+    memcpy(conn->user_buf, begin_u, ulen);
+    conn->user_buf[ulen] = '\0';
+    
+    memcpy(conn->authid_buf, begin_a, alen);
+    conn->authid_buf[alen] = '\0';
+
+    done:
+
+    /* first, do auxprop lookups (server only) */
+    if(conn->type == SASL_CONN_SERVER) {
+	sasl_server_conn_t *sconn = (sasl_server_conn_t *)conn;
+
+	_sasl_auxprop_lookup(sconn->sparams, 0, user, 0);
+    }
+
+    oparams->user = conn->user_buf;
+    oparams->ulen = ulen;
+    oparams->authid = conn->authid_buf;
+    oparams->alen = alen;
+
+    return SASL_OK;
 }
 
 const sasl_callback_t *

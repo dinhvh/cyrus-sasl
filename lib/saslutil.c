@@ -400,9 +400,8 @@ void sasl_churn (sasl_rand_t *rpool, const char *data, unsigned len)
 	rpool->pool[lup % 3] ^= data[lup];
 }
 
-/* FIXME: This has some nasty signed/unsignedness with it, but... */
 void sasl_erasebuffer(char *buf, unsigned len) {
-    bzero((void *)buf, len);
+    memset(buf, 0, len);
 }
 
 /* FIXME: This only parses IPV4 addresses */
@@ -428,7 +427,6 @@ int _sasl_iptostring(const struct sockaddr_in *addr,
 
     return SASL_OK;
 }
-
 
 /* FIXME: This only parses IPV4 addresses */
 int _sasl_ipfromstring(const char *addr, struct sockaddr_in *out) 
@@ -471,112 +469,6 @@ int _sasl_ipfromstring(const char *addr, struct sockaddr_in *out)
     bzero(out, sizeof(struct sockaddr_in));
     out->sin_addr.s_addr = val;
     out->sin_port = port;
-
-    return SASL_OK;
-}
-
-/* default behavior: eliminate leading & trailing whitespace,
- * null-terminate, and get into the outparams */
-/* a zero ulen or alen indicates that it is strlen(value) */
-int _sasl_canon_user(sasl_conn_t *conn,
-                     const char *user, unsigned ulen,
-                     const char *authid, unsigned alen,
-                     unsigned flags,
-                     sasl_out_params_t *oparams)
-{
-    const char *begin_u, *begin_a;
-    sasl_server_canon_user_t *cuser_cb;
-    int result;
-    void *cuser_ctx;
-    unsigned i;
-
-    /* First check to see if we have been overridden by the application */
-    result = _sasl_getcallback(conn, SASL_CB_CANON_USER,
-			       &cuser_cb, &cuser_ctx);
-    if(result == SASL_OK && cuser_cb) {
-	const size_t canon_buf_size = 256;
-	
-	/* Allocate the memory */
-	if(!conn->user_buf) conn->user_buf = sasl_ALLOC(canon_buf_size);
-	else conn->user_buf = sasl_REALLOC(conn->user_buf, canon_buf_size);
-    
-	if(!conn->user_buf) return SASL_NOMEM;
-	
-	if(!conn->authid_buf) conn->authid_buf = sasl_ALLOC(canon_buf_size);
-	else conn->authid_buf = sasl_REALLOC(conn->authid_buf, canon_buf_size);
-
-	if(!conn->authid_buf) {
-	    sasl_FREE(conn->user_buf);
-	    conn->user_buf = NULL;
-	    return SASL_NOMEM;
-	}
-	
-	result = cuser_cb(conn, cuser_ctx,
-			user, ulen, authid, alen,
-			flags, (conn->type == SASL_CONN_SERVER ?
-				((sasl_server_conn_t *)conn)->user_realm :
-				NULL),
-			conn->user_buf, canon_buf_size, &ulen,
-			conn->authid_buf, canon_buf_size, &alen);
-
-	if (result != SASL_OK) return result;
-
-	goto done;
-    }
-    
-    /* FIXME: Plugin Support */
-
-    if(!conn || !user || !authid || !oparams) return SASL_BADPARAM;
-
-    if(!ulen) ulen = strlen(user);
-    if(!alen) alen = strlen(authid);
-
-    /* Strip User ID */
-    for(i=0;isspace(user[i]) && i<ulen;i++);
-    begin_u = &(user[i]);
-    if(i>0) ulen -= i;
-
-    for(;isspace(begin_u[ulen-1]) && ulen > 0; ulen--);
-    if(begin_u == &(user[ulen])) return SASL_FAIL;
-
-    /* Strip Auth ID */
-    for(i=0;isspace(authid[i]) && i<alen;i++);
-    begin_a = &(authid[i]);
-    if(i>0) alen -= i;
-
-    for(;isspace(begin_a[alen-1]) && alen > 0; alen--);
-    if(begin_a == &(user[alen])) return SASL_FAIL;
-
-    /* FIXME: Need to append realm if necessary (see sasl.h) */
-    
-    /* Now allocate the memory */
-    if(!conn->user_buf) conn->user_buf = sasl_ALLOC(ulen + 1);
-    else conn->user_buf = sasl_REALLOC(conn->user_buf, ulen + 1);
-    
-    if(!conn->user_buf) return SASL_NOMEM;
-    
-    if(!conn->authid_buf) conn->authid_buf = sasl_ALLOC(alen + 1);
-    else conn->authid_buf = sasl_REALLOC(conn->authid_buf, alen + 1);
-
-    if(!conn->authid_buf) {
-	sasl_FREE(conn->user_buf);
-	conn->user_buf = NULL;
-	return SASL_NOMEM;
-    }
-
-    /* Now copy! */
-    memcpy(conn->user_buf, begin_u, ulen);
-    conn->user_buf[ulen] = '\0';
-    
-    memcpy(conn->authid_buf, begin_a, alen);
-    conn->authid_buf[alen] = '\0';
-
-    done:
-
-    oparams->user = conn->user_buf;
-    oparams->ulen = ulen;
-    oparams->authid = conn->authid_buf;
-    oparams->alen = alen;
 
     return SASL_OK;
 }

@@ -1,6 +1,6 @@
 /* SASL server API implementation
  * Tim Martin
- * $Id: server.c,v 1.84.2.17 2001/06/13 20:48:32 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.18 2001/06/19 20:51:11 rjs3 Exp $
  */
 
 /* 
@@ -620,6 +620,7 @@ int sasl_server_init(const sasl_callback_t *callbacks,
     ret = _sasl_server_check_db(vf);
 
     /* load plugins */
+    sasl_auxprop_add_plugin("SASLDB", &sasldb_auxprop_plug_init);
     add_plugin((void *)&external_server_init, NULL);
 
     /* delayed loading of plugins? */

@@ -155,13 +155,13 @@ const sasl_server_plug_t external_server_mech = {
   NULL				/* spare */
 };
 
-int external_server_init(const sasl_utils_t *utils,
+int external_server_init(const sasl_utils_t *utils __attribute__((unused)),
 			 int max_version,
 			 int *out_version,
 			 const sasl_server_plug_t **pluglist,
 			 int *plugcount)
 {
-  if (!utils || !out_version || !pluglist || !plugcount)
+  if (!out_version || !pluglist || !plugcount)
     return SASL_BADPARAM;
   if (max_version != SASL_SERVER_PLUG_VERSION)
     return SASL_BADVERS;

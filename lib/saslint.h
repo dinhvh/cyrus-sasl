@@ -221,7 +221,7 @@ extern int _sasl_conn_init(sasl_conn_t *conn,
 			   const char *iplocalport,
 			   const char *ipremoteport,
 			   const sasl_callback_t *callbacks,
-			   const sasl_global_callbacks_t * global_callbacks);
+			   const sasl_global_callbacks_t *global_callbacks);
 
 extern void _sasl_conn_dispose(sasl_conn_t *conn);
 
@@ -346,6 +346,19 @@ int _sasl_sasldb_verify_apop(sasl_conn_t *conn,
 			     const char *challenge,
 			     const char *response,
 			     const char *user_realm);
+
+/* auxprop.c */
+void _sasl_auxprop_free();
+void _sasl_auxprop_lookup(sasl_server_params_t *sparams,
+			  unsigned flags,
+			  const char *user, unsigned ulen);
+
+/* checkpw.c */
+int sasldb_auxprop_plug_init(const sasl_utils_t *utils,
+			     int max_version,
+			     int *out_version,
+			     const sasl_auxprop_plug_t **plug,
+			     const char *plugname);
 
 /* The following is defined in common.c */
 /* Basically a conditional call to realloc(), if we need more */

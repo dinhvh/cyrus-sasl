@@ -46,8 +46,10 @@
 /* checkpw stuff */
 
 #include <sasl.h>
-#include <saslint.h>
 #include <saslutil.h>
+#include <saslplug.h>
+#include "saslint.h"
+
 #include <assert.h>
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
@@ -351,6 +353,85 @@ int _sasl_sasldb_set_pass(sasl_conn_t *conn,
     return ret;
 }
 
+
+static void sasldb_auxprop_lookup(void *glob_context __attribute__((unused)),
+				  sasl_server_params_t *sparams,
+				  unsigned flags,
+				  const char *user,
+				  unsigned ulen __attribute__((unused))) 
+{
+    char *userid = NULL;
+    char *realm = NULL;
+    sasl_secret_t *secret = NULL;
+    sasl_server_conn_t *sconn;
+    int ret;
+    const char *proplookup[] = { SASL_AUX_PASSWORD, NULL };
+    struct propval values[2];
+
+    if(!sparams || !user) return;
+
+    sconn = (sasl_server_conn_t *)sparams->utils->conn;
+    
+    ret = parseuser(&userid, &realm, sconn->user_realm,
+		    sparams->utils->conn->serverFQDN, user);
+    if(ret!= SASL_OK) goto done;
+
+    ret = _sasl_db_getsecret(sparams->utils->conn, userid, realm, &secret);
+    if (ret != SASL_OK) {
+	/* error getting secret */
+	goto done;
+    }
+
+    ret = prop_getnames(sparams->propctx, proplookup, values);
+    /* did we get the one we were looking for? */
+    if(ret == 1 && values[0].values && values[0].valsize) {
+	if(flags & SASL_AUXPROP_OVERRIDE) {
+	    prop_erase(sparams->propctx, SASL_AUX_PASSWORD);
+	} else {
+	    /* We aren't going to override it... */
+	    goto done;
+	}
+    }
+    
+    /* Set the auxprop (the only one we support) */
+    prop_set(sparams->propctx, SASL_AUX_PASSWORD, secret->data, secret->len);
+
+ done:
+    if (userid) sasl_FREE(userid);
+    if (realm)  sasl_FREE(realm);
+
+    if (secret) _sasl_free_secret(&secret);
+}
+
+static const sasl_auxprop_plug_t sasldb_auxprop_plugin = {
+    0,           /* Features */
+    0,           /* spare */
+    NULL,        /* glob_context */
+    NULL,        /* auxprop_free */
+    sasldb_auxprop_lookup, /* auxprop_lookup */
+    NULL,        /* spares */
+    NULL
+};
+
+int sasldb_auxprop_plug_init(const sasl_utils_t *utils __attribute__((unused)),
+                             int max_version,
+                             int *out_version,
+                             const sasl_auxprop_plug_t **plug,
+                             const char *plugname) 
+{
+    if(!out_version || !plug || !plugname) return SASL_BADPARAM;
+
+    /* We only support the "SASLDB" plugin */
+    if(strcmp(plugname, "SASLDB")) return SASL_NOMECH;
+
+    if(max_version < SASL_AUXPROP_PLUG_VERSION) return SASL_BADVERS;
+    
+    *out_version = SASL_AUXPROP_PLUG_VERSION;
+
+    *plug = &sasldb_auxprop_plugin;
+
+    return SASL_OK;
+}
 
 #ifdef HAVE_PWCHECK
 /*
