@@ -1,9 +1,48 @@
 /*
  * Mar  8, 2000 by Hajimu UMEMOTO <ume@mahoroba.org>
- * $Id: getnameinfo.c,v 1.1.2.1 2001/07/18 21:27:31 rjs3 Exp $
+ * $Id: getnameinfo.c,v 1.1.2.2 2001/07/18 21:49:32 rjs3 Exp $
  *
  * This module is besed on ssh-1.2.27-IPv6-1.5 written by
  * KIKUCHI Takahiro <kick@kyoto.wide.ad.jp>
+ */
+/* 
+ * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer. 
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ *
+ * 3. The name "Carnegie Mellon University" must not be used to
+ *    endorse or promote products derived from this software without
+ *    prior written permission. For permission or any other legal
+ *    details, please contact  
+ *      Office of Technology Transfer
+ *      Carnegie Mellon University
+ *      5000 Forbes Avenue
+ *      Pittsburgh, PA  15213-3890
+ *      (412) 268-4387, fax: (412) 268-7395
+ *      tech-transfer@andrew.cmu.edu
+ *
+ * 4. Redistributions of any form whatsoever must retain the following
+ *    acknowledgment:
+ *    "This product includes software developed by Computing Services
+ *     at Carnegie Mellon University (http://www.cmu.edu/computing/)."
+ *
+ * CARNEGIE MELLON UNIVERSITY DISCLAIMS ALL WARRANTIES WITH REGARD TO
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS, IN NO EVENT SHALL CARNEGIE MELLON UNIVERSITY BE LIABLE
+ * FOR ANY SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+ * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 /*
  * fake library for ssh
@@ -25,7 +64,7 @@
 #include <string.h>
 
 int
-getnameinfo(const struct sockaddr *sa, socklen_t salen,
+getnameinfo(const struct sockaddr *sa, socklen_t salen __attribute__((unused)),
 	    char *host, size_t hostlen, char *serv, size_t servlen, int flags)
 {
     struct sockaddr_in *sin = (struct sockaddr_in *)sa;
@@ -39,15 +78,15 @@ getnameinfo(const struct sockaddr *sa, socklen_t salen,
 	else
 	    strcpy(serv, tmpserv);
     }
-    if (host)
-	if (flags & NI_NUMERICHOST)
+    if (host) {
+	if (flags & NI_NUMERICHOST) {
 	    if (strlen(inet_ntoa(sin->sin_addr)) >= hostlen)
 		return EAI_MEMORY;
 	    else {
 		strcpy(host, inet_ntoa(sin->sin_addr));
 		return 0;
 	    }
-	else {
+	} else {
 	    hp = gethostbyaddr((char *)&sin->sin_addr,
 			       sizeof(struct in_addr), AF_INET);
 	    if (hp)
@@ -60,5 +99,7 @@ getnameinfo(const struct sockaddr *sa, socklen_t salen,
 	    else
 		return EAI_NODATA;
 	}
+    }
+    
     return 0;
 }
