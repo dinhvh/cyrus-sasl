@@ -5,7 +5,6 @@ Library
 ) better support for including missing routines
 ) check return settings (ssf, etc.) on auth failure
 ) add SASL_SEC_MUTUAL_AUTHENTICATION
-) fix DIGEST-MD5 interoperability
 
 Documentation
 ~~~~~~~~~~~~~
