@@ -1,7 +1,7 @@
 /* GSSAPI SASL plugin
  * Leif Johansson
  * Rob Siemborski (SASL v2 Conversion)
- * $Id: gssapi.c,v 1.41.2.23 2001/07/19 22:50:01 rjs3 Exp $
+ * $Id: gssapi.c,v 1.41.2.24 2001/07/20 16:23:05 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -555,13 +555,13 @@ sasl_gss_server_step (void *conn_context,
 	  name_token.value = NULL;
 	  
 	  if (GSS_ERROR(maj_stat)) {
-	      SETERROR(text->utils, "GSSAPI Failure");
+	      SETERROR(text->utils, "GSSAPI Failure: gss_import_name");
 	      sasl_gss_free_context_contents(text);
 	      return SASL_FAIL;
 	  }
 
 	  if ( text->server_creds != GSS_C_NO_CREDENTIAL) {
-	      maj_stat = gss_release_cred(&min_stat, &text->server_creds);	  
+	      maj_stat = gss_release_cred(&min_stat, &text->server_creds);
 	      text->server_creds = GSS_C_NO_CREDENTIAL;
 	  }
 
@@ -575,7 +575,7 @@ sasl_gss_server_step (void *conn_context,
 				      NULL);
 	  
 	  if (GSS_ERROR(maj_stat)) {
-	      SETERROR(text->utils, "GSSAPI Failure");
+	      SETERROR(text->utils, "GSSAPI Failure: gss_acquire_cred");
 	      sasl_gss_free_context_contents(text);
 	      return SASL_FAIL;
 	  }
@@ -604,7 +604,7 @@ sasl_gss_server_step (void *conn_context,
 	  if (output_token->value) {
 	      gss_release_buffer(&min_stat, output_token);
 	  }
-	  SETERROR(text->utils, "GSSAPI Failure");
+	  SETERROR(text->utils, "GSSAPI Failure: gss_accept_sec_context");
 	  sasl_gss_free_context_contents(text);
 	  return SASL_BADAUTH;
       }
@@ -1225,7 +1225,7 @@ sasl_gss_client_step (void *conn_context,
 	      }
 	    if (params->serverFQDN == NULL
 		|| strlen(params->serverFQDN) == 0) {
-		SETERROR(text->utils, "GSSAPI Failure");
+		SETERROR(text->utils, "GSSAPI Failure: no serverFQDN");
 		return SASL_FAIL;
 	    }
 	    
