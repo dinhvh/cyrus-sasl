@@ -1,3 +1,9 @@
+2001-08-08  Rob Siemborski <rjs3+@andrew.cmu.edu>
+	* saslauthd/saslauthd.mdoc: updated re: pam
+	* saslauthd/saslauthd.8: regenerated
+	* saslauthd/Makefile.am: Link against PLAIN_LIBS also
+	  (from Ken Murchison <ken@oceana.com>)
+
 2001-08-07  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* lib/client.c (sasl_server_step): corrected maxoutbuf handleing
 	* lib/server.c (sasl_server_step): corrected maxoutbuf handleing
