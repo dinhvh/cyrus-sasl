@@ -1,6 +1,6 @@
 /* canonusr.c - user canonicalization support
  * Rob Siemborski
- * $Id: canonusr.c,v 1.1.2.7 2001/06/27 14:59:21 rjs3 Exp $
+ * $Id: canonusr.c,v 1.1.2.8 2001/06/27 20:26:03 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -209,6 +209,10 @@ void _sasl_canonuser_free()
 
     canonuser_head = NULL;
 }
+
+#ifndef MIN
+#define MIN(a,b) (((a) < (b))? (a):(b))
+#endif
 
 static int _canonuser_internal(const sasl_utils_t *utils,
 			       const char *user, unsigned ulen,
