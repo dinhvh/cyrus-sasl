@@ -265,7 +265,7 @@ int mysasl_negotiate(FILE *in, FILE *out, sasl_conn_t *conn)
 
     r = sasl_client_start(conn, mech, NULL, &data, &len, &chosenmech);
     if (r != SASL_OK && r != SASL_CONTINUE) {
-	saslerr(r, "starting SASL negotiation", NULL);
+	saslerr(r, "starting SASL negotiation");
 	return -1;
     }
     
@@ -297,7 +297,7 @@ int mysasl_negotiate(FILE *in, FILE *out, sasl_conn_t *conn)
 
 	r = sasl_client_step(conn, buf, len, NULL, &data, &len);
 	if (r != SASL_OK && r != SASL_CONTINUE) {
-	    saslerr(r, "performing SASL negotiation", NULL);
+	    saslerr(r, "performing SASL negotiation");
 	    return -1;
 	}
 
@@ -368,7 +368,7 @@ int main(int argc, char *argv[])
 
     /* initialize the sasl library */
     r = sasl_client_init(callbacks);
-    if (r != SASL_OK) saslfail(r, "initializing libsasl", NULL);
+    if (r != SASL_OK) saslfail(r, "initializing libsasl");
 
     /* connect to remote server */
     fd = getconn(host, port);
@@ -388,7 +388,7 @@ int main(int argc, char *argv[])
 
     /* client new connection */
     r = sasl_client_new(service, host, localaddr, remoteaddr, NULL, 0, &conn);
-    if (r != SASL_OK) saslfail(r, "allocating connection state", NULL);
+    if (r != SASL_OK) saslfail(r, "allocating connection state");
 
     /* set external properties here
        sasl_setprop(conn, SASL_SSF_EXTERNAL, &extprops); */
