@@ -105,6 +105,8 @@ enum Sasl_conn_type { SASL_CONN_UNKNOWN = 0,
 		      SASL_CONN_SERVER = 1,
                       SASL_CONN_CLIENT = 2 };
 
+#define CANON_BUF_SIZE 256
+
 struct sasl_conn {
   enum Sasl_conn_type type;
 
@@ -134,7 +136,6 @@ struct sasl_conn {
   int (*idle_hook)(sasl_conn_t *conn);
   const sasl_callback_t *callbacks;
   const sasl_global_callbacks_t *global_callbacks; /* global callbacks
-						    * for this
 						    * connection */
   char *serverFQDN;
 
@@ -146,7 +147,7 @@ struct sasl_conn {
   char *decode_buf;
   unsigned decode_buf_len;
 
-  char *user_buf, *authid_buf;
+  char user_buf[CANON_BUF_SIZE+1], authid_buf[CANON_BUF_SIZE+1];
 };
 
 /* Server Conn Type Information */

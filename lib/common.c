@@ -343,8 +343,7 @@ int _sasl_conn_init(sasl_conn_t *conn,
 
   conn->error_buf[0] = '\0';
 
-  conn->decode_buf =  
-      conn->user_buf = conn->authid_buf = NULL;
+  conn->decode_buf = NULL;
   conn->decode_buf_len = 0;
 
   if (serverFQDN==NULL) {
@@ -421,12 +420,6 @@ void _sasl_conn_dispose(sasl_conn_t *conn) {
   
   if(conn->decode_buf)
       sasl_FREE(conn->decode_buf);
-
-  if(conn->user_buf)
-      sasl_FREE(conn->user_buf);
-  
-  if(conn->authid_buf)
-      sasl_FREE(conn->authid_buf);
 
   if(conn->service)
       sasl_FREE(conn->service);

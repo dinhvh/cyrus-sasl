@@ -1084,7 +1084,23 @@ void sendbadsecond(char *mech, void *rock)
 
     /* no need to do other direction since symetric */
 
-    printf("%s --> %s\n",mech,sasl_errstring(result,NULL,NULL));
+    /* Just verify oparams */
+    if(sasl_getprop(saslconn, SASL_USERNAME, (const void **)&out)
+       != SASL_OK) {
+	fatal("couldn't get server username");
+	goto done;
+    }
+    if(sasl_getprop(clientconn, SASL_USERNAME, (const void **)&out2)
+       != SASL_OK) {
+	fatal("couldn't get client username");
+	goto done;
+    }
+    if(strcmp(out,out2)) {
+	fatal("client username does not match server username");
+	goto done;
+    }
+
+    printf("%s --> %s (as %s)\n",mech,sasl_errstring(result,NULL,NULL),out);
 
  done:
     sasl_dispose(&clientconn);

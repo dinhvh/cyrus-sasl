@@ -1,6 +1,6 @@
 /* CRAM-MD5 SASL plugin
  * Tim Martin 
- * $Id: cram.c,v 1.55.2.5 2001/06/25 14:56:39 rjs3 Exp $
+ * $Id: cram.c,v 1.55.2.6 2001/06/25 15:47:14 rjs3 Exp $
  */
 
 /* 
@@ -749,14 +749,6 @@ static int c_continue_step (void *conn_context,
   context_t *text;
   text=conn_context;
 
-  oparams->mech_ssf=0;
-  oparams->maxoutbuf=0;
-  oparams->encode=NULL;
-  oparams->decode=NULL;
-  oparams->user=NULL;
-  oparams->authid=NULL;
-  oparams->param_version=0;
-
   /* doesn't really matter how the server responds */
 
   if (text->state==1)
@@ -783,6 +775,7 @@ static int c_continue_step (void *conn_context,
   if (text->state==2)
   {
     char *in16;
+    int result;
     int auth_result=SASL_OK;
     int pass_result=SASL_OK;
     int maxsize;
@@ -862,8 +855,9 @@ static int c_continue_step (void *conn_context,
     /*nothing more to do; authenticated */
     oparams->doneflag=1;
 
-    params->canon_user(params->utils->conn, text->authid, 0,
-		       text->authid, 0, 0, oparams);
+    result = params->canon_user(params->utils->conn, text->authid, 0,
+				text->authid, 0, 0, oparams);
+    if(result != SASL_OK) return result;
 
     VL(("clientout looks like=%s %i\n",*clientout,*clientoutlen));
 
@@ -878,6 +872,13 @@ static int c_continue_step (void *conn_context,
       *clientoutlen = 0;
       VL(("Verify we're done step"));
       text->state++;
+
+      oparams->mech_ssf=0;
+      oparams->maxoutbuf=0;
+      oparams->encode=NULL;
+      oparams->decode=NULL;
+      oparams->param_version=0;
+
       return SASL_OK;      
   }
 

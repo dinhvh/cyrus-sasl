@@ -61,7 +61,7 @@ int _sasl_canon_user(sasl_conn_t *conn,
 {
     const char *begin_u, *begin_a;
     sasl_server_conn_t *sconn = NULL;
-    int u_apprealm = 0, a_apprealm = 0;
+    unsigned u_apprealm = 0, a_apprealm = 0;
     sasl_server_canon_user_t *cuser_cb;
     int result;
     void *cuser_ctx;
@@ -75,30 +75,13 @@ int _sasl_canon_user(sasl_conn_t *conn,
     result = _sasl_getcallback(conn, SASL_CB_CANON_USER,
 			       &cuser_cb, &cuser_ctx);
     if(result == SASL_OK && cuser_cb) {
-	const size_t canon_buf_size = 256;
-	
-	/* Allocate the memory */
-	if(!conn->user_buf) conn->user_buf = sasl_ALLOC(canon_buf_size);
-	else conn->user_buf = sasl_REALLOC(conn->user_buf, canon_buf_size);
-    
-	if(!conn->user_buf) return SASL_NOMEM;
-	
-	if(!conn->authid_buf) conn->authid_buf = sasl_ALLOC(canon_buf_size);
-	else conn->authid_buf = sasl_REALLOC(conn->authid_buf, canon_buf_size);
-
-	if(!conn->authid_buf) {
-	    sasl_FREE(conn->user_buf);
-	    conn->user_buf = NULL;
-	    return SASL_NOMEM;
-	}
-	
 	result = cuser_cb(conn, cuser_ctx,
 			user, ulen, authid, alen,
 			flags, (conn->type == SASL_CONN_SERVER ?
 				((sasl_server_conn_t *)conn)->user_realm :
 				NULL),
-			conn->user_buf, canon_buf_size, &ulen,
-			conn->authid_buf, canon_buf_size, &alen);
+			conn->user_buf, CANON_BUF_SIZE, &ulen,
+			conn->authid_buf, CANON_BUF_SIZE, &alen);
 
 	if (result != SASL_OK) return result;
 
@@ -135,35 +118,22 @@ int _sasl_canon_user(sasl_conn_t *conn,
 	a_apprealm = strlen(sconn->user_realm) + 1;
     }
     
-    /* Now allocate the memory */
-    if(!conn->user_buf) conn->user_buf = sasl_ALLOC(ulen + u_apprealm + 1);
-    else conn->user_buf = sasl_REALLOC(conn->user_buf, ulen + u_apprealm + 1);
-    
-    if(!conn->user_buf) return SASL_NOMEM;
-    
-    if(!conn->authid_buf) conn->authid_buf = sasl_ALLOC(alen + a_apprealm + 1);
-    else conn->authid_buf = sasl_REALLOC(conn->authid_buf, alen + a_apprealm + 1);
-
-    if(!conn->authid_buf) {
-	sasl_FREE(conn->user_buf);
-	conn->user_buf = NULL;
-	return SASL_NOMEM;
-    }
-
     /* Now copy! */
-    memcpy(conn->user_buf, begin_u, ulen);
+    memcpy(conn->user_buf, begin_u, MIN(ulen, CANON_BUF_SIZE));
     if(u_apprealm) {
 	conn->user_buf[ulen] = '@';
-	memcpy(&(conn->user_buf[ulen+1]), sconn->user_realm, u_apprealm-1);
+	memcpy(&(conn->user_buf[ulen+1]), sconn->user_realm,
+	       MIN(u_apprealm-1, CANON_BUF_SIZE-ulen-1));
     }
-    conn->user_buf[ulen + u_apprealm] = '\0';
+    conn->user_buf[MIN(ulen + u_apprealm,CANON_BUF_SIZE)] = '\0';
     
-    memcpy(conn->authid_buf, begin_a, alen);
+    memcpy(conn->authid_buf, begin_a, MIN(alen, CANON_BUF_SIZE));
     if(a_apprealm) {
 	conn->authid_buf[alen] = '@';
-	memcpy(&(conn->user_buf[alen+1]), sconn->user_realm, a_apprealm-1);
+	memcpy(&(conn->user_buf[alen+1]), sconn->user_realm,
+	       MIN(a_apprealm-1, CANON_BUF_SIZE-ulen-1));
     }
-    conn->authid_buf[alen + a_apprealm] = '\0';
+    conn->authid_buf[MIN(alen + a_apprealm, CANON_BUF_SIZE)] = '\0';
 
     done:
 
