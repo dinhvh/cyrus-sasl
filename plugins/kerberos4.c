@@ -1,6 +1,6 @@
 /* Kerberos4 SASL plugin
  * Tim Martin 
- * $Id: kerberos4.c,v 1.65.2.6 2001/06/04 21:25:12 rjs3 Exp $
+ * $Id: kerberos4.c,v 1.65.2.7 2001/06/05 19:35:10 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
@@ -892,7 +892,7 @@ static const sasl_server_plug_t plugins[] =
   }
 };
 
-int sasl_server_plug_init(sasl_utils_t *utils,
+int sasl_server_plug_init(const sasl_utils_t *utils,
 			  int maxversion,
 			  int *out_version,
 			  const sasl_server_plug_t **pluglist,
@@ -1367,7 +1367,7 @@ static const sasl_client_plug_t client_plugins[] =
   }
 };
 
-int sasl_client_plug_init(sasl_utils_t *utils __attribute__((unused)),
+int sasl_client_plug_init(const sasl_utils_t *utils __attribute__((unused)),
 			  int maxversion,
 			  int *out_version,
 			  const sasl_client_plug_t **pluglist,

@@ -166,7 +166,7 @@ static const sasl_server_plug_t plugins[] =
   }
 };
 
-int sasl_server_plug_init(sasl_utils_t *utils __attribute__((unused)),
+int sasl_server_plug_init(const sasl_utils_t *utils __attribute__((unused)),
 			  int maxversion,
 			  int *out_version,
 			  const sasl_server_plug_t **pluglist,
@@ -391,7 +391,7 @@ static const sasl_client_plug_t client_plugins[] =
   }
 };
 
-int sasl_client_plug_init(sasl_utils_t *utils __attribute__((unused)),
+int sasl_client_plug_init(const sasl_utils_t *utils __attribute__((unused)),
 			  int maxversion,
 			  int *out_version,
 			  const sasl_client_plug_t **pluglist,

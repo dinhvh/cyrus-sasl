@@ -185,7 +185,7 @@ sasl_gss_encode(void *context, const struct iovec *invec, unsigned numiov,
       int len;
 
       ret = _plug_buf_alloc(text->utils, &(text->encode_buf),
-			    &text->encode_buf_len, output_token->length + 4);
+			    &(text->encode_buf_len), output_token->length + 4);
 
       if (ret != SASL_OK) {
 	  gss_release_buffer(&min_stat, output_token);
@@ -261,7 +261,10 @@ sasl_gss_decode_once(void *context,
 	    if (text->size > 0xFFFF || text->size <= 0) return SASL_FAIL;
 
 	    if (text->bufsize < text->size + 5) {
-		text->buffer = text->utils->realloc(text->buffer, text->size + 5);
+		if(!text->buffer)
+		    text->buffer = text->utils->malloc(text->size + 5);
+		else
+		    text->buffer = text->utils->realloc(text->buffer, text->size + 5);
 		text->bufsize = text->size + 5;
 	    }
 	    if (text->buffer == NULL) return SASL_NOMEM;
@@ -346,8 +349,8 @@ static int sasl_gss_decode(void *context,
 
       if (tmp!=NULL) /* if received 2 packets merge them together */
       {
-	  ret = _plug_buf_alloc(text->utils, &text->decode_buf,
-				&text->decode_buf_len, *outputlen + tmplen);
+	  ret = _plug_buf_alloc(text->utils, &(text->decode_buf),
+				&(text->decode_buf_len), *outputlen + tmplen);
 	  if(ret != SASL_OK) return ret;
 
 	  *output = text->decode_buf;
@@ -418,10 +421,15 @@ sasl_gss_free_context_contents(context_t *text)
     maj_stat = gss_release_name(&min_stat,&text->server_name);
     text->server_name = GSS_C_NO_NAME;
   }
-  
+
   if ( text->server_creds != GSS_C_NO_CREDENTIAL) {
     maj_stat = gss_release_cred(&min_stat, &text->server_creds);
     text->server_creds = GSS_C_NO_CREDENTIAL;
+  }
+
+  if (text->out_buf) {
+      text->utils->free(text->out_buf);
+      text->out_buf = NULL;
   }
 
   if (text->encode_buf) {
@@ -433,7 +441,7 @@ sasl_gss_free_context_contents(context_t *text)
       text->utils->free(text->decode_buf);
       text->decode_buf = NULL;
   }
-  
+
   if (text->enc_in_buf) {
       if(text->enc_in_buf->data) text->utils->free(text->enc_in_buf->data);
       text->utils->free(text->enc_in_buf);
@@ -462,7 +470,7 @@ sasl_gss_dispose(void **conn_context, const sasl_utils_t *utils)
 static void 
 sasl_gss_free(void *global_context, const sasl_utils_t *utils)
 {
-  utils->free(global_context);
+  if(global_context) utils->free(global_context);
 }
 
 static int 
@@ -890,9 +898,9 @@ static const sasl_server_plug_t plugins[] =
 int 
 sasl_server_plug_init(
 #ifndef HAVE_GSSKRB5_REGISTER_ACCEPTOR_IDENTITY
-		      sasl_utils_t *utils __attribute__((unused)),
+		      const sasl_utils_t *utils __attribute__((unused)),
 #else
-		      sasl_utils_t *utils,
+		      const sasl_utils_t *utils,
 #endif 
 		      int maxversion,
 		      int *out_version,
@@ -1444,7 +1452,7 @@ static const sasl_client_plug_t client_plugins[] =
 };
 
 int 
-sasl_client_plug_init(sasl_utils_t *utils __attribute__((unused)), 
+sasl_client_plug_init(const sasl_utils_t *utils __attribute__((unused)), 
 		      int maxversion,
 		      int *out_version, 
 		      const sasl_client_plug_t **pluglist,
