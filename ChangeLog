@@ -1,3 +1,7 @@
+2000-07-09  Rob Siemborski <rjs3+@andrew.cmu.edu>
+	* First attempt at making the java code work again
+	* Minor memory and byte order bugfixes
+
 2000-07-06  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Loading of auxprop and canonuser plugins from DSOs
 	  (This still sucks performance wise, and will be fixed soon)

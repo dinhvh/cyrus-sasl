@@ -98,11 +98,23 @@ log(void *context __attribute__((unused)),
   case SASL_LOG_ERR:
     label = "Error";
     break;
-  case SASL_LOG_WARNING:
+  case SASL_LOG_WARN:
     label = "Warning";
     break;
-  case SASL_LOG_INFO:
-    label = "Info";
+  case SASL_LOG_NOTE:
+    label = "Note";
+    break;
+  case SASL_LOG_FAIL:
+    label = "Fail";
+    break;
+  case SASL_LOG_PASS:
+    label = "Pass";
+    break;
+  case SASL_LOG_TRACE:
+    label = "Trace";
+    break;
+  case SASL_LOG_DEBUG:
+    label = "Debug";
     break;
   default:
     return SASL_BADPARAM;
@@ -200,7 +212,7 @@ JNIEXPORT jint JNICALL Java_CyrusSasl_ServerFactory_jni_1sasl_1server_1new
   }
 
   result=sasl_server_new(service, local_domain, user_domain, 
-			 NULL, jsecflags, &conn);
+			 NULL, NULL, NULL, jsecflags, &conn);
   if (result!=SASL_OK)
     throwexception(env,result);
 
@@ -223,7 +235,8 @@ JNIEXPORT jint JNICALL JNICALL Java_CyrusSasl_ClientFactory_jni_1sasl_1client_1n
   const char *serverFQDN = (*env)->GetStringUTFChars(env, jserver, 0);
   int result;
 
-  result=sasl_client_new(service, serverFQDN, NULL, jsecflags, &conn);
+  result=sasl_client_new(service, serverFQDN, NULL, NULL, NULL,
+			 jsecflags, &conn);
 
   if (result!=SASL_OK)
     throwexception(env,result);
@@ -244,11 +257,11 @@ JNIEXPORT jbyteArray JNICALL Java_CyrusSasl_GenericServer_jni_1sasl_1server_1sta
 {
   sasl_conn_t *conn;
   const char *mech = (*env)->GetStringUTFChars(env, jstr, 0);
-  char *out;
+  const char *out;
   unsigned int outlen;
    int result;
   jbyteArray arr;
-  const char *errstr;
+  char *tmp;
   char *in=NULL;
 
   VL(("in server start\n"));
@@ -260,8 +273,7 @@ JNIEXPORT jbyteArray JNICALL Java_CyrusSasl_GenericServer_jni_1sasl_1server_1sta
 
   result=sasl_server_start(conn, mech,
 			   (const char *) in, jlen,
-			   &out, &outlen,
-			   &errstr);
+			   &out, &outlen);
 
   if ((result!=SASL_OK) && (result!=SASL_CONTINUE))
   {
@@ -269,11 +281,19 @@ JNIEXPORT jbyteArray JNICALL Java_CyrusSasl_GenericServer_jni_1sasl_1server_1sta
     throwexception(env,result);
     return NULL;
   }
+
+  /* Because SASLv2 does not allow for persistance, we'll copy
+   * it here */
+  tmp = malloc(outlen);
+  if(!tmp) {
+      throwexception(env, SASL_NOMEM);
+      return NULL;
+  }
+
+  memcpy(tmp, out, outlen);
   
-
   arr=(*env)->NewByteArray(env,outlen);
-
-  (*env)->SetByteArrayRegion(env,arr, 0, outlen, (char *) out);
+  (*env)->SetByteArrayRegion(env,arr, 0, outlen, (char *)tmp);
 
   return arr;
 }
@@ -392,12 +412,12 @@ JNIEXPORT jbyteArray JNICALL Java_CyrusSasl_GenericClient_jni_1sasl_1client_1sta
 {    
   sasl_conn_t *conn=(sasl_conn_t *) ptr;
   const char *mechlist = (*env)->GetStringUTFChars(env, jstr, 0);
-  char *out;
+  const char *out;
   unsigned int outlen=0;
   const char *mechusing;
   int result;
-  sasl_secret_t *secret;
   sasl_interact_t *client_interact=NULL;
+  char *tmp;
   jbyteArray arr;
   jstring jmechusing;
   jclass cls;
@@ -405,15 +425,10 @@ JNIEXPORT jbyteArray JNICALL Java_CyrusSasl_GenericClient_jni_1sasl_1client_1sta
 
   VL(("sasl_start"));
  
-  /* create secret XXX */
-  secret=(sasl_secret_t *) malloc(sizeof(sasl_secret_t)+9);
-  strcpy((char *) secret->data,"password");
-  secret->len=strlen((char *) secret->data);
-
   do {
 
       result=sasl_client_start(conn, mechlist,
-			       secret, &client_interact,
+			       &client_interact,
 			       &out, &outlen,
 			       &mechusing);
 
@@ -430,7 +445,6 @@ JNIEXPORT jbyteArray JNICALL Java_CyrusSasl_GenericClient_jni_1sasl_1client_1sta
     throwexception(env,result);
     return NULL;
   }
-
 
   /* tell the java layer what mechanism we're using */
 
@@ -451,9 +465,18 @@ JNIEXPORT jbyteArray JNICALL Java_CyrusSasl_GenericClient_jni_1sasl_1client_1sta
   /* do the callback */
   (*env)->CallVoidMethod(env, obj, mid,jmechusing);
 
-  /* make the byte array to return */
+  /* Because SASLv2 does not allow for persistance, we'll copy
+   * it here */
+  tmp = malloc(outlen);
+  if(!tmp) {
+      throwexception(env, SASL_NOMEM);
+      return NULL;
+  }
+
+  memcpy(tmp, out, outlen);
+  
   arr=(*env)->NewByteArray(env,outlen);
-  (*env)->SetByteArrayRegion(env,arr, 0, outlen, (char *) out);
+  (*env)->SetByteArrayRegion(env,arr, 0, outlen, (char *)tmp);
   
   return arr;
 }
@@ -468,17 +491,17 @@ JNIEXPORT jbyteArray JNICALL Java_CyrusSasl_GenericServer_jni_1sasl_1server_1ste
 {
   sasl_conn_t *conn=(sasl_conn_t *) ptr;
   int result;
-  char *out;
+  const char *out;
   unsigned int outlen;
   jbyteArray arr;
-  const char *errstr;  
   char *in = NULL;
-
+  char *tmp;
+  
   if (jlen > 0)
       in = (*env)->GetByteArrayElements(env, jarr, 0);
 
   result=sasl_server_step(conn, (const char *) in, jlen,
-			  &out, &outlen, &errstr);
+			  &out, &outlen);
 
   if ((result!=SASL_OK) && (result!=SASL_CONTINUE))
   {
@@ -495,10 +518,18 @@ JNIEXPORT jbyteArray JNICALL Java_CyrusSasl_GenericServer_jni_1sasl_1server_1ste
   if (jlen > 0)
       (*env)->ReleaseByteArrayElements(env, jarr,in ,0);
 
-  /* make byte array to return with stuff to send to server */
-  arr=(*env)->NewByteArray(env,outlen);
+  /* Because SASLv2 does not allow for persistance, we'll copy
+   * it here */
+  tmp = malloc(outlen);
+  if(!tmp) {
+      throwexception(env, SASL_NOMEM);
+      return NULL;
+  }
 
-  (*env)->SetByteArrayRegion(env,arr, 0, outlen, (char *) out);
+  memcpy(tmp, out, outlen);
+  
+  arr=(*env)->NewByteArray(env,outlen);
+  (*env)->SetByteArrayRegion(env,arr, 0, outlen, (char *)tmp);
 
   return arr;
 }
@@ -538,11 +569,12 @@ JNIEXPORT jbyteArray JNICALL Java_CyrusSasl_GenericClient_jni_1sasl_1client_1ste
   /*  const char *in = (*env)->GetStringUTFChars(env, jstr, 0);*/
   int result;
   sasl_interact_t *client_interact=NULL;
-  char *out;
+  const char *out;
   unsigned int outlen;
   jbyteArray arr;
   char *in;
-
+  char *tmp;
+  
   VL(("in client step\n"));
 
   if (jarr) {
@@ -584,12 +616,18 @@ JNIEXPORT jbyteArray JNICALL Java_CyrusSasl_GenericClient_jni_1sasl_1client_1ste
       (*env)->ReleaseByteArrayElements(env, jarr,in ,0);
   }
       
-  VL(("about to newbytearray\n"));
-  /* make byte array to return with stuff to send to server */
-  arr=(*env)->NewByteArray(env,outlen);
+  /* Because SASLv2 does not allow for persistance, we'll copy
+   * it here */
+  tmp = malloc(outlen);
+  if(!tmp) {
+      throwexception(env, SASL_NOMEM);
+      return NULL;
+  }
+
+  memcpy(tmp, out, outlen);
   
-  VL(("about to setbytearray\n"));
-  (*env)->SetByteArrayRegion(env,arr, 0, outlen, (char *) out);
+  arr=(*env)->NewByteArray(env,outlen);
+  (*env)->SetByteArrayRegion(env,arr, 0, outlen, (char *)tmp);
 
   VL(("returning arr\n"));
   return arr;
@@ -655,8 +693,9 @@ JNIEXPORT jbyteArray JNICALL Java_CyrusSasl_GenericCommon_jni_1sasl_1encode
 {
   sasl_conn_t *conn=(sasl_conn_t *) ptr;
   char *in = (*env)->GetByteArrayElements(env, jarr, 0);
-  char *out;
+  const char *out;
   unsigned int outlen;
+  char *tmp;
   int result;
   jbyteArray arr;
 
@@ -664,8 +703,18 @@ JNIEXPORT jbyteArray JNICALL Java_CyrusSasl_GenericCommon_jni_1sasl_1encode
   if (result!=SASL_OK)
     throwexception(env,result);
 
+  /* Because SASLv2 does not allow for persistance, we'll copy
+   * it here */
+  tmp = malloc(outlen);
+  if(!tmp) {
+      throwexception(env, SASL_NOMEM);
+      return NULL;
+  }
+
+  memcpy(tmp, out, outlen);
+  
   arr=(*env)->NewByteArray(env,outlen);
-  (*env)->SetByteArrayRegion(env,arr, 0, outlen, (char *) out);
+  (*env)->SetByteArrayRegion(env,arr, 0, outlen, (char *)tmp);
 
   return arr;
 }
@@ -679,8 +728,9 @@ JNIEXPORT jbyteArray JNICALL Java_CyrusSasl_GenericCommon_jni_1sasl_1decode
 
   sasl_conn_t *conn=(sasl_conn_t *) ptr;
   char *in = (*env)->GetByteArrayElements(env, jarr, 0);
-  char *out;
+  const char *out;
   unsigned int outlen=9;
+  char *tmp;
   int inlen=jlen;
   int result;
   jbyteArray arr;
@@ -689,8 +739,19 @@ JNIEXPORT jbyteArray JNICALL Java_CyrusSasl_GenericCommon_jni_1sasl_1decode
   if (result!=SASL_OK)
     throwexception(env,result);
 
+
+  /* Because SASLv2 does not allow for persistance, we'll copy
+   * it here */
+  tmp = malloc(outlen);
+  if(!tmp) {
+      throwexception(env, SASL_NOMEM);
+      return NULL;
+  }
+
+  memcpy(tmp, out, outlen);
+  
   arr=(*env)->NewByteArray(env,outlen);
-  (*env)->SetByteArrayRegion(env,arr, 0, outlen, (char *) out);
+  (*env)->SetByteArrayRegion(env,arr, 0, outlen, (char *)tmp);
 
   (*env)->ReleaseByteArrayElements(env, jarr, in,0);
 
@@ -724,7 +785,7 @@ JNIEXPORT jstring JNICALL Java_CyrusSasl_ServerFactory_jni_1sasl_1server_1getlis
   const char *pre = (*env)->GetStringUTFChars(env, jpre, 0);
   const char *sep = (*env)->GetStringUTFChars(env, jsep, 0);
   const char *suf = (*env)->GetStringUTFChars(env, jsuf, 0);
-  char *list;
+  const char *list;
   unsigned int plen;
   jstring ret;
 
@@ -751,17 +812,18 @@ JNIEXPORT void JNICALL Java_CyrusSasl_GenericCommon_jni_1sasl_1set_1server
   sasl_conn_t *conn=(sasl_conn_t *) ptr;
   char *ip = (*env)->GetByteArrayElements(env, jarr, 0);
   struct sockaddr_in addr;
+  char out[52];
   int result;
 
   addr.sin_family = AF_INET;
   memcpy(&addr.sin_addr, ip, 4);
   addr.sin_port = htons(jport);
 
-  VL (("remote IP = %d %d %d %d\n",ip[0],ip[1],ip[2],ip[3]));
+  sprintf(out, "%d.%d.%d.%d;%d", ip[0], ip[1], ip[2], ip[3], jport);
 
-  result=sasl_setprop(conn,   SASL_IP_REMOTE, &addr);  
+  result=sasl_setprop(conn, SASL_IPREMOTEPORT, &out);  
 
-  VL(("Set IP_REMOTE: %d\n",result));
+  VL(("Set IP_REMOTE: %s: %d\n",out, result));
 
   /* if not set throw and exception */
   if (result!=SASL_OK)
@@ -778,17 +840,18 @@ JNIEXPORT void JNICALL Java_CyrusSasl_GenericCommon_jni_1sasl_1set_1client
   sasl_conn_t *conn=(sasl_conn_t *) ptr;
   char *ip = (*env)->GetByteArrayElements(env, jarr, 0);
   struct sockaddr_in addr;
+  char out[52];
   int result;
 
   addr.sin_family = AF_INET;
   memcpy(&addr.sin_addr, ip, 4);
   addr.sin_port = htons(jport);
 
-  VL (("local IP = %d %d %d %d\n",ip[0],ip[1],ip[2],ip[3]));
+  sprintf(out, "%d.%d.%d.%d;%d", ip[0], ip[1], ip[2], ip[3], jport);
 
-  result=sasl_setprop(conn,   SASL_IP_LOCAL, &addr);  
+  result=sasl_setprop(conn, SASL_IPLOCALPORT, &out);
 
-  VL(("Set IP_LOCAL: %d\n",result));
+  VL(("Set IP_LOCAL: %s: %d\n",out, result));
 
   /* if not set throw and exception */
   if (result!=SASL_OK)
@@ -843,7 +906,7 @@ JNIEXPORT jint JNICALL Java_CyrusSasl_GenericCommon_jni_1sasl_1getSecurity
     sasl_conn_t *conn = (sasl_conn_t *) ptr;
     int *ssfp;
 
-    r = sasl_getprop(conn, SASL_SSF, (void **) &ssfp);
+    r = sasl_getprop(conn, SASL_SSF, (const void **) &ssfp);
     if (r != SASL_OK) {
 	throwexception(env, r);
     }
