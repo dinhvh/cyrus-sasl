@@ -1,3 +1,15 @@
+New in 2.0.4-BETA
+-----------------
+* THIS IS A BETA-QUALITY RELEASE THAT IS ONLY INTENDED FOR USE BY
+  DEVELOPERS WHOSE APPLICATIONS MAKE USE OF THE CYRUS SASL LIBRARY.
+  IT *WILL BREAK* ANY APPLICATION EXPECTING THE SASLv1 API.
+* This release now includes Mac OS 9 and Mac OS X support.
+* Significant new features include 
+  * DES and 3DES Encryption should now be working for DIGEST-MD5
+  * Improved configuration system
+  * Improved documentation (now includes plugin writers guide)
+  * Many other bugfixes (see ChangeLog)
+
 New in 2.0.3-BETA
 -----------------
 * THIS IS A BETA-QUALITY RELEASE THAT IS ONLY INTENDED FOR USE BY

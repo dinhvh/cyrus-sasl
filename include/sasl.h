@@ -88,7 +88,7 @@
  * Basic Server model:
  *  1. call sasl_server_init() at startup to load plug-ins
  *  2. On connection, call sasl_server_new()
- * [3. call sasl_listmech() and send list to client]
+ *  3. call sasl_listmech() and send list to client]
  *  4. after client AUTH command, call sasl_server_start(), goto 5a
  *  5. call sasl_server_step()
  *  5a. If SASL_CONTINUE, output to client, wait response, repeat 5
@@ -123,7 +123,7 @@
 
 #define SASL_VERSION_MAJOR 2
 #define SASL_VERSION_MINOR 0
-#define SASL_VERSION_STEP 3
+#define SASL_VERSION_STEP 4
 
 #include "prop.h"
 #define LIBSASL_API
