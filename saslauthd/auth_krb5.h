@@ -1,5 +1,5 @@
 /* COPYRIGHT
- * Copyright (c) 1997-2000 Messaging Direct Ltd.
+ * Copyright (c) 1997 Messaging Direct Ltd.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,62 +25,4 @@
  * DAMAGE.
  * END COPYRIGHT */
 
-#ifdef __GNUC__
-#ident "$Id: mechanisms.h,v 1.2.2.1 2001/06/25 20:08:09 rjs3 Exp $"
-#endif
-
-#include <config.h>
-
-
-/* PUBLIC DEPENDENCIES */
-/* Authentication mechanism dispatch table definition */
-typedef struct {
-    char *name;				/* name of the mechanism */
-    int (*initialize)(void);		/* initialization function */
-    char *(*authenticate)(const char *, const char *); /* authentication
-							  function */
-} authmech_t;
-
-extern authmech_t mechanisms[];		/* array of supported auth mechs */
-extern authmech_t *authmech;		/* auth mech daemon is using */
-/* END PUBLIC DEPENDENCIES */
-
-/*
- * Figure out which optional drivers we support.
- */
-#ifndef AUTH_KRB5
-# if defined(HAVE_GSSAPI_H)
-#  define AUTH_KRB5
-# endif
-#endif
-
-#ifndef AUTH_KRB4
-# if defined(HAVE_KRB)
-#  define AUTH_KRB4
-# endif
-#endif
-
-#ifndef AUTH_DCE
-# if defined(HAVE_USERSEC_H) && defined(HAVE_AUTHENTICATE)
-#  define AUTH_DCE
-# endif
-#endif
-
-#ifndef AUTH_SHADOW
-# if defined(HAVE_GETSPNAM) || defined(HAVE_GETUSERPW)
-#  define AUTH_SHADOW
-# endif
-#endif
-
-#ifndef AUTH_SIA
-# if defined(HAVE_SIA_VALIDATE_USER)
-#  define AUTH_SIA
-# endif
-#endif
-
-#ifndef AUTH_PAM
-# ifdef HAVE_PAM
-#warning HAVE_PAM defined
-#  define AUTH_PAM
-# endif
-#endif
+char *auth_krb5(const char *, const char *);

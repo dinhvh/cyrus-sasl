@@ -31,7 +31,7 @@
  * END SYNOPSIS */
 
 #ifdef __GNUC__
-#ident "$Id: mechanisms.c,v 1.2 2001/01/04 21:20:45 leg Exp $"
+#ident "$Id: mechanisms.c,v 1.2.2.1 2001/06/25 20:08:09 rjs3 Exp $"
 #endif
 
 /* PUBLIC DEPENDENCIES */
@@ -47,6 +47,7 @@
 # include "auth_sia.h"
 #endif /* AUTH_SIA */
 #include "auth_krb4.h"
+#include "auth_krb5.h"
 #include "auth_getpwent.h"
 #include "auth_rimap.h"
 #ifdef AUTH_PAM
@@ -66,6 +67,9 @@ authmech_t mechanisms[] =
 #ifdef AUTH_KRB4
     {	"kerberos4",	auth_krb4_init,		auth_krb4 },
 #endif /* AUTH_KRB4 */
+#ifdef AUTH_KRB5
+    {	"kerberos5",	0,			auth_krb5 },
+#endif /* AUTH_KRB5 */
 #ifdef AUTH_PAM
     {	"pam",		0,			auth_pam },
 #endif /* AUTH_PAM */
