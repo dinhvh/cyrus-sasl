@@ -9,6 +9,8 @@
 
 	* saslauthd/auth_getpwent.c (auth_getpwent): clear a warning
 
+	* utils/Makefile.am (EXTRA_DIST): Actually include the needed files
+
 2001-08-11  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* saslauthd/: Now configures separately from SASL, so as
 	  to localize tests for that package within that package
