@@ -527,11 +527,12 @@ typedef int sasl_getrealm_t(void *context, int id,
  * returns SASL_OK on success,
  *         SASL_NOAUTHZ or other SASL response on failure
  */
+/* FIXME: The unsigned's are int's to chris newman */
 typedef int sasl_authorize_t(sasl_conn_t *conn,
 			     void *context,
-			     const char *requested_user, int rlen,
-			     const char *auth_identity, int alen,
-			     const char *def_realm, int urlen,
+			     const char *requested_user, unsigned rlen,
+			     const char *auth_identity, unsigned alen,
+			     const char *def_realm, unsigned urlen,
 			     struct propctx *propctx);
 #define SASL_CB_PROXY_POLICY 0x8001
 

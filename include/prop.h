@@ -1,6 +1,7 @@
 /* prop.h -- property request/response management routines
  *
  * Author: Chris Newman
+ * Removal of implementation-specific details by: Rob Siemborski
  *
  * This is intended to be used to create a list of properties to request,
  * and _then_ request values for all properties.  Any change to the request
@@ -13,21 +14,9 @@
  * If a prop_init() call were added, it would be reasonable to embed a "struct
  * propctx" in another structure.  prop_new also allocates a pool of memory
  * (in the vbase field) which will be used for an array of "struct propval"
- * to list all the requested properties.  The vbase pool is grown as necessary
- * when more properties are requested so that the array is contiguous.
+ * to list all the requested properties.
  *
- * Properties may be multi-valued.  When a property is set, the active memory
- * pool is determined -- initially the pool will be any leftover space in the
- * vbase pool.  Once the vbase pool is gone, then new memory pools (of type
- * "struct proppool" will be created as necessary.
- *
- * An array of pointers to the property values is stored from the bottom of
- * the active pool going up.  The actual text strings of the properties are
- * stored from the top of the active pool going down.
- *
- * With a correct estimate in prop_new(), only two calls to malloc will ever
- * be necessary in the common case (one for "struct propctx", the other for
- * the vbase pool).
+ * Properties may be multi-valued.
  */
 
 #ifndef PROP_H
@@ -45,35 +34,16 @@ struct propval {
     unsigned valsize;	 /* total size in characters of all value strings */
 };
 
-/* internal memory pool structure
- */
-struct proppool {
-    struct proppool *next;	/* next block */
-    unsigned size;		/* size of this block */
-    unsigned unused;		/* amount of block that's unused */
-    char *data;			/* data area */
-};
-
-/* private internal structure
+/*
+ * private internal structure
  */
 #define PROP_DEFAULT 4		/* default number of propvals to assume */
-struct propctx {
-    struct propval *vbase;	/* array of property values */
-    struct propval *vlast;	/* last property used by prop_set */
-    const char *novalue;	/* always set to NULL */
-    char *dptr;			/* pointer to base of data area */
-    char **slend;		/* pointer to end of string list area */
-    struct proppool *pool;	/* start of memory pool list */
-    struct proppool *cur;	/* current item in memory pool list */
-    unsigned unused;		/* bytes of unused space between slend&dptr */
-    unsigned vused;		/* number of propval entries used */
-    unsigned vtotal;		/* total additional entries in vbase */
-};
+struct propctx;
 
 /* create a property context
  *  estimate -- an estimate of the storage needed for requests & responses
  *              0 will use module default
- * returns -1 on error
+ * returns NULL on error -- FIXME chris newman returns -1
  */
 struct propctx *prop_new(unsigned estimate);
 
