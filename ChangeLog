@@ -7,6 +7,8 @@
 	  checking.  Added parameter to doauth to disable fatal() calls,
 	  updated all callers.
 
+	* plugins/gssapi.c: conform with draft-ietf-cat-sasl-gssapi-05.txt
+
 2001-08-06  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* utils/dbconverter-2.c (listusers_cb): handle PLAIN-APOP
 

@@ -1,7 +1,7 @@
 /* GSSAPI SASL plugin
  * Leif Johansson
  * Rob Siemborski (SASL v2 Conversion)
- * $Id: gssapi.c,v 1.41.2.26 2001/07/27 20:48:01 rjs3 Exp $
+ * $Id: gssapi.c,v 1.41.2.27 2001/08/07 19:14:43 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -866,20 +866,26 @@ gssapi_server_mech_step(void *conn_context,
 	    text->requiressf = params->props.min_ssf - params->external_ssf;
 	}
 
+/* build up our security properties token */
+	*((unsigned long *)sasldata) = params->props.maxbufsize & 0xFFFFFF;
 	sasldata[0] = 0;
+	if(text->requiressf != 0 && !params->props.maxbufsize) {
+	    sasl_seterror(params->utils->conn, 0,
+			  "GSSAPI needs a security layer but one is forbidden");
+	    return SASL_TOOWEAK;
+	}
+
 	if (text->requiressf == 0) {
 	    sasldata[0] |= 1; /* authentication */
 	}
-	if (text->requiressf <= 1 && text->limitssf >= 1) {
+	if (text->requiressf <= 1 && text->limitssf >= 1
+	    && params->props.maxbufsize) {
 	    sasldata[0] |= 2;
 	}
-	if (text->requiressf <= 56 && text->limitssf >= 56) {
+	if (text->requiressf <= 56 && text->limitssf >= 56
+	    && params->props.maxbufsize) {
 	    sasldata[0] |= 4;
 	}
-
-	sasldata[1] = 0x0F; /* XXX use something non-artificial */
-	sasldata[2] = 0xFF;
-	sasldata[3] = 0xFF;
 	
 	real_input_token.value = (void *)sasldata;
 	real_input_token.length = 4;
@@ -1244,14 +1250,14 @@ gssapi_client_mech_step(void *conn_context,
   OM_uint32 maj_stat, min_stat;
   gss_buffer_desc name_token;
   int ret;
-  
+  OM_uint32 req_flags, out_req_flags;
   input_token = &real_input_token;
   output_token = &real_output_token;
   output_token->value = NULL;
   input_token->value = NULL; 
   input_token->length = 0;
 
-  *clientout = NULL;
+  *clientout = "";
   *clientoutlen = 0;
 
   switch (text->state)
@@ -1348,19 +1354,30 @@ gssapi_client_mech_step(void *conn_context,
            text->gss_ctx = GSS_C_NO_CONTEXT;
          }
 
+	/* Setup req_flags properly */
+	req_flags = GSS_C_MUTUAL_FLAG | GSS_C_SEQUENCE_FLAG;
+	if(params->props.max_ssf > params->external_ssf) {
+	    /* We are requesting a security layer */
+	    req_flags |= GSS_C_INTEG_FLAG;
+	    if(params->props.max_ssf - params->external_ssf > 56) {
+		/* We want to try for privacy */
+		req_flags |= GSS_C_CONF_FLAG;
+	    }
+	}
+
 	maj_stat =
 	  gss_init_sec_context(&min_stat,
 			       GSS_C_NO_CREDENTIAL,
 			       &text->gss_ctx,
 			       text->server_name,
 			       GSS_C_NO_OID,
-			       GSS_C_MUTUAL_FLAG | GSS_C_SEQUENCE_FLAG,
+			       req_flags,
 			       0,
 			       GSS_C_NO_CHANNEL_BINDINGS,
 			       input_token,
 			       NULL,
 			       output_token,
-			       NULL,
+			       &out_req_flags,
 			       NULL);
 	
 	if (GSS_ERROR(maj_stat))
@@ -1388,7 +1405,7 @@ gssapi_client_mech_step(void *conn_context,
 	    
 	    gss_release_buffer(&min_stat, output_token);
         }
-
+	
 	if (maj_stat == GSS_S_COMPLETE)
 	{
             /* Switch to ssf negotiation */
@@ -1445,6 +1462,8 @@ gssapi_client_mech_step(void *conn_context,
 
 	/* bit mask of server support */
 	serverhas = ((char *)output_token->value)[0];
+	
+	oparams->maxoutbuf=(*(unsigned long *)output_token->value & 0xFFFFFF);
 
 	/* if client didn't set use strongest layer available */
 	if (allowed >= 56 && need <= 56 && (serverhas & 4)) {
@@ -1488,12 +1507,10 @@ gssapi_client_mech_step(void *conn_context,
 
 	if (oparams->user)
 	    memcpy((char *)input_token->value+4,oparams->user,alen);
-	
+
+	*((unsigned long *)input_token->value) =
+	     params->props.maxbufsize & 0xFFFFFF;
 	((unsigned char *)input_token->value)[0] = mychoice;
-	oparams->maxoutbuf = 1024; /* FIXME: do something real here */
-	((unsigned char *)input_token->value)[1] = 0x0F;
-	((unsigned char *)input_token->value)[2] = 0xFF;
-	((unsigned char *)input_token->value)[3] = 0xFF;
 
 	maj_stat = gss_wrap (&min_stat,
 			     text->gss_ctx,
