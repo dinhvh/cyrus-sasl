@@ -1,6 +1,6 @@
 # Makefile.am for the SASL library
 # Rob Earhart
-# $Id: Makefile.am,v 1.41.2.7 2001/07/02 22:50:07 rjs3 Exp $
+# $Id: Makefile.am,v 1.41.2.8 2001/07/03 15:56:43 rjs3 Exp $
 # Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -61,8 +61,9 @@ libsasl2_la_DEPENDENCIES = $(SASL_DB_BACKEND) @LTLIBOBJS@
 libsasl2_la_LIBADD = @LTLIBOBJS@ $(SASL_DB_BACKEND) $(SASL_DB_LIB) $(SASL_DL_LIB) $(PLAIN_LIBS) $(LIB_SOCKET)
 # PLAIN_LIBS are linked in for sasl_checkpass
 
-#static version
-lib_LIBRARIES = libsasl2.a
+#static version (optional)
+lib_LIBRARIES = @SASL_STATIC_LIBS@
+EXTRA_LIBRARIES = libsasl2.a
 libsasl2_a_SOURCES = $(common_sources) staticopen.c $(common_headers) staticopen.h
 EXTRA_libsasl2_a_SOURCES = $(extra_common_sources)
 libsasl2_a_DEPENDENCIES = @SASL_STATIC_OBJS@ $(SASL_DB_BACKEND_STATIC)

@@ -1,6 +1,6 @@
 dnl configure.in for the SASL library
 dnl Rob Earhart
-dnl $Id: configure.in,v 1.106.2.8 2001/07/03 14:18:58 rjs3 Exp $
+dnl $Id: configure.in,v 1.106.2.9 2001/07/03 15:56:42 rjs3 Exp $
 dnl
 dnl Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
 dnl
@@ -76,6 +76,16 @@ CMU_PROG_LIBTOOL
 if test "$ac_cv_prog_gcc" = yes; then
   CFLAGS="-Wall -W ${CFLAGS}"
 fi
+
+AC_ARG_WITH(staticsasl,[  --with-staticsasl       build a static library with all mechs included.                 (Different from enable-static, but probabally the one you want)])
+AC_MSG_CHECKING(checking to build static libsasl2.a)
+if test "$with_staticsasl" = yes; then
+  AC_MSG_RESULT(yes)
+  SASL_STATIC_LIBS="$SASL_STATIC_LIBS libsasl2.a"
+else
+  AC_MSG_RESULT(no)
+fi
+AC_SUBST(SASL_STATIC_LIBS)
 
 AC_ARG_WITH(purecov,[  --with-purecov          link with purecov])
 if test "$with_purecov" = yes; then
