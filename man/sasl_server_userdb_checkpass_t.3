@@ -38,24 +38,47 @@
 .\" AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\" 
-.TH SASL "10 July 2001" SASL "SASL man pages"
+.TH sasl_server_userdb_checkpass_t "10 July 2001" SASL "SASL man pages"
 .SH NAME
-SASL \- SASL authentication library
+sasl_server_userdb_checkpass_t \- Plaintext Password Verification Callback
+
+.SH SYNOPSIS
+.nf
+.B #include <sasl/sasl.h>
+
+.sp
+.BI "int sasl_server_userdb_checkpass_t(sasl_conn_t " *conn ","
+.BI "                                   void " *context ","
+.BI "			                const char " *user ","
+.BI "                                   const char " *pass ","
+.BI "                                   unsigned " passlen ","
+.BI "                                   struct propctx " *propctx ")"
+
+.fi
 .SH DESCRIPTION
-The CMU Cyrus SASL library is a general purpose authentication library for sever and client applications.
 
-.B System Administrators:
+.B sasl_server_userdb_checkpass_t
+is used to verify a plaintext password against the callback supplier's user
+database.  This is to allow additional ways to encode the userPassword
+property.
 
-For information on setting up/configuring the SASL library see the 
-.I System Administrators Guide
-in the doc/ directory of the SASL distribution.
+.I context
+context from the callback record
 
-.B Programmers:
+.I user
+NUL terminated user name with user@realm syntax
 
-See man pages for individual sasl functions or the
-.I Programmers Guide
-in the doc/ directory of the SASL distribution.
-.SH "CONFORMING TO"
-RFC 2222
+.I pass
+password to check (may not be NUL terminated)
+
+.I passlen
+length of the password
+
+.I propctx
+property context to fill in with userPassword
+
+.SH "RETURN VALUE"
+SASL callback functions should return SASL return codes. See sasl.h for a complete list. SASL_OK indicates success.
+
 .SH "SEE ALSO"
-sasl_authorize_t(3), sasl_auxprop(3), sasl_auxprop_getctx(3), sasl_auxprop_request(3), sasl_callbacks(3), sasl_chalprompt_t(3), sasl_checkapop(3), sasl_checkpass(3), sasl_client_init(3), sasl_client_new(3), sasl_client_start(3), sasl_client_step(3), sasl_decode(3), sasl_dispose(3), sasl_done(3), sasl_encode(3), sasl_encodev(3), sasl_errdetail(3), sasl_errors(3), sasl_errstring(3), sasl_errors(3), sasl_getopt_t(3), sasl_getpath_t(3), sasl_getprop(3), sasl_getrealm_t(3), sasl_getsecret_t(3), sasl_getsimple_t(3), sasl_idle(3), sasl_listmech(3), sasl_log_t(3), sasl_server_init(3), sasl_server_new(3), sasl_server_start(3), sasl_server_step(3), sasl_server_userdb_checkpass_t(3), sasl_server_userdb_setpass_t(3), sasl_setpass(3), sasl_setprop(3), sasl_user_exists(3), sasl_verifyfile_t(3)
+sasl(3), sasl_callbacks(3), sasl_errors(3), sasl_server_userdb_setpass_t(3)
