@@ -1,6 +1,6 @@
 /* SASL server API implementation
  * Tim Martin
- * $Id: server.c,v 1.84.2.14 2001/06/12 15:52:16 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.15 2001/06/12 19:09:46 rjs3 Exp $
  */
 
 /* 
@@ -1306,11 +1306,12 @@ int sasl_checkapop(sasl_conn_t *conn,
  		   const char *challenge,
  		   unsigned challen __attribute__((unused)),
  		   const char *response,
- 		   unsigned resplen)
+ 		   unsigned resplen __attribute__((unused)))
 {
     sasl_server_conn_t *s_conn = (sasl_server_conn_t *) conn;
-    char user[255];
-    unsigned i,j;
+    char *user, *user_end;
+    size_t user_len;
+    int ret;
     int result = SASL_FAIL;
  
     /* check params */
@@ -1318,34 +1319,29 @@ int sasl_checkapop(sasl_conn_t *conn,
     if (!conn || !response || !challenge)
 	return SASL_BADPARAM;
 
-    /* Get rid of leading whitespace */
-    for(i=0;i<resplen;i++)
-	if(!isspace(response[i])) break;
+    user_end = strrchr(response, ' ');
+    user_len = (size_t)(user_end - response);
+    user = sasl_ALLOC(user_len + 1);
+    memcpy(user, response, user_len);
+    user[user_len] = '\0';
 
-    if(i == resplen) return SASL_BADPARAM;
+    ret = _sasl_canon_user(conn,
+			   user, user_len,
+			   user, user_len,
+			   0, &(conn->oparams));
 
-    /* Copy the username */
-    for(j=0;i<resplen; i++) {
-	if(isspace(response[i])) {
-	    user[j] = '\0';
-	    break;
-	} else {
-	    user[j++] = response[i];
-	}
-	if(j==255) return SASL_FAIL;
-    }
+    sasl_FREE(user);
 
-    if(i == resplen) return SASL_BADPARAM;
-
-    /* Get rid of any extra whitespace */
-    for(;i<resplen; i++) {
-	if(!isspace(response[i])) break;
-    }
+    if(ret != SASL_OK) return ret;
     
-    if(i == resplen) return SASL_BADPARAM;
-
-    result = _sasl_sasldb_verify_apop(conn, user, challenge, &(response[i]),
+    result = _sasl_sasldb_verify_apop(conn, conn->oparams.user,
+				      challenge, user_end + 1,
 				      s_conn->user_realm);
+
+    if(result != SASL_OK) {
+	conn->oparams.user = NULL;
+	conn->oparams.authid = NULL;
+    }
 
     return result;
 }
