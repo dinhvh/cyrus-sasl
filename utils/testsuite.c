@@ -1,7 +1,7 @@
 /* testsuite.c -- Stress the library a little
  * Rob Siemborski
  * Tim Martin
- * $Id: testsuite.c,v 1.13.2.20 2001/07/02 20:47:49 rjs3 Exp $
+ * $Id: testsuite.c,v 1.13.2.21 2001/07/06 17:39:15 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -95,6 +95,7 @@ const char *username = "rjs3";
 const char *nonexistant_username = "ABCDEFGHIJ";
 const char *authname = "rjs3";
 const char *password = "1234";
+const char *cu_plugin = "INTERNAL";
 
 static const char *gssapi_service = "host";
 
@@ -354,6 +355,11 @@ int good_getopt(void *context __attribute__((unused)),
 	*result = "./sasldb";
 	if (len)
 	    *len = strlen("./sasldb");
+	return SASL_OK;
+    } else if (!strcmp(option, "canon_user_plugin")) {
+	*result = cu_plugin;
+	if (len)
+	    *len = strlen(*result);
 	return SASL_OK;
     }
 

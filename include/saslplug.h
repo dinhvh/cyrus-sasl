@@ -360,6 +360,7 @@ typedef struct sasl_client_plug {
 
 /* plug-in entry point:
  *  utils       -- utility callback functions
+ *  plugname    -- name of plugin (may be NULL)
  *  max_version -- highest client plug version supported
  * returns:
  *  out_version -- client plug version of result
@@ -676,7 +677,7 @@ typedef struct sasl_server_plug {
 
 /* plug-in entry point:
  *  utils         -- utility callback functions
- *  plugname      -- name of plug-in
+ *  plugname      -- name of plug-in (may be NULL)
  *  max_version   -- highest server plug version supported
  * returns:
  *  out_version   -- server plug-in version of result
@@ -716,8 +717,8 @@ typedef struct sasl_canonuser {
     /* global state for plugin */
     void *glob_context;
 
-    /* spare pointer */
-    void *spare_ptr1;
+    /* name of plugin */
+    char *name;
 
     /* free global state for plugin */
     void (*canon_user_free)(void *glob_context, const sasl_utils_t *utils);

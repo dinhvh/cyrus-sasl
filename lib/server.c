@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: server.c,v 1.84.2.37 2001/07/06 15:22:55 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.38 2001/07/06 17:39:14 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -676,6 +676,11 @@ int sasl_server_init(const sasl_callback_t *callbacks,
 	    ret = _sasl_get_mech_list("sasl_auxprop_plug_init",
 				      getpath_cb, verifyfile_cb,
 				      &_sasl_auxprop_add_plugin);
+	if(ret == SASL_OK)
+	    ret = _sasl_get_mech_list("sasl_canonuser_init",
+				      getpath_cb, verifyfile_cb,
+				      &_sasl_canonuser_add_plugin);
+	
     }
 
     if (ret == SASL_OK)	ret = _sasl_common_init();

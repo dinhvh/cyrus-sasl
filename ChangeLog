@@ -1,3 +1,8 @@
+2000-07-06  Rob Siemborski <rjs3+@andrew.cmu.edu>
+	* Loading of auxprop and canonuser plugins from DSOs
+	  (This still sucks performance wise, and will be fixed soon)
+	* Fixed some lack of indirection in CRAM and DIGEST plugins
+
 2000-07-05  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Working libsfsasl and smtptest program (--with-sfio)
 	* Fixed sasldblistusers (atleast for Berkeley DB)
@@ -41,4 +46,3 @@
 
 2000-06-27  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Version 2.0.0-ALPHA Released
-
