@@ -1,6 +1,6 @@
 dnl configure.in for the SASL library
 dnl Rob Earhart
-dnl $Id: configure.in,v 1.106.2.3 2001/06/20 16:06:38 rjs3 Exp $
+dnl $Id: configure.in,v 1.106.2.4 2001/06/28 16:13:37 rjs3 Exp $
 dnl
 dnl Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
 dnl
@@ -49,7 +49,7 @@ dnl
 dnl REMINDER: When changing the version number here, please also update
 dnl the values in win32/include/config.h and include/sasl.h as well.
 dnl
-AM_INIT_AUTOMAKE(cyrus-sasl, 2.0.0)
+AM_INIT_AUTOMAKE(cyrus-sasl, 2.0.0-ALPHA)
 CMU_INIT_AUTOMAKE
 
 DIRS=""
@@ -486,7 +486,10 @@ if test "$gssapi" != no; then
      LDFLAGS="$LDFLAGS -L$gssapi/lib"
   fi
 
-  AC_CHECK_LIB(roken,base64_decode,gss_impl="heimdal",, $LIB_CRYPT)
+# the base64_decode check fails because libroken has dependencies
+# FIXME: this is probabally non-optimal as well
+  AC_CHECK_LIB(krb5,krb5_vlog,gss_impl="heimdal",,)
+#  AC_CHECK_LIB(roken,base64_decode,gss_impl="heimdal",, $LIB_CRYPT)
 
   if test -d ${gssapi}; then
      GSSAPIBASE_LIBS="-L$gssapi"
