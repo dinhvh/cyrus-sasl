@@ -48,10 +48,29 @@
 
 /* This just exists to provide these symbols on systems where configure
  * couldn't find a database library. */
-sasl_server_getsecret_t *_sasl_db_getsecret = 0;
-sasl_server_putsecret_t *_sasl_db_putsecret = 0;
 
-int _sasl_server_check_db(const sasl_callback_t *verifyfile_cb)
+static int getsecret(void *context __attribute__((unused)),
+		     const char *mechanism __attribute__((unused)),
+		     const char *auth_identity __attribute__((unused)),
+		     const char *realm __attribute__((unused)),
+		     sasl_secret_t ** secret __attribute__((unused))) 
+{
+    return SASL_FAIL;
+}
+
+static int putsecret(void *context __attribute__((unused)),
+		     const char *mechanism __attribute__((unused)),
+		     const char *auth_identity __attribute__((unused)),
+		     const char *realm __attribute__((unused)),
+		     const sasl_secret_t *secret __attribute__((unused))) 
+{
+    return SASL_FAIL;
+}
+
+sasl_server_getsecret_t *_sasl_db_getsecret = &getsecret;
+sasl_server_putsecret_t *_sasl_db_putsecret = &putsecret;
+
+int _sasl_server_check_db(const sasl_callback_t *verifyfile_cb __attribute__((unused)))
 {
     return SASL_OK;
 }
