@@ -42,18 +42,47 @@ If an application is using the client side of the library functions to handle th
 
 The list of callbacks follows:
 
- sasl_getopt_t     client/server: Get an option value
- sasl_log_t        client/server: Log message handler
- sasl_getpath_t    client/server: Get path to search for mechanisms
- sasl_verifyfile_t client/server: Verify files for use by SASL
- sasl_canon_user_t client/server: Username canonicalization function.
- sasl_getsimple_t  client: Get user/language list
- sasl_getsecret_t  client: Get authentication secret
- sasl_chalprompt_t client: Display challenge and prompt for response
- sasl_getrealm_t   client: Get the realm for authentication
- sasl_authorize_t  server: Authorize policy callback
- sasl_server_userdb_checkpass_t server: verify plaintext password
- sasl_server_userdb_setpass_t   server: set plaintext password
+.SH Common Callbacks
+.TP 0.8i
+sasl_getopt_t
+Get an option value
+.TP 0.8i
+sasl_log_t
+Log message handler
+.TP 0.8i
+sasl_getpath_t
+Get path to search for mechanisms
+.TP 0.8i
+sasl_verifyfile_t
+Verify files for use by SASL
+.TP 0.8i
+sasl_canon_user_t
+Username canonicalization function.
+
+.SH Client-only Callbacks
+.TP 0.8i
+sasl_getsimple_t
+Get user/language list
+.TP 0.8i
+sasl_getsecret_t
+Get authentication secret
+.TP 0.8i
+sasl_chalprompt_t
+Display challenge and prompt for response
+.TP 0.8i
+sasl_getrealm_t
+Get the realm for authentication
+
+.SH Server-only Callbacks
+.TP 0.8i
+sasl_authorize_t
+Authorize policy callback
+.TP 0.8i
+sasl_server_userdb_checkpass_t
+verify plaintext password
+.TP 0.8i
+sasl_server_userdb_setpass_t
+set plaintext password
 
 .SH "RETURN VALUE"
 
