@@ -97,12 +97,12 @@ typedef struct buffer_info
     unsigned reallen;
 } buffer_info_t;
 
-#define SASL_CONN_UNKNOWN 0
-#define SASL_CONN_SERVER 1
-#define SASL_CONN_CLIENT 2
+enum Sasl_conn_type { SASL_CONN_UNKNOWN = 0,
+		      SASL_CONN_SERVER = 1,
+                      SASL_CONN_CLIENT = 2 };
 
 struct sasl_conn {
-  int type;
+  enum Sasl_conn_type type;
 
   void (*destroy_conn)(sasl_conn_t *); /* destroy function */
 

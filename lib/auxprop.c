@@ -51,14 +51,21 @@ struct proppool
 {
     struct proppool *next;
 
-    void *data;
     size_t size;          /* Size of Block */
-    size_t unused;        /* Space Remaining in this Block */
+    size_t unused;        /* Space unused in this pool between end
+			   * of char** area and beginning of char* area */
+
+    char data[0];         /* Variable Sized */
 };
 
 struct propctx  {
     struct propval *values;
+    struct propval *prev_val; /* Previous value used by set/setvalues */
+
     unsigned used_values, allocated_values;
+
+    char *data_end; /* Bottom of string area in current pool */
+    char **list_end; /* Top of list area in current pool */
 
     struct proppool *mem_base;
     struct proppool *mem_cur;
@@ -67,44 +74,48 @@ struct propctx  {
 static struct proppool *alloc_proppool(size_t size) 
 {
     struct proppool *ret;
-    ret = sasl_ALLOC(sizeof(struct proppool));
+    size_t total_size = sizeof(struct proppool) + size;
+    ret = sasl_ALLOC(total_size);
     if(!ret) return NULL;
 
-    ret->data = sasl_ALLOC(size);
-    if(!ret->data) {
-	sasl_FREE(ret);
-	return NULL;
-    }
-
-    memset(ret->data, 0, size);
+    memset(ret, 0, total_size);
 
     ret->size = ret->unused = size;
 
     return ret;
 }
 
-static void free_proppool(struct proppool *pool) 
+/* Resize a proppool.  Invalidates the unused value for this pool */
+static struct proppool *resize_proppool(struct proppool *pool, size_t size)
 {
-    if(!pool) return;
-    if(pool->data) sasl_FREE(pool->data);
-    sasl_FREE(pool);
+    struct proppool *ret;
+    
+    if(pool->size >= size) return pool;
+    ret = sasl_REALLOC(pool, sizeof(struct proppool) + size);
+    if(!ret) return NULL;
+
+    ret->size = size;
+
+    return ret;
 }
 
 static int prop_init(struct propctx *ctx, unsigned estimate) 
 {
     const unsigned VALUES_SIZE = PROP_DEFAULT * sizeof(struct propval);
 
-    ctx->values = sasl_ALLOC(VALUES_SIZE);
-    if(!ctx->values) return SASL_NOMEM;
-
+    ctx->mem_base = alloc_proppool(VALUES_SIZE + estimate);
+    if(!ctx->mem_base) return SASL_NOMEM;
+    
+    ctx->values = (struct propval *)ctx->mem_base->data;
+    ctx->mem_base->unused = ctx->mem_base->size - VALUES_SIZE;
     ctx->allocated_values = PROP_DEFAULT;
     ctx->used_values = 0;
 
-    ctx->mem_base = alloc_proppool(estimate);
-    if(!ctx->mem_base) return SASL_NOMEM;
+    ctx->data_end = ctx->mem_base->data + ctx->mem_base->size;
+    ctx->list_end = (char **)ctx->mem_base->data + VALUES_SIZE;
 
-    memset(ctx->values, 0, VALUES_SIZE);
-    ctx->mem_cur = ctx->mem_base;
+    ctx->prev_val = NULL;
+
     return SASL_OK;
 }
 
@@ -117,7 +128,7 @@ struct propctx *prop_new(unsigned estimate)
 {
     struct propctx *new_ctx;
 
-    if(!estimate) estimate = PROP_DEFAULT * 50;
+    if(!estimate) estimate = PROP_DEFAULT * 255;
 
     new_ctx = sasl_ALLOC(sizeof(struct propctx));
     if(!new_ctx) return NULL;
@@ -147,19 +158,20 @@ int prop_dup(struct propctx *src_ctx, struct propctx **dst_ctx)
 /* dispose of property context
  *  ctx      -- is disposed and set to NULL; noop if ctx or *ctx is NULL
  */
-void prop_dispose(struct propctx **in_ctx)
+void prop_dispose(struct propctx **ctx)
 {
-    struct propctx *ctx;
+    struct proppool *tmp;
     
-    if(!in_ctx || !*in_ctx) return;
+    if(!ctx || !*ctx) return;
 
-    ctx = *in_ctx;
-
-    if(ctx->values) sasl_FREE(ctx->values);
-    if(ctx->mem_base) free_proppool(ctx->mem_base);
+    while((*ctx)->mem_base) {
+	tmp = (*ctx)->mem_base;
+	(*ctx)->mem_base = tmp->next;
+	sasl_FREE(tmp);
+    }
     
-    sasl_FREE(ctx);
-    *in_ctx = NULL;
+    sasl_FREE(*ctx);
+    *ctx = NULL;
 
     return;
 }
@@ -184,37 +196,76 @@ int prop_request(struct propctx *ctx, const char **names)
     /* Do we need to add ANY? */
     if(!new_values) return SASL_OK;
 
-    total_values = new_values + ctx->used_values;
+    /* We always want atleast on extra to mark the end of the array */
+    total_values = new_values + ctx->used_values + 1;
 
+    /* Do we need to increase the size of our propval table? */
     if(total_values > ctx->allocated_values) {
-	unsigned new_alloc_length;
+	unsigned max_in_pool;
+
+	/* Do we need a larger base pool? */
+	max_in_pool = ctx->mem_base->size / sizeof(struct propval);
 	
-	if(total_values > 2 * ctx->allocated_values) {
-	    new_alloc_length = total_values;
-	} else {
+	if(total_values <= max_in_pool) {
+	    /* Don't increase the size of the base pool, just use what
+	       we need */
+	    ctx->allocated_values = total_values;
+	    ctx->mem_base->unused =
+		ctx->mem_base->size - (sizeof(struct propval)
+				       * ctx->allocated_values);
+      	} else {
+	    /* We need to allocate more! */
+	    unsigned new_alloc_length;
+	    size_t new_size;
+
 	    new_alloc_length = 2 * ctx->allocated_values;
-	}
-	
-	/* We need to allocate more! */
-	ctx->values = sasl_REALLOC(ctx->values,
-				   new_alloc_length * sizeof(struct propval));
+	    while(total_values > new_alloc_length) {
+		new_alloc_length *= 2;
+	    }
 
-	if(!ctx->values) {
-	    ctx->allocated_values = ctx->used_values = 0;
-	    return SASL_NOMEM;
+	    new_size = new_alloc_length * sizeof(struct propval);
+	    ctx->mem_base = resize_proppool(ctx->mem_base, new_size);
+
+	    if(!ctx->mem_base) {
+		ctx->values = NULL;
+		ctx->allocated_values = ctx->used_values = 0;
+		return SASL_NOMEM;
+	    }
+
+	    /* It worked! Update the structure! */
+	    ctx->values = (struct propval *)ctx->mem_base->data;
+	    ctx->allocated_values = new_alloc_length;
+	    ctx->mem_base->unused = ctx->mem_base->size
+		- sizeof(struct propval) * ctx->allocated_values;
 	}
 
-	/* It worked! Update the structure! */
-	ctx->allocated_values = new_alloc_length;
+	/* Clear out new propvals */
+	memset(&(ctx->values[ctx->used_values]), 0,
+	       sizeof(struct propval) * (ctx->allocated_values - ctx->used_values));
     }
 
     /* Now do the copy, or referencing rather */
     for(i=0;i<new_values;i++) {
+	unsigned j, flag;
+
+	flag = 0;
+
+	/* Check for dups */
+	for(j=0;j<ctx->used_values;j++) {
+	    if(!strcmp(ctx->values[j].name, names[i])) {
+		flag = 1;
+		break;
+	    }
+	}
+
+	/* We already have it... skip! */
+	if(flag) continue;
+
 	ctx->values[ctx->used_values++].name = names[i];
     }
 
-    /* FIXME: Clear Values as Side-Effect? */
-    
+    prop_clear(ctx, 0);
+
     return SASL_OK;
 }
 
@@ -224,7 +275,9 @@ int prop_request(struct propctx *ctx, const char **names)
  */
 const struct propval *prop_get(struct propctx *ctx) 
 {
-    return NULL;
+    if(!ctx) return NULL;
+    
+    return ctx->values;
 }
 
 /* Fill in an array of struct propval based on a list of property names
@@ -248,13 +301,53 @@ int prop_getnames(struct propctx *ctx, const char **names,
  */
 void prop_clear(struct propctx *ctx, int requests) 
 {
+    unsigned i;
+
+    if(requests) {
+	memset(ctx->values, 0, sizeof(struct propval) * ctx->allocated_values);
+	ctx->prev_val = NULL;
+	ctx->used_values = 0;
+    } else {
+	for(i=0; i<ctx->used_values; i++) {
+	    ctx->values[i].values = NULL;
+	    ctx->values[i].nvalues = 0;
+	    ctx->values[i].valsize = 0;
+	}
+    }
+    
+    ctx->mem_cur = ctx->mem_base;
+    
     return;
 }
 
-/* erase the value of a property
+/*
+ * erase the value of a property
  */
 void prop_erase(struct propctx *ctx, const char *name)
 {
+    struct propval *val;
+    int i;
+
+    if(!ctx || !name) return;
+
+    for(val = ctx->values; val->name; val++) {
+	if(!strcmp(name,val->name)) {
+	    if(!val->values) break;
+
+	    /*
+	     * Yes, this is casting away the const, but
+	     * we should be okay because the only place this
+	     * memory should be is in the proppool's
+	     */
+	    for(i=0;val->values[i];i++) {
+		memset((void *)(val->values[i]),0,strlen(val->values[i]));
+		val->values[i] = NULL;
+	    }
+
+	    break;
+	}
+    }
+    
     return;
 }
 
@@ -272,7 +365,37 @@ void prop_erase(struct propctx *ctx, const char *name)
 int prop_format(struct propctx *ctx, const char *sep, int seplen,
 		char *outbuf, unsigned outmax, unsigned *outlen) 
 {
-    return SASL_FAIL;
+    unsigned needed, flag = 0;
+    struct propval *val;
+    
+    if(!ctx || !outbuf) return SASL_BADPARAM;
+
+    if(!sep) seplen = 0;    
+    if(seplen < 0) seplen = strlen(sep);
+
+    needed = seplen * (ctx->used_values - 1);
+    for(val = ctx->values; val->name; val++) {
+	needed += strlen(val->name);
+    }
+    
+    if(!outmax) return (needed + 1); /* Because of unsigned funkiness */
+    if(needed > (outmax - 1)) return (needed - (outmax - 1));
+
+    *outbuf = '\0';
+    if(outlen) *outlen = needed;
+
+    if(needed == 0) return SASL_OK;
+
+    for(val = ctx->values; val->name; val++) {
+	if(seplen && flag) {
+	    strncat(outbuf, sep, seplen);
+	} else {
+	    flag = 1;
+	}
+	strcat(outbuf, val->name);
+    }
+    
+    return SASL_OK;
 }
 
 /* add a property value to the context
@@ -283,10 +406,193 @@ int prop_format(struct propctx *ctx, const char *sep, int seplen,
  *            if NULL, remove existing values
  *  vallen -- length of value, if < 0 then strlen(value) will be used
  */
+/* FIXME: There is a LOT of casting in this function. is it really
+ * necessary? */
 int prop_set(struct propctx *ctx, const char *name,
 	     const char *value, int vallen)
 {
-    return SASL_FAIL;
+    struct propval *cur;
+
+    if(!ctx) return SASL_BADPARAM;
+    if(!name && !ctx->prev_val) return SASL_BADPARAM; 
+
+    if(name) {
+	struct propval *val;
+
+	ctx->prev_val = NULL;
+	
+	for(val = ctx->values; val->name; val++) {
+	    if(!strcmp(name,val->name)){
+		ctx->prev_val = val;
+		break;
+	    }
+	}
+
+	/* Couldn't find it! */
+	if(!ctx->prev_val) return SASL_BADPARAM;
+    }
+
+    cur = ctx->prev_val;
+
+    if(name) /* New Entry */ {
+	unsigned nvalues = 1; /* 1 for NULL entry */
+	const char **old_values = NULL;
+	char **tmp, **tmp2;
+	size_t size;
+	
+	if(cur->values) {
+
+	    if(!value) {
+		/* If we would be setting a null value, then we are done */
+		return SASL_OK;
+	    }
+
+	    old_values = cur->values;
+	    tmp = (char **)cur->values;
+	    while(*tmp) {
+		nvalues++;
+		tmp++;
+	    }
+
+	}
+
+	if(value) {
+	    nvalues++; /* for the new value */
+	}
+
+	size = nvalues * sizeof(char*);
+
+	if(size > ctx->mem_cur->unused) {
+	    size_t needed;
+
+	    for(needed = ctx->mem_cur->size * 2; needed < size; needed *= 2);
+
+	    /* Allocate a new proppool */
+	    ctx->mem_cur->next = alloc_proppool(needed);
+	    if(!ctx->mem_cur->next) return SASL_NOMEM;
+
+	    ctx->mem_cur = ctx->mem_cur->next;
+
+	    ctx->list_end = (char **)ctx->mem_cur->data;
+	    ctx->data_end = ctx->mem_cur->data + needed;
+	}
+
+	/* Grab the memory */
+	ctx->mem_cur->unused -= size;
+	cur->values = (const char **)ctx->list_end;
+	cur->values[nvalues - 1] = NULL;
+
+	/* Finish updating the context */
+	ctx->list_end = (char **)(cur->values + nvalues);
+
+	/* If we don't have an actual value to fill in, we are done */
+	if(!value)
+	    return SASL_OK;
+
+	tmp2 = (char **)cur->values;
+	if(old_values) {
+	    tmp = (char **)old_values;
+	    
+	    while(*tmp) {
+		*tmp2 = *tmp;
+		tmp++; tmp2++;
+	    }
+	}
+	    
+	/* Now allocate the last entry */
+	if(!vallen)
+	    size = strlen(value) + 1;
+	else
+	    size = vallen + 1;
+
+	if(size > ctx->mem_cur->unused) {
+	    size_t needed;
+	    
+	    needed = ctx->mem_cur->size * 2;
+	    
+	    while(needed < size) {
+		needed *= 2;
+	    }
+
+	    /* Allocate a new proppool */
+	    ctx->mem_cur->next = alloc_proppool(needed);
+	    if(!ctx->mem_cur->next) return SASL_NOMEM;
+
+	    ctx->mem_cur = ctx->mem_cur->next;
+	    ctx->list_end = (char **)ctx->mem_cur->data;
+	    ctx->data_end = ctx->mem_cur->data + needed;
+	}
+
+	/* Update the data_end pointer */
+	ctx->data_end -= size;
+	ctx->mem_cur->unused -= size;
+
+	/* Copy and setup the new value! */
+	memcpy(ctx->data_end, value, size-1);
+	ctx->data_end[size - 1] = '\0';
+	cur->values[nvalues - 2] = ctx->data_end;
+    } else /* Appending an entry */ {
+	char **tmp;
+	size_t size;
+
+	/* If we are setting it to be NULL, we are done */
+	if(!value) return SASL_OK;
+
+	size = sizeof(char*);
+
+	/* Is it in the current pool, and will it fit in the unused space? */
+	if(size > ctx->mem_cur->unused &&
+	    (void *)cur->values > (void *)(ctx->mem_cur->data) &&
+	    (void *)cur->values < (void *)(ctx->mem_cur->data + ctx->mem_cur->size)) {
+	    /* recursively call the not-fast way */
+	    return prop_set(ctx, cur->name, value, vallen);
+	}
+
+	/* Note the invariant: the previous value list must be
+	   at the top of the CURRENT pool at this point */
+
+	/* Grab the memory */
+	ctx->mem_cur->unused -= size;
+	ctx->list_end++;
+
+	*(ctx->list_end - 1) = NULL;
+	tmp = (ctx->list_end - 2);
+
+	/* Now allocate the last entry */
+	if(!vallen)
+	    size = strlen(value) + 1;
+	else
+	    size = vallen + 1;
+
+	if(size > ctx->mem_cur->unused) {
+	    size_t needed;
+	    
+	    needed = ctx->mem_cur->size * 2;
+	    
+	    while(needed < size) {
+		needed *= 2;
+	    }
+
+	    /* Allocate a new proppool */
+	    ctx->mem_cur->next = alloc_proppool(needed);
+	    if(!ctx->mem_cur->next) return SASL_NOMEM;
+
+	    ctx->mem_cur = ctx->mem_cur->next;
+	    ctx->list_end = (char **)ctx->mem_cur->data;
+	    ctx->data_end = ctx->mem_cur->data + needed;
+	}
+
+	/* Update the data_end pointer */
+	ctx->data_end -= size;
+	ctx->mem_cur->unused -= size;
+
+	/* Copy and setup the new value! */
+	memcpy(ctx->data_end, value, size-1);
+	ctx->data_end[size - 1] = '\0';
+	*tmp = ctx->data_end;
+    }
+    
+    return SASL_OK;
 }
 
 
@@ -300,7 +606,23 @@ int prop_set(struct propctx *ctx, const char *name,
 int prop_setvals(struct propctx *ctx, const char *name,
 		 const char **values)
 {
-    return SASL_FAIL;
+    const char **val = values;
+    int result = SASL_OK;
+
+    if(!ctx || !values) return SASL_BADPARAM;
+
+    /* Basically, use prop_set to do all our dirty work for us */
+    if(name) {
+	result = prop_set(ctx, name, *val, 0);
+	val++;
+    }
+
+    for(;*val;val++) {
+	if(result != SASL_OK) return result;
+	result = prop_set(ctx, NULL, *val,0);
+    }
+
+    return result;
 }
 
 /* Request a set of auxiliary properties
@@ -318,7 +640,18 @@ int prop_setvals(struct propctx *ctx, const char *name,
  */
 int sasl_auxprop_request(sasl_conn_t *conn, const char **propnames) 
 {
-    return SASL_FAIL;
+    sasl_server_conn_t *sconn;
+
+    if(!conn || conn->type != SASL_CONN_SERVER) return SASL_BADPARAM;
+    
+    sconn = (sasl_server_conn_t *)conn;
+
+    if(!propnames) {
+	prop_clear(sconn->propctx,1);
+	return SASL_OK;
+    }
+    
+    return prop_request(sconn->propctx, propnames);
 }
 
 
@@ -339,6 +672,6 @@ struct propctx *sasl_auxprop_getctx(sasl_conn_t *conn)
 
     sconn = (sasl_server_conn_t *)conn;
 
-    return  sconn->propctx;
+    return sconn->propctx;
 }
 
