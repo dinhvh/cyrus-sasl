@@ -1,7 +1,7 @@
 /* common.c - Functions that are common to server and clinet
  * Rob Siemborski
  * Tim Martin
- * $Id: common.c,v 1.64.2.43 2001/07/23 19:16:35 rjs3 Exp $
+ * $Id: common.c,v 1.64.2.44 2001/07/23 20:38:07 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -229,7 +229,6 @@ int sasl_decode(sasl_conn_t *conn,
     if(!input || !output || !outputlen)
 	PARAMERROR(conn);
 
-    /* FIXME: do we verify maxoutbuf on incoming data as well? */
     if(inputlen > conn->oparams.maxoutbuf)
 	PARAMERROR(conn);
     
@@ -1424,7 +1423,8 @@ _sasl_free_utils(const sasl_utils_t ** utils)
     if(!utils) return SASL_BADPARAM;
     if(!*utils) return SASL_OK;
 
-    /* FIXME: I wish we could avoid this */
+    /* I wish we could avoid this cast, it's pretty gratuitous but it
+     * does make life easier to have it const everywhere else. */
     nonconst = (sasl_utils_t *)(*utils);
 
     sasl_randfree(&(nonconst->rpool));

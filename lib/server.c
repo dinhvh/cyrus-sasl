@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: server.c,v 1.84.2.49 2001/07/23 19:16:35 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.50 2001/07/23 20:38:08 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -216,14 +216,22 @@ int sasl_setpass(sasl_conn_t *conn,
 static void server_dispose(sasl_conn_t *pconn)
 {
   sasl_server_conn_t *s_conn=  (sasl_server_conn_t *) pconn;
-
+  context_list_t *cur, *cur_next;
+  
   if (s_conn->mech
       && s_conn->mech->plug->mech_dispose) {
     s_conn->mech->plug->mech_dispose(pconn->context,
 				     s_conn->sparams->utils);
   }
-
   pconn->context = NULL;
+
+  for(cur = s_conn->mech_contexts; cur; cur=cur_next) {
+      cur_next = cur->next;
+      if(cur->context)
+	  cur->mech->plug->mech_dispose(cur->context, s_conn->sparams->utils);
+      sasl_FREE(cur);
+  }  
+  s_conn->mech_contexts = NULL;
   
   _sasl_free_utils(&s_conn->sparams->utils);
 
@@ -759,6 +767,8 @@ int sasl_server_new(const char *service,
   serverconn->mechlist_buf = NULL;
   serverconn->mechlist_buf_len = 0;
 
+  serverconn->mech_contexts = NULL;
+
   serverconn->sent_last = 0;
 
   serverconn->mech = NULL;
@@ -831,16 +841,35 @@ static int mech_permitted(sasl_conn_t *conn,
 			  mechanism_t *mech)
 {
     sasl_server_conn_t *s_conn = (sasl_server_conn_t *)conn;
-    const sasl_server_plug_t *plug = mech->plug;
+    const sasl_server_plug_t *plug;
     int myflags;
+    context_list_t *cur;
+    void *context;
     sasl_ssf_t minssf = 0;
 
     if(!conn) return SASL_BADPARAM;
-    
-    /* Can this plugin meet the application's security requirements? */
-    if (! plug ) {
+
+    if(! mech || ! mech->plug) {
 	PARAMERROR(conn);
 	return 0;
+    }
+    
+    plug = mech->plug;
+
+    /* setup parameters for the call to mech_avail */
+    s_conn->sparams->serverFQDN=conn->serverFQDN;
+    s_conn->sparams->service=conn->service;
+    s_conn->sparams->user_realm=s_conn->user_realm;
+    s_conn->sparams->props=conn->props;
+    s_conn->sparams->external_ssf=conn->external.ssf;
+
+    /* Check if we have banished this one already */
+    for(cur = s_conn->mech_contexts; cur; cur=cur->next) {
+	if(cur->mech == mech) {
+	    /* If it's not mech_avail'd, then stop now */
+	    if(!cur->context) return SASL_NOMECH;
+	    break;
+	}
     }
     
     if (plug == &external_server_mech) {
@@ -851,7 +880,7 @@ static int mech_permitted(sasl_conn_t *conn,
 			  "External SSF not good enough");
 	    return 0;
 	}
-    } else {
+    } else {	
 	if (conn->props.min_ssf < conn->external.ssf) {
 	    minssf = 0;
 	} else {
@@ -867,21 +896,39 @@ static int mech_permitted(sasl_conn_t *conn,
 	
     }
 
-    /* FIXME: it's probabally not valid to call this more than once per
-     * connection context */
+    context = NULL;
     if(plug->mech_avail
        && plug->mech_avail(plug->glob_context,
-			   s_conn->sparams, (void **)&conn) != SASL_OK ) {
-	sasl_seterror(conn, SASL_NOLOG,
-		      "mech %s not available",
-		      plug->mech_name);
-	return 0;
-    }
+			   s_conn->sparams, (void **)&context) != SASL_OK ) {
+	/* Mark this mech as no good for this connection */
+	cur = sasl_ALLOC(sizeof(context_list_t));
+	if(!cur) {
+	    MEMERROR(conn);
+	    return 0;
+	}
+	cur->context = NULL;
+	cur->mech = mech;
+	cur->next = s_conn->mech_contexts;
+	s_conn->mech_contexts = cur;
 
+	/* Error should be set by mech_avail call */
+	return 0;
+    } else if(context) {
+	/* Save this context */
+	cur = sasl_ALLOC(sizeof(context_list_t));
+	if(!cur) {
+	    MEMERROR(conn);
+	    return 0;
+	}
+	cur->context = context;
+	cur->mech = mech;
+	cur->next = s_conn->mech_contexts;
+	s_conn->mech_contexts = cur;
+    }
+    
     /* Generic mechanism */
     if (plug->max_ssf < minssf) {
-	sasl_seterror(conn, SASL_NOLOG,
-		      "too weak");
+	sasl_seterror(conn, SASL_NOLOG, "too weak");
 	return 0; /* too weak */
     }
 
@@ -975,6 +1022,7 @@ int sasl_server_start(sasl_conn_t *conn,
 {
     sasl_server_conn_t *s_conn=(sasl_server_conn_t *) conn;
     int result;
+    context_list_t *cur, **prev;
 
     /* make sure mech is valid mechanism
        if not return appropriate error */
@@ -1063,22 +1111,38 @@ int sasl_server_start(sasl_conn_t *conn,
 	}
     }
 
+    /* We used to setup sparams HERE, but now it's done
+       inside of mech_permitted (which is called above) */
+    prev = &s_conn->mech_contexts;
+    for(cur = *prev; cur; prev=&cur->next,cur=cur->next) {
+	if(cur->mech == m) {
+	    if(!cur->context) {
+		sasl_seterror(conn, 0,
+			      "Got past mech_permitted with a disallowed mech!");
+		return SASL_NOMECH;
+	    }
+	    /* If we find it, we need to pull cur out of the
+	       list so it won't be freed later! */
+	    (*prev)->next = cur->next;
+	    conn->context = cur->context;
+	    sasl_FREE(cur);
+	}
+    }
+
     s_conn->mech = m;
-
-    /* call the security layer given by mech */
-    s_conn->sparams->serverFQDN=conn->serverFQDN;
-    s_conn->sparams->service=conn->service;
-    s_conn->sparams->user_realm=s_conn->user_realm;
-    s_conn->sparams->props=conn->props;
-    s_conn->sparams->external_ssf=conn->external.ssf;
-
-    result = s_conn->mech->plug->mech_new(s_conn->mech->plug->glob_context,
-					  s_conn->sparams,
-					  /* FIXME - probabally not legal */
-					  NULL,
-					  0,
-					  &(conn->context));
-
+    
+    if(!conn->context) {
+	/* Note that we don't hand over a new challenge */
+	result = s_conn->mech->plug->mech_new(s_conn->mech->plug->glob_context,
+					      s_conn->sparams,
+					      NULL,
+					      0,
+					      &(conn->context));
+    } else {
+	/* the work was already done by mech_avail! */
+	result = SASL_OK;
+    }
+    
     if (result == SASL_OK) {
 	if(clientin &&
 	   (s_conn->mech->plug->features &

@@ -1,7 +1,7 @@
 /* saslint.h - internal SASL library definitions
  * Rob Siemborski
  * Tim Martin
- * $Id: saslint.h,v 1.33.2.39 2001/07/23 19:16:35 rjs3 Exp $
+ * $Id: saslint.h,v 1.33.2.40 2001/07/23 20:38:08 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -183,6 +183,15 @@ typedef struct mech_list {
   int mech_length;       /* number of mechanisms */
 } mech_list_t;
 
+typedef struct context_list 
+{
+    mechanism_t *mech;
+    void *context;     /* if NULL, this mech is disabled for this connection
+			* otherwise, use this context instead of a call
+			* to mech_new */
+    struct context_list *next;
+} context_list_t;
+
 typedef struct sasl_server_conn {
     sasl_conn_t base; /* parts common to server + client */
 
@@ -194,6 +203,7 @@ typedef struct sasl_server_conn {
     int authenticated;
     mechanism_t *mech; /* mechanism trying to use */
     sasl_server_params_t *sparams;
+    context_list_t *mech_contexts;
 } sasl_server_conn_t;
 
 /* Client Conn Type Information */
