@@ -64,7 +64,7 @@ JAV =
 endif
 
 SUBDIRS=include sasldb plugins lib utils doc man $(PWC) $(SAM) $(JAV) $(SAD)
-EXTRA_DIST=config cmulocal win32 testing.txt
+EXTRA_DIST=config cmulocal win32 testing.txt ONEWS
 
 dist-hook:
 	@find $(distdir) -name CVS -print | xargs -t rm -rf
