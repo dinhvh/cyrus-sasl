@@ -1,7 +1,7 @@
 /* Kerberos4 SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: kerberos4.c,v 1.65.2.30 2001/07/19 16:34:20 rjs3 Exp $
+ * $Id: kerberos4.c,v 1.65.2.31 2001/07/19 23:15:25 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -937,20 +937,7 @@ static int client_continue_step (void *conn_context,
 
     authent.length = MAX_KTXT_LEN;
   
-    if (text->state == 0 && serverin == NULL)
-    {
-	/* KERBEROS_V4 can't do client-first */
-
-	*clientout = NULL;
-	*clientoutlen = 0;
-	text->state=1;
-
-	return SASL_CONTINUE;
-    } else if(text->state == 0) {
-	text->state = 1;
-    }
-
-    else if (text->state==1) {
+    if (text->state==0) {
 	/* We should've just recieved a 32-bit number in network byte order.
 	 * We want to reply with an authenticator. */
 	int result;
@@ -1031,12 +1018,12 @@ static int client_continue_step (void *conn_context,
 	*clientout=text->out_buf;
 	*clientoutlen=ticket.length;
 
-	text->state=2;
+	text->state=1;
 	return SASL_CONTINUE;
     }
 
     /* challenge #2 */
-    else if (text->state==2) {
+    else if (text->state==1) {
 	int need = 0;
 	int musthave = 0;
 	int testnum;
@@ -1353,14 +1340,6 @@ static int client_continue_step (void *conn_context,
 
 	if (sout) cparams->utils->free(sout);
 
-	return SASL_CONTINUE;
-    }
-    else if (text->state==3) {
-	*clientout = NULL;
-	*clientoutlen = 0;
-
-	/* we're done! */
-	text->state++;
 	return SASL_OK;
     }
 
