@@ -1,7 +1,7 @@
 /* testsuite.c -- Stress the library a little
  * Rob Siemborski
  * Tim Martin
- * $Id: testsuite.c,v 1.13.2.25 2001/07/10 18:43:33 rjs3 Exp $
+ * $Id: testsuite.c,v 1.13.2.26 2001/07/13 17:31:15 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -96,6 +96,7 @@ const char *nonexistant_username = "ABCDEFGHIJ";
 const char *authname = "rjs3";
 const char *password = "1234";
 const char *cu_plugin = "INTERNAL";
+char other_result[1024];
 
 static const char *gssapi_service = "host";
 
@@ -722,7 +723,6 @@ void test_64(void)
 /* This isn't complete, but then, what in the testsuite is? */
 void test_props(void) 
 {
-    char buf[8192];
     int result;
     struct propval foobar[3];
     struct propctx *ctx, *dupctx;
@@ -831,29 +831,26 @@ static sasl_callback_t client_callbacks[] = {
 };
 
 void interaction (int id, const char *prompt,
-		  char **tresult, unsigned int *tlen)
+		  const char **tresult, unsigned int *tlen)
 {
-    /* FIXME: Look at that memory leak! */
-    
     if (id==SASL_CB_PASS) {
-	*tresult=(char *) strdup(password);
+	*tresult=(char *) password;
     } else if (id==SASL_CB_USER) {
-	*tresult=(char *) strdup(username);
+	*tresult=(char *) username;
     } else if (id==SASL_CB_AUTHNAME) {
-	*tresult=(char *) strdup(authname);
+	*tresult=(char *) authname;
 #ifdef SASL_CB_GETREALM
     } else if ((id==SASL_CB_GETREALM)) {
-	*tresult=(char *) strdup(myhostname);
+	*tresult=(char *) myhostname;
 #endif
     } else {
-	char result[1024];
 	int c;
 	
 	printf("%s: ",prompt);
-	fgets(result, sizeof(result) - 1, stdin);
-	c = strlen(result);
-	result[c - 1] = '\0';
-	*tresult=strdup(result);
+	fgets(other_result, sizeof(other_result) - 1, stdin);
+	c = strlen(other_result);
+	other_result[c - 1] = '\0';
+	*tresult=other_result;
     }
 
     *tlen=strlen(*tresult);
