@@ -1,8 +1,7 @@
 # Makefile.am for SASL documentation
-# Rob Earhart
 #
 ################################################################
-# Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
+# Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -52,6 +51,7 @@ man_MANS = sasl_authorize_t.3 sasl_done.3 sasl_listmech.3 sasl_callbacks.3 \
            sasl_setprop.3 sasl_decode.3 sasl_getsimple_t.3 sasl.3 \
 	   sasl_checkapop.3 sasl_errors.3 sasl_verifyfile_t.3 \
 	   sasl_getrealm_t.3 sasl_chalprompt_t.3 sasl_auxprop_request.3 \
-	   sasl_auxprop_getctx.3 sasl_auxprop.3
+	   sasl_auxprop_getctx.3 sasl_auxprop.3 sasl_idle.3 \
+	   sasl_errdetail.3
 
 EXTRA_DIST = $(man_MANS)
