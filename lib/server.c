@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: server.c,v 1.84.2.34 2001/06/30 00:53:56 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.35 2001/07/03 16:27:11 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -637,15 +637,18 @@ int sasl_server_init(const sasl_callback_t *callbacks,
     sasl_auxprop_add_plugin("SASLDB", &sasldb_auxprop_plug_init);
     add_plugin((void *)&external_server_init, NULL);
 
-    /* delayed loading of plugins? */
-    if (_sasl_getcallback(NULL, SASL_CB_GETOPT, &getopt, &context) 
+    /* delayed loading of plugins? (DSO only, as it doesn't
+     * make much [any] sense to delay in the static library case) */
+    if (!_is_sasl_server_static &&
+	_sasl_getcallback(NULL, SASL_CB_GETOPT, &getopt, &context) 
 	   == SASL_OK) {
 	getopt(context, NULL, "plugin_list", &pluginfile, NULL);
     }
+    
     if (pluginfile != NULL) {
 	/* this file should contain a list of plugins available.
 	   we'll load on demand. */
-
+	
 	/* Ask the application if it's safe to use this file */
 	ret = ((sasl_verifyfile_t *)(vf->proc))(vf->context,
 						pluginfile,
@@ -654,7 +657,7 @@ int sasl_server_init(const sasl_callback_t *callbacks,
 	    _sasl_log(NULL, SASL_LOG_ERR,
 		      "unable to load plugin list %s: %z", pluginfile, ret);
 	}
-
+	
 	if (ret == SASL_OK) {
 	    ret = parse_mechlist_file(pluginfile);
 	}
