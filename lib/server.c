@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: server.c,v 1.84.2.53 2001/07/31 22:34:35 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.54 2001/08/06 18:05:37 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -275,7 +275,7 @@ static int init_mechlist(void)
  * parameters:
  *  p - entry point
  */
-int sasl_server_add_plugin(const char *plugname __attribute__((unused)),
+int sasl_server_add_plugin(const char *plugname,
 			   sasl_server_plug_init_t *p)
 {
     int plugcount;
@@ -286,7 +286,7 @@ int sasl_server_add_plugin(const char *plugname __attribute__((unused)),
     int version;
     int lupe;
 
-    if(!p) return SASL_BADPARAM;
+    if(!plugname || !p) return SASL_BADPARAM;
 
     entry_point = (sasl_server_plug_init_t *)p;
 
@@ -315,6 +315,10 @@ int sasl_server_add_plugin(const char *plugname __attribute__((unused)),
 	if (! mech) return SASL_NOMEM;
 
 	mech->plug=pluglist++;
+	if(_sasl_strdup(plugname, &mech->plugname, NULL) != SASL_OK) {
+	    sasl_FREE(mech);
+	    return SASL_NOMEM;
+	}
 	mech->version = version;
 
 	/* wheather this mech actually has any users in it's db */
@@ -349,7 +353,8 @@ static void server_done(void) {
 	  if (prevm->plug->glob_context!=NULL) {
 	      sasl_FREE(prevm->plug->glob_context);
 	  }
-	  	  
+
+	  sasl_FREE(prevm->plugname);	  	  
 	  sasl_FREE(prevm);    
       }
       _sasl_free_utils(&mechlist->utils);
@@ -1480,12 +1485,11 @@ int sasl_user_exists(sasl_conn_t *conn,
 {
     int result=SASL_NOMECH;
     struct sasl_verify_password_s *v;
-
+    
     /* check params */
     if (_sasl_server_active==0) return SASL_NOTINIT;
     if (!conn) return SASL_BADPARAM;
-    
-    if(!user) 
+    if (!user || conn->type != SASL_CONN_SERVER) 
 	PARAMERROR(conn);
 
     if(!service) service = conn->service;

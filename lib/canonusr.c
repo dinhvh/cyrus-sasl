@@ -1,6 +1,6 @@
 /* canonusr.c - user canonicalization support
  * Rob Siemborski
- * $Id: canonusr.c,v 1.1.2.17 2001/07/18 16:28:43 rjs3 Exp $
+ * $Id: canonusr.c,v 1.1.2.18 2001/08/06 18:05:36 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -364,13 +364,9 @@ int internal_canonuser_init(const sasl_utils_t *utils __attribute__((unused)),
                             int max_version,
                             int *out_version,
                             sasl_canonuser_plug_t **plug,
-                            const char *plugname) 
+                            const char *plugname __attribute__((unused))) 
 {
-    if(!out_version || !plug || !plugname) return SASL_BADPARAM;
-
-    /* We only support the "INTERNAL" plugin */
-    if(plugname && strcmp(plugname, "INTERNAL"))
-	return SASL_NOMECH;
+    if(!out_version || !plug) return SASL_BADPARAM;
 
     if(max_version < SASL_CANONUSER_PLUG_VERSION) return SASL_BADVERS;
     

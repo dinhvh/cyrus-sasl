@@ -1,7 +1,7 @@
 /* common.c - Functions that are common to server and clinet
  * Rob Siemborski
  * Tim Martin
- * $Id: common.c,v 1.64.2.50 2001/08/01 14:27:21 rjs3 Exp $
+ * $Id: common.c,v 1.64.2.51 2001/08/06 18:05:36 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -515,12 +515,24 @@ int sasl_getprop(sasl_conn_t *conn, int propnum, const void **pvalue)
   case SASL_SERVICE:
       *((const char **)pvalue) = conn->service;
       break;
-  case SASL_AUTHSOURCE: /* FIXME: I doubt these are identical */
-  case SASL_MECHNAME:
+  case SASL_AUTHSOURCE: /* name of plugin (not name of mech) */
       if(conn->type == SASL_CONN_CLIENT) {
-	  *((const char **)pvalue) = ((sasl_client_conn_t *)conn)->mech->plug->mech_name;
+	  *((const char **)pvalue) =
+	      ((sasl_client_conn_t *)conn)->mech->plugname;
       } else if (conn->type == SASL_CONN_SERVER) {
-	  *((const char **)pvalue) = ((sasl_server_conn_t *)conn)->mech->plug->mech_name;
+	  *((const char **)pvalue) =
+	      ((sasl_server_conn_t *)conn)->mech->plugname;
+      } else {
+	  result = SASL_BADPARAM;
+      }
+      break;
+  case SASL_MECHNAME: /* name of mech */
+      if(conn->type == SASL_CONN_CLIENT) {
+	  *((const char **)pvalue) =
+	      ((sasl_client_conn_t *)conn)->mech->plug->mech_name;
+      } else if (conn->type == SASL_CONN_SERVER) {
+	  *((const char **)pvalue) =
+	      ((sasl_server_conn_t *)conn)->mech->plug->mech_name;
       } else {
 	  result = SASL_BADPARAM;
       }

@@ -1,7 +1,7 @@
 /* dlopen.c--Unix dlopen() dynamic loader interface
  * Rob Siemborski
  * Rob Earhart
- * $Id: dlopen.c,v 1.32.2.11 2001/07/19 18:44:44 rjs3 Exp $
+ * $Id: dlopen.c,v 1.32.2.12 2001/08/06 18:05:37 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -206,7 +206,7 @@ static int _sasl_plugin_load(char *plugin, void *library,
     
     result = _sasl_locate_entry(library, entryname, &entry_point);
     if(result == SASL_OK) {
-	result = add_plugin(NULL, entry_point);
+	result = add_plugin(plugin, entry_point);
 	if(result != SASL_OK)
 	    _sasl_log(NULL, SASL_LOG_ERR,
 		      "_sasl_plugin_load failed on %s for plugin: %s\n",
@@ -430,8 +430,6 @@ int _sasl_load_plugins(const add_plugin_list_t *entrypoints,
 					  cur_ep->add_plugin);
 			/* If this fails, it's not the end of the world */
 		}
-
-		/* added successfully */
 	    }
 
 	    closedir(dp);

@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: client.c,v 1.34.4.30 2001/07/31 22:34:34 rjs3 Exp $
+ * $Id: client.c,v 1.34.4.31 2001/08/06 18:05:36 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -90,6 +90,7 @@ static void client_done(void) {
 				cmechlist->utils);
     }
 
+    sasl_FREE(cprevm->plugname);
     sasl_FREE(cprevm);    
   }
   sasl_MUTEX_FREE(cmechlist->mutex);
@@ -109,8 +110,8 @@ int sasl_client_add_plugin(const char *plugname,
   int version;
   int lupe;
 
-  if(!entry_point) return SASL_BADPARAM;
-
+  if(!plugname || !entry_point) return SASL_BADPARAM;
+  
   result = entry_point(cmechlist->utils, SASL_CLIENT_PLUG_VERSION, &version,
 		       &pluglist, &plugcount);
 
@@ -135,6 +136,10 @@ int sasl_client_add_plugin(const char *plugname,
       if (! mech) return SASL_NOMEM;
 
       mech->plug=pluglist++;
+      if(_sasl_strdup(plugname, &mech->plugname, NULL) != SASL_OK) {
+	sasl_FREE(mech);
+	return SASL_NOMEM;
+      }
       mech->version = version;
       mech->next = cmechlist->mech_list;
       cmechlist->mech_list = mech;

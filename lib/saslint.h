@@ -1,7 +1,7 @@
 /* saslint.h - internal SASL library definitions
  * Rob Siemborski
  * Tim Martin
- * $Id: saslint.h,v 1.33.2.41 2001/07/25 15:32:06 rjs3 Exp $
+ * $Id: saslint.h,v 1.33.2.42 2001/08/06 18:05:37 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -170,6 +170,7 @@ typedef struct mechanism
     int version;
     int condition; /* set to SASL_NOUSER if no available users;
 		      set to SASL_CONTINUE if delayed plugn loading */
+    char *plugname; /* for AUTHSOURCE tracking */
     const sasl_server_plug_t *plug;
     struct mechanism *next;
     char *f;       /* where should i load the mechanism from? */
@@ -210,10 +211,12 @@ typedef struct sasl_server_conn {
 
 typedef struct cmechanism
 {
-  int version;
-  const sasl_client_plug_t *plug;
+    int version;
 
-  struct cmechanism *next;  
+    char *plugname;
+    const sasl_client_plug_t *plug;
+
+    struct cmechanism *next;  
 } cmechanism_t;
 
 typedef struct cmech_list {

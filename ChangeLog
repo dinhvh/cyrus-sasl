@@ -1,3 +1,18 @@
+2001-08-06  Rob Siemborski <rjs3+@andrew.cmu.edu>
+	* utils/dbconverter-2.c (listusers_cb): handle PLAIN-APOP
+
+	* lib/client.c (sasl_client_add_plugin, client_done):
+	  save plugin name
+	* lib/server.c (sasl_server_add_plugin, server_done):
+	  save plugin name
+	* lib/dlopen.c (_sasl_plugin_load): correctly pass pluginname
+	* lib/common.c (sasl_getprop): implement SASL_AUTHSOURCE properly
+	* lib/saslint.h (cmechanism_t, mechanism_t): added plugname field
+	* lib/canonusr.c (internal_canonuser_init): no longer limit
+	  based on plugname
+	* plugins/sasldb.c (sasldb_auxprop_plug_init): no longer limit
+	  based on plugname
+
 2001-08-01  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* utils/smtptest.c (iptostring): better behaved w.r.t endianness
 

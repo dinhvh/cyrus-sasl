@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: sasldb.c,v 1.1.2.6 2001/07/30 17:40:14 rjs3 Exp $
+ * $Id: sasldb.c,v 1.1.2.7 2001/08/06 18:05:39 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -174,12 +174,9 @@ int sasldb_auxprop_plug_init(const sasl_utils_t *utils,
                              int max_version,
                              int *out_version,
                              sasl_auxprop_plug_t **plug,
-                             const char *plugname) 
+                             const char *plugname __attribute__((unused))) 
 {
     if(!out_version || !plug) return SASL_BADPARAM;
-
-    /* We only support the "SASLDB" plugin */
-    if(plugname && strcmp(plugname, "SASLDB")) return SASL_NOMECH;
 
     /* Do we have database support? */
     /* Note that we can use a NULL sasl_conn_t because our

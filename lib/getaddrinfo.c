@@ -1,6 +1,6 @@
 /*
  * Mar  8, 2000 by Hajimu UMEMOTO <ume@mahoroba.org>
- * $Id: getaddrinfo.c,v 1.1.2.2 2001/07/18 21:49:32 rjs3 Exp $
+ * $Id: getaddrinfo.c,v 1.1.2.3 2001/08/06 18:05:37 rjs3 Exp $
  *
  * This module is besed on ssh-1.2.27-IPv6-1.5 written by
  * KIKUCHI Takahiro <kick@kyoto.wide.ad.jp>
@@ -211,6 +211,7 @@ getaddrinfo(const char *hostname, const char *servname,
 	    prev = cur;
 	}
 	if (hints && hints->ai_flags & AI_CANONNAME && *res) {
+	    /* NOT sasl_strdup for compatibility */
 	    if (((*res)->ai_canonname = strdup(hp->h_name)) == NULL) {
 		freeaddrinfo(*res);
 		return EAI_MEMORY;
