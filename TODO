@@ -1,31 +1,25 @@
 Library
 ~~~~~~~
 ) Better/FASTER random numbers (init time is pretty miserable)
-) Test suite needs work
+) Test suite [still] needs work
 ) configure stuff: static libs, etc.
-) Use libltdl---probably much better portability
-  thread problems?  stdio problems?
 ) parse the .la file instead of assuming we load the ".so" file
 ) better support for including missing routines
 ) check return settings (ssf, etc.) on auth failure
 ) Make real global objects in cram, digest
-) when making callbacks, the returned strings are sometimes only valid
-  until the next time that callback is made.  (i believe the config
-  callback is an example of this.)
 ) add SASL_SEC_MUTUAL_AUTHENTICATION
-
+) fix DIGEST-MD5 interoperability
+) load auxprop/canonuser plugins from shared libs
+) java bindings
 
 Documentation
 ~~~~~~~~~~~~~
 ) so much to do here
-) how to write an application using sasl (programmer's guide)
 ) man pages (check spelling) (do saslpasswd, sasldblistusers etc)
-) how to configure sasl (sysadmin guide)
 ) update INSTALL to have clearer step-by-step instructions
 
 Mechs to write
 ~~~~~~~~~~~~~~
-) PASSDSS-3DES-1 (draft-newman-sasl-passdss-01.txt)
 ) OTP
 
 Digest-MD5
@@ -52,15 +46,14 @@ Plain
 Cram-MD5
 ~~~~~~~~
 ) needs snprintf support
-) correct handling of SASL_SET_CREATE
 
 Database stuff
 ~~~~~~~~~~~~~~
-) Flat text file?
 ) transactions?
 ) version the database?
 ) atomic updates of passwords (we can crash and leave the user with 
-  different passwords for different mechanisms)
+  different passwords for different mechanisms) [through failure to
+  make setpass calls]
 
 ABI
 ~~~

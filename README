@@ -1,4 +1,4 @@
-$Id: README,v 1.25.4.1 2001/06/20 16:06:38 rjs3 Exp $
+$Id: README,v 1.25.4.2 2001/06/27 20:13:29 rjs3 Exp $
 
 This is the Cyrus SASL API implentation. It can be used on the client
 or server side to provide authentication. See RFC 2222 for more
@@ -13,47 +13,13 @@ cyrus-sasl". The mailing list is available via anonymous IMAP at
 imap://cyrus.andrew.cmu.edu/archive.cyrus-sasl or via the web at
 http://asg.web.cmu.edu/archive/mailbox.php3?mailbox=archive.cyrus-sasl.
 
-UPGRADING FROM PREVIOUS VERSIONS
---------------------------------
-* Upgrading from versions 1.5.15 or earlier:
-  Cyrus SASL now defaults to "sasldb" by default.  If you were
-  depending on a different behavior, make sure to set "pwcheck_method"
-  in your configuration file.
+ALPHA WARNING
+-------------
+THIS CODE IS ALPHA-QUALITY AND IS INTENDED FOR DEVELOPERS ONLY.
+IT IS NOT BACKWARDS COMPATIBLE WITH SASLv1.
 
-* Upgrading from versions 1.5.12 or earlier:
-  If you use the sasldb (for PLAIN, CRAM-MD5, or DIGEST-MD5):
-    run "saslpasswd" and set one password in your existing database; we now
-    store some versioning information in the database for sanity checking.
-
-* Upgrading from versions 1.5.11 or earlier:
-  Berkeley DB is now supported, and the configure script will use it
-  automatically if not told otherwise.  Use
-  --with-dblib=ndbm
-  or
-  --with-dblib=gdbm
-  to use existing secrets databases.
-
-* Upgrading from versions 1.5.5 or earlier:
-  The secrets database has changed formats again in 1.5.9.
-
-  Run utils/dbconverter-1.5.9 to update your secrets database.  It,
-  once again, needs you to specify your default realm for PLAIN and
-  CRAM-MD5 secrets.
-
-* Upgrading from versions 1.5.4 or earlier:
-  The secrets database has changed formats in 1.5.5.
-
-  Edit util/dbconverter.c to select whether you use gdbm or ndbm, and
-  compile util/dbconverter.c:
-  % gcc dbconverter-1.5.5.c -lsasl -o dbconverter
-
-  Run dbconverter as a user with sufficient permissions to write to
-  /etc/sasldb as follows:
-  
-  % dbconverter /etc/saslbackup platypus.cc.cmu.edu
-
-  Replace "platypus.cc.cmu.edu" with your realm (usually just your
-  hostname).
+Bugs can be searched/reported at:
+http://bugzilla.andrew.cmu.edu
 
 FEATURES
 --------
@@ -69,10 +35,7 @@ The library uses a Berkeley DB, gdbm or ndbm file on the server side
 to store per-user authentication secrets.  The utility saslpasswd has
 been included for adding authentication secrets to the file.
 
-PLAIN can either check /etc/passwd, Kerberos V4, use PAM, or the sasl
-secrets database.  By default PAM is used if PAM is found, then
-Kerberos, finally /etc/passwd (non-shadow).  This is tweakable in
-the configuration file.  Please see "docs/sysadmin.html".
+PLAIN uses sasldb, the pwcheck daemon, or the saslauthd daemon.
 
 The sample directory contains two programs which provide a reference
 for using the library, as well as making it easy to test a mechanism
