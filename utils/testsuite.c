@@ -1,7 +1,7 @@
 /* testsuite.c -- Stress the library a little
  * Rob Siemborski
  * Tim Martin
- * $Id: testsuite.c,v 1.13.2.31 2001/07/25 20:41:46 rjs3 Exp $
+ * $Id: testsuite.c,v 1.13.2.32 2001/07/27 19:11:40 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -1066,7 +1066,7 @@ void sendbadsecond(char *mech, void *rock)
 			       
     if (result < 0)
     {
-	printf("%s - \n",sasl_errstring(result,NULL,NULL));
+	printf("%s - \n",sasl_errdetail(clientconn));
 	fatal("sasl_client_start() error");
     }
 
@@ -1309,7 +1309,7 @@ int doauth(char *mech, sasl_conn_t **server_conn, sasl_conn_t **client_conn,
 			       
     if (result < 0)
     {
-	printf("%s - \n",sasl_errstring(result,NULL,NULL));
+	printf("%s - \n",sasl_errdetail(clientconn));
 	fatal("sasl_client_start() error");
     }
 
@@ -1439,12 +1439,12 @@ int doauth_noclientfirst(char *mech, sasl_conn_t **server_conn,
 	else if(result == SASL_CONTINUE) need_another_client = 1;
 	else if(result == SASL_OK) need_another_client = 0;
     } while (result == SASL_INTERACT);
-			       
+
     if (result < 0)
     {
-	printf("%s - \n",sasl_errstring(result,NULL,NULL));
+	printf("%s - \n",sasl_errdetail(clientconn));
 	fatal("sasl_client_start() error");
-    }
+    }	
 
     result = sasl_server_start(saslconn,
 			       mech,
@@ -1572,12 +1572,13 @@ int doauth_serverlast(char *mech, sasl_conn_t **server_conn,
 	else if(result == SASL_CONTINUE) need_another_client = 1;
 	else if(result == SASL_OK) need_another_client = 0;
     } while (result == SASL_INTERACT);
-			       
+	
+
     if (result < 0)
     {
-	printf("%s - \n",sasl_errstring(result,NULL,NULL));
+	printf("%s - \n",sasl_errdetail(clientconn));
 	fatal("sasl_client_start() error");
-    }
+    }			       
 
     result = sasl_server_start(saslconn,
 			       mech,
@@ -1710,12 +1711,12 @@ int doauth_noclientfirst_andserverlast(char *mech, sasl_conn_t **server_conn,
 	else if(result == SASL_CONTINUE) need_another_client = 1;
 	else if(result == SASL_OK) need_another_client = 0;
     } while (result == SASL_INTERACT);
-			       
+
     if (result < 0)
     {
-	printf("%s - \n",sasl_errstring(result,NULL,NULL));
+	printf("%s - \n",sasl_errdetail(clientconn));
 	fatal("sasl_client_start() error");
-    }
+    }				       
 
     result = sasl_server_start(saslconn,
 			       mech,
