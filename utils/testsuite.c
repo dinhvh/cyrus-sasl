@@ -1,7 +1,7 @@
 /* testsuite.c -- Stress the library a little
  * Rob Siemborski
  * Tim Martin
- * $Id: testsuite.c,v 1.13.2.24 2001/07/09 21:59:04 rjs3 Exp $
+ * $Id: testsuite.c,v 1.13.2.25 2001/07/10 18:43:33 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -65,7 +65,7 @@
 
 #include <sasl/sasl.h>
 #include <sasl/saslutil.h>
-
+#include <sasl/prop.h>
 #include <sasl/md5global.h>
 #include <sasl/md5.h>
 #include <sasl/hmac-md5.h>
@@ -719,6 +719,99 @@ void test_64(void)
     
 }
 
+/* This isn't complete, but then, what in the testsuite is? */
+void test_props(void) 
+{
+    char buf[8192];
+    int result;
+    struct propval foobar[3];
+    struct propctx *ctx, *dupctx;
+
+    const char *requests[] = {
+	"userPassword",
+        "userName",
+	"homeDirectory",
+        "uidNumber",
+        "gidNumber",
+        NULL
+    };
+
+    const char *short_requests[] = {
+	"userPassword",
+	"userName",
+	"BAD",
+	NULL
+    };
+
+    ctx = prop_new(2);
+    if(!ctx) {
+	fatal("no new prop context");
+    }
+
+    if(prop_request(NULL, requests) == SASL_OK)
+	fatal("prop_request w/NULL context succeeded");
+    if(prop_request(ctx, NULL) == SASL_OK)
+	fatal("prop_request w/NULL request list succeeded");
+    
+    result = prop_request(ctx, requests);
+    if(result != SASL_OK)
+	fatal("prop request failed");
+
+    prop_set(ctx, "userPassword", "pw1", 0);
+    prop_set(ctx, "userPassword", "pw2", 0);
+    prop_set(ctx, "userName", "rjs3", 0);
+    prop_set(ctx, NULL, "tmartin", 0);
+    
+    if(prop_set(ctx, "gah", "ack", 0) == SASL_OK) {
+	printf("setting bad property name succeeded\n");
+	exit(1);
+    }
+
+    result = prop_getnames(ctx, short_requests, foobar);
+    if(result < 0)
+	fatal("prop_getnames failed");
+
+    if(strcmp(foobar[0].name, short_requests[0]))
+	fatal("prop_getnames item 0 wrong name");
+    if(strcmp(foobar[1].name, short_requests[1]))
+	fatal("prop_getnames item 1 wrong name");
+    if(foobar[2].name)
+	fatal("prop_getnames returned an item 2");
+
+    result = prop_dup(ctx, &dupctx);
+    if(result != SASL_OK)
+	fatal("could not duplicate");
+
+    prop_clear(ctx, 1);
+    
+    result = prop_getnames(ctx, short_requests, foobar);
+    if(result < 0)
+	fatal("prop_getnames failed second time");
+
+    if(foobar[0].name)
+	fatal("it appears that prop_clear failed");
+    
+    result = prop_getnames(dupctx, short_requests, foobar);
+    if(result < 0)
+	fatal("prop_getnames failed second time");
+
+    if(!foobar[0].name)
+	fatal("prop_clear appears to have affected dup'd context");
+    
+    prop_clear(dupctx, 0);
+
+    result = prop_getnames(dupctx, short_requests, foobar);
+    if(result < 0)
+	fatal("prop_getnames failed second time");
+
+    if(!foobar[0].name || strcmp(foobar[0].name, short_requests[0]))
+	fatal("prop_clear appears to have cleared too much");
+
+    prop_dispose(&ctx);
+    prop_dispose(&dupctx);
+    if(ctx != NULL)
+	fatal("ctx not null after prop_dispose");
+}
 
 /* callbacks we support */
 static sasl_callback_t client_callbacks[] = {
@@ -1932,31 +2025,43 @@ int main(int argc, char **argv)
 
     init(seed);
 
+    printf("Creating id's in sasldb... ");
     create_ids();
-    printf("Created id's in sasldb... ok\n");
     if(mem_stat() != SASL_OK) fatal("memory error");
+    printf("ok\n");
 
+    printf("Checking plaintext passwords... ");
     test_checkpass();
-    printf("Checking plaintext passwords... ok\n");
     if(mem_stat() != SASL_OK) fatal("memory error");
+    printf("ok\n");
 
+    printf("Random number functions... ");
     test_random();
-    printf("Random number functions... ok\n");
     if(mem_stat() != SASL_OK) fatal("memory error");
+    printf("ok\n");
 
+    printf("Testing base64 functions... ");
     test_64();
-    printf("Tested base64 functions... ok\n");
     if(mem_stat() != SASL_OK) fatal("memory error");
+    printf("ok\n");
 
+    printf("Testing auxprop functions... ");
+    test_props();
+    if(mem_stat() != SASL_OK) fatal("memory error");
+    printf("ok\n");
+
+    printf("Tests of sasl_server_init()... ");
     test_init();
-    printf("Tests of sasl_server_init()... ok\n");
     if(mem_stat() != SASL_OK) fatal("memory error");
-
+    printf("ok\n");
+    
+    printf("Testing sasl_listmech()... \n");
     test_listmech();
-    printf("Tests of sasl_listmech()... ok\n");
     if(mem_stat() != SASL_OK) fatal("memory error");
+    printf("Testing sasl_listmech()... ok\n");
 
     if(!skip_do_correct) {
+	printf("Testing serverstart (correct)...\n");
 	test_serverstart();
 	printf("Tests of serverstart (correct)... ok\n");
 	if(mem_stat() != SASL_OK) fatal("memory error");
@@ -1967,17 +2072,20 @@ int main(int argc, char **argv)
     /* FIXME: do memory tests below here on the things
      * that are MEANT to fail sometime. */
     if(do_all) {	
+	printf("All corruption tests...\n");
 	test_all_corrupt();
 	printf("All corruption tests... ok\n");
     }
     
     if(random_tests) {
+	printf("Random corruption tests...\n");
 	test_rand_corrupt(random_tests);
 	printf("Random tests... ok\n");
     } else {
 	printf("Random tests... skipped\n");
     }
 
+    printf("Testing security layer...\n");
     test_seclayer();
     printf("Tests of security layer... ok\n");
 
