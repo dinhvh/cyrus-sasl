@@ -3,6 +3,9 @@
 	  correct handling of $(DESTDIR) (and create the directory if it
 	  isn't there) [Amos Gouaux <amos@utdallas.edu>]
 
+	* lib/server.c (sasl_server_init): Added plugname to add_plugin
+	  call for EXTERNAL
+
 2001-08-09  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* plugins/digestmd5.c (digestmd5_client_mech_step): handle
 	  missing authorization name

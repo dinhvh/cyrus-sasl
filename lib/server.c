@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: server.c,v 1.84.2.55 2001/08/07 16:33:04 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.56 2001/08/10 18:06:31 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -632,7 +632,7 @@ int sasl_server_init(const sasl_callback_t *callbacks,
     }
 
     /* load internal plugins */
-    sasl_server_add_plugin(NULL, &external_server_init);
+    sasl_server_add_plugin("EXTERNAL", &external_server_init);
 
     /* delayed loading of plugins? (DSO only, as it doesn't
      * make much [any] sense to delay in the static library case) */
