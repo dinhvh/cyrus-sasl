@@ -2,7 +2,7 @@
  * Rob Siemborski
  * Tim Martin
  * Alexey Melnikov 
- * $Id: digestmd5.c,v 1.97.2.13 2001/07/06 17:37:46 rjs3 Exp $
+ * $Id: digestmd5.c,v 1.97.2.14 2001/07/06 17:52:11 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -2142,21 +2142,19 @@ server_continue_step(void *conn_context,
     /* add to challenge; if we chose not to specify a realm, we won't
      * end one to the client */
     if (realm && add_to_challenge(sparams->utils, &challenge, "realm", (unsigned char *) realm, TRUE) != SASL_OK) {
-	sasl_seterror(sparams->utils->conn, 0,
-		      "internal error: add_to_challenge failed");
+	SETERROR(sparams->utils, "internal error: add_to_challenge failed");
 	return SASL_FAIL;
     }
     /* get nonce XXX have to clean up after self if fail */
     nonce = create_nonce(sparams->utils);
     if (nonce == NULL) {
-	sasl_seterror(sparams->utils->conn, 0,
-		      "internal erorr: failed creating a nonce");
+	SETERROR(sparams->utils, "internal erorr: failed creating a nonce");
 	return SASL_FAIL;
     }
     /* add to challenge */
     if (add_to_challenge(sparams->utils, &challenge, "nonce", nonce, TRUE) != SASL_OK) {
-	sasl_seterror(sparams->utils->conn, 0,
-		      "internal error: add_to_challenge 2 failed");
+	SETERROR(sparams->utils,
+		 "internal error: add_to_challenge 2 failed");
 	return SASL_FAIL;
     }
     /*
@@ -2170,8 +2168,7 @@ server_continue_step(void *conn_context,
     /* add qop to challenge */
     if (add_to_challenge(sparams->utils, &challenge, "qop", 
 			 (unsigned char *) qop, TRUE) != SASL_OK) {
-	sasl_seterror(sparams->utils->conn, 0,
-		      "internal error: add_to_challenge 3 failed");
+	SETERROR(sparams->utils, "internal error: add_to_challenge 3 failed");
 	return SASL_FAIL;
     }
 
@@ -2184,8 +2181,8 @@ server_continue_step(void *conn_context,
       if (add_to_challenge(sparams->utils, &challenge, 
 			   "cipher", (unsigned char *) cipheropts, 
 			   TRUE) != SASL_OK) {
-	  sasl_seterror(sparams->utils->conn, 0,
-			"internal error: add_to_challenge 4 failed");
+	  SETERROR(sparams->utils,
+		   "internal error: add_to_challenge 4 failed");
 	  return SASL_FAIL;
       }
     }
@@ -2202,8 +2199,7 @@ server_continue_step(void *conn_context,
 
     if (add_to_challenge(sparams->utils, &challenge, "charset", 
 			 (unsigned char *) charset, FALSE) != SASL_OK) {
-	sasl_seterror(sparams->utils->conn, 0,
-		      "internal error: add_to_challenge 5 failed");
+	SETERROR(sparams->utils, "internal error: add_to_challenge 5 failed");
 	return SASL_FAIL;
     }
 
@@ -2221,8 +2217,7 @@ server_continue_step(void *conn_context,
    
     if (add_to_challenge(sparams->utils, &challenge,"algorithm",
 			 (unsigned char *) "md5-sess", FALSE)!=SASL_OK) {
-	sasl_seterror(sparams->utils->conn, 0,
-		      "internal error: add_to_challenge 6 failed");
+	SETERROR(sparams->utils, "internal error: add_to_challenge 6 failed");
 	return SASL_FAIL;
     }
     /* FIXME: this copy is wholy inefficient */
@@ -2243,8 +2238,8 @@ server_continue_step(void *conn_context,
      * The size of a digest-challenge MUST be less than 2048 bytes!!!
      */
     if (*serveroutlen > 2048) {
-	sasl_seterror(sparams->utils->conn, 0,
-		  "internal error: challenge larger than 2048 bytes");
+	SETERROR(sparams->utils->conn,
+		 "internal error: challenge larger than 2048 bytes");
 	return SASL_FAIL;
     }
 
@@ -2333,21 +2328,21 @@ server_continue_step(void *conn_context,
 	  _plug_strdup(sparams->utils, value, (char **) &cnonce, NULL);
       } else if (strcasecmp(name, "nc") == 0) {
 	  if (htoi((unsigned char *) value, &noncecount) != SASL_OK) {
-	      sasl_seterror(sparams->utils->conn, 0,
-			    "error converting hex to int");
+	      SETERROR(sparams->utils,
+		       "error converting hex to int");
 	      result = SASL_BADAUTH;
 	      goto FreeAllMem;
 	  }
 	  _plug_strdup(sparams->utils, value, (char **) &ncvalue, NULL);
       } else if (strcasecmp(name, "realm") == 0) {
 	  if (realm) {
-	      sasl_seterror(sparams->utils->conn, 0,
-			    "duplicate realm: authentication aborted");
+	      SETERROR(sparams->utils,
+		       "duplicate realm: authentication aborted");
 	      result = SASL_FAIL;
 	      goto FreeAllMem;
 	  } else if (text->realm && (strcmp(value, text->realm) != 0)) {
-	      sasl_seterror(sparams->utils->conn, 0,
-			    "realm changed: authentication aborted");
+	      SETERROR(sparams->utils,
+		       "realm changed: authentication aborted");
 	      result = SASL_FAIL;
 	      goto FreeAllMem;
 	  }
@@ -2358,8 +2353,8 @@ server_continue_step(void *conn_context,
 	      /*
 	       * Nonce changed: Abort authentication!!!
 	       */
-	      sasl_seterror(sparams->utils->conn, 0,
-			    "nonce changed: authentication aborted");
+	      SETERROR(sparams->utils,
+		       "nonce changed: authentication aborted");
 	      result = SASL_BADAUTH;
 	      goto FreeAllMem;
 	  }
@@ -2379,26 +2374,24 @@ server_continue_step(void *conn_context,
 	maxbuf_count++;
 	if (maxbuf_count != 1) {
 	  result = SASL_BADAUTH;
-	  sasl_seterror(sparams->utils->conn, 0,
-			"duplicate maxbuf: authentication aborted");
+	  SETERROR(sparams->utils,
+		   "duplicate maxbuf: authentication aborted");
 	  goto FreeAllMem;
 	} else if (sscanf(value, "%u", &client_maxbuf) != 1) {
 	  result = SASL_BADAUTH;
-	  sasl_seterror(sparams->utils->conn, 0,
-			"invalid maxbuf parameter");
+	  SETERROR(sparams->utils, "invalid maxbuf parameter");
 	  goto FreeAllMem;
 	} else {
             if (client_maxbuf <= 16) {
 	      result = SASL_BADAUTH;
-	      sasl_seterror(sparams->utils->conn, 0,
-			    "maxbuf parameter too small");
+	      SETERROR(sparams->utils,
+		       "maxbuf parameter too small");
 	      goto FreeAllMem;
             }
 	}
       } else if (strcasecmp(name, "charset") == 0) {
 	if (strcasecmp(value, "utf-8") != 0) {
-	    sasl_seterror(sparams->utils->conn, 0,
-			  "client doesn't support UTF-8");
+	    SETERROR(sparams->utils, "client doesn't support UTF-8");
 	    result = SASL_FAIL;
 	    goto FreeAllMem;
 	}
@@ -2443,8 +2436,7 @@ server_continue_step(void *conn_context,
 	    /* erg? client requested something we didn't advertise! */
 	    sparams->utils->log(sparams->utils->conn, SASL_LOG_WARN,
 				"protocol violation: client requested invalid cipher");
-	    sasl_seterror(sparams->utils->conn, 0,
-			  "client requested invalid cipher");
+	    SETERROR(sparams->utils, "client requested invalid cipher");
 	    result = SASL_FAIL;
 	    goto FreeAllMem;
 	}
@@ -2461,10 +2453,8 @@ server_continue_step(void *conn_context,
 	oparams->decode = NULL;
 	oparams->mech_ssf = 0;
     } else {
-	sparams->utils->log(sparams->utils->conn, SASL_LOG_WARN,
-			    "protocol violation: client requested invalid qop");
-	sasl_seterror(sparams->utils->conn, 0,
-		      "client requested invalid qop");
+	SETERROR(sparams->utils,
+		 "protocol violation: client requested invalid qop");
 	result = SASL_FAIL;
 	goto FreeAllMem;
     }
@@ -2488,16 +2478,14 @@ server_continue_step(void *conn_context,
 	(cnonce == NULL) ||
 	(digesturi == NULL) ||
 	(response == NULL)) {
-	sasl_seterror(sparams->utils->conn, 0,
-		      "required parameters missing");
+	SETERROR(sparams->utils, "required parameters missing");
 	result = SASL_BADAUTH;
 	goto FreeAllMem;
     }
 
     result = sparams->utils->prop_request(sparams->propctx, password_request);
     if(result != SASL_OK) {
-	sasl_seterror(sparams->utils->conn, 0,
-		      "unable to resquest user password");
+	SETERROR(sparams->utils, "unable to resquest user password");
 	goto FreeAllMem;
     }
     
@@ -2514,13 +2502,12 @@ server_continue_step(void *conn_context,
     }
      
     if (result != SASL_OK) {
-	sasl_seterror(sparams->utils->conn, 0,
-		      "unable cannonify user and get auxprops");
+	SETERROR(sparams->utils, "unable cannonify user and get auxprops");
 	goto FreeAllMem;
     }
 
-    result = prop_getnames(sparams->propctx, password_request,
-			   auxprop_values);
+    result = sparams->utils->prop_getnames(sparams->propctx, password_request,
+					   auxprop_values);
     if(result != 1 || !auxprop_values[0].name || !auxprop_values[0].values) {
 	/* We didn't find this username */
 	sparams->utils->seterror(sparams->utils->conn, 0,
@@ -2539,8 +2526,7 @@ server_continue_step(void *conn_context,
 
     sec = sparams->utils->malloc(sizeof(sasl_secret_t) + len);
     if (!sec) {
-	sasl_seterror(sparams->utils->conn, 0,
-		      "unable to allocate secret");
+	SETERROR(sparams->utils, "unable to allocate secret");
 	result = SASL_FAIL;
 	goto FreeAllMem;
     }
@@ -2587,16 +2573,15 @@ server_continue_step(void *conn_context,
 
 
     if (serverresponse == NULL) {
-	sasl_seterror(sparams->utils->conn, 0,
-		      "internal error: unable to create response");
+	SETERROR(sparams->utils, "internal error: unable to create response");
 	result = SASL_NOMEM;
 	goto FreeAllMem;
     }
 
     /* if ok verified */
     if (strcmp(serverresponse, response) != 0) {
-	sasl_seterror(sparams->utils->conn, 0,
-		      "client response doesn't match what we generated");
+	SETERROR(sparams->utils,
+		 "client response doesn't match what we generated");
 	result = SASL_BADAUTH;
 	
 	/* FIXME stuff for reauth */
@@ -2653,8 +2638,7 @@ server_continue_step(void *conn_context,
     if (add_to_challenge(sparams->utils, &response_auth, "rspauth", 
 			 (unsigned char *) text->response_value, FALSE) 
 	    != SASL_OK) {
-	sasl_seterror(sparams->utils->conn, 0, 
-		      "add_to_challenge failed");
+	SETERROR(sparams->utils, "add_to_challenge failed");
 	result = SASL_FAIL;
 	goto FreeAllMem;
     }
@@ -2720,8 +2704,7 @@ server_continue_step(void *conn_context,
      * Send additional information for reauthentication
      */
     if (clientinlen != 0) {
-	sasl_seterror(sparams->utils->conn, 0,
-		      "no more data expected from client");
+	SETERROR(sparams->utils, "no more data expected from client");
 	return SASL_FAIL;
     }
     *serverout = NULL;

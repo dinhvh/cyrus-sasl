@@ -1,7 +1,7 @@
 /* CRAM-MD5 SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: cram.c,v 1.55.2.14 2001/07/06 17:37:46 rjs3 Exp $
+ * $Id: cram.c,v 1.55.2.15 2001/07/06 17:52:11 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -403,8 +403,8 @@ static int server_continue_step (void *conn_context,
 				 userid, 0, userid, 0, 0, oparams);
     if(result != SASL_OK) goto done;
 
-    result = prop_getnames(sparams->propctx, password_request,
-			   auxprop_values);
+    result = sparams->utils->prop_getnames(sparams->propctx, password_request,
+					   auxprop_values);
     if(result != 1 || !auxprop_values[0].name || !auxprop_values[0].values) {
 	/* We didn't find this username */
 	sparams->utils->seterror(sparams->utils->conn,0,
