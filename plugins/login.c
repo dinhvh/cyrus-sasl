@@ -1,10 +1,11 @@
 /* Login SASL plugin
+ * Rob Siemborski (SASLv2 Conversion)
  * contributed by Rainer Schoepf <schoepf@uni-mainz.de>
  * based on PLAIN, by Tim Martin <tmartin@andrew.cmu.edu>
- * $Id: login.c,v 1.6.2.4 2001/06/25 16:44:10 rjs3 Exp $
+ * $Id: login.c,v 1.6.2.5 2001/06/25 18:44:41 rjs3 Exp $
  */
 /* 
- * Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
+ * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions

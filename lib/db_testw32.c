@@ -1,9 +1,10 @@
 /* db_testw32.c--SASL win32 test/dummy interface
+ * Rob Siemborski
  * G. Diskin    NOTE THIS IS FOR TEST PURPOSES ONLY FOR WIN32
+ * $Id: db_testw32.c,v 1.3.4.3 2001/06/25 18:44:38 rjs3 Exp $
  */
-
 /* 
- * Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
+ * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions

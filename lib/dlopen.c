@@ -1,9 +1,10 @@
 /* dlopen.c--Unix dlopen() dynamic loader interface
+ * Rob Siemborski
  * Rob Earhart
+ * $Id: dlopen.c,v 1.32.2.2 2001/06/25 18:44:38 rjs3 Exp $
  */
-
 /* 
- * Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
+ * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions

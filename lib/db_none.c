@@ -1,9 +1,10 @@
 /* db_none.c--provides linkage for systems which lack a backend db lib
+ * Rob Siemborski
  * Rob Earhart
+ * $Id: db_none.c,v 1.6.4.4 2001/06/25 18:44:38 rjs3 Exp $
  */
-
 /* 
- * Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
+ * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions

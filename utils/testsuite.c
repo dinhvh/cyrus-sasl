@@ -1,6 +1,7 @@
 /* testsuite.c -- Stress the library a little
+ * Rob Siemborski
  * Tim Martin
- * Rob Siemborski (SASL v2 changes)
+ * $Id: testsuite.c,v 1.13.2.13 2001/06/25 18:44:45 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.

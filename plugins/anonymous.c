@@ -1,8 +1,10 @@
 /* Anonymous SASL plugin
+ * Rob Siemborski
  * Tim Martin 
+ * $Id: anonymous.c,v 1.34.2.13 2001/06/25 18:44:40 rjs3 Exp $
  */
 /* 
- * Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
+ * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions

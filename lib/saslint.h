@@ -1,8 +1,10 @@
 /* saslint.h - internal SASL library definitions
+ * Rob Siemborski
  * Tim Martin
+ * $Id: saslint.h,v 1.33.2.21 2001/06/25 18:44:38 rjs3 Exp $
  */
 /* 
- * Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
+ * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions

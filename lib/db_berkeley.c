@@ -1,10 +1,10 @@
 /* db_berkeley.c--SASL berkeley db interface
+ * Rob Siemborski
  * Tim Martin
- * $Id: db_berkeley.c,v 1.16.2.3 2001/06/11 16:43:23 rjs3 Exp $
+ * $Id: db_berkeley.c,v 1.16.2.4 2001/06/25 18:44:38 rjs3 Exp $
  */
-
 /* 
- * Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
+ * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions

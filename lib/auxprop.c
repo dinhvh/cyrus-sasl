@@ -1,5 +1,6 @@
 /* auxprop.c - auxilliary property support
  * Rob Siemborski
+ * $Id: auxprop.c,v 1.1.2.10 2001/06/25 18:44:37 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.

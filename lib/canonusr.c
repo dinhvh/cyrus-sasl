@@ -1,5 +1,6 @@
 /* canonusr.c - user canonicalization support
  * Rob Siemborski
+ * $Id: canonusr.c,v 1.1.2.4 2001/06/25 18:44:37 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
