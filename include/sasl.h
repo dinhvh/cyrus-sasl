@@ -258,7 +258,6 @@ typedef unsigned sasl_ssf_t;
 
 /* usage flags provided to sasl_server_new and sasl_client_new:
  */
-#define SASL_CLIENT_FALLBACK 0x0002 /* allow client to fallback */
 #define SASL_SUCCESS_DATA    0x0004 /* server supports data on success */
 
 /***************************
