@@ -1,6 +1,6 @@
 dnl configure.in for the SASL library
 dnl Rob Earhart
-dnl $Id: configure.in,v 1.106.2.10 2001/07/05 17:52:26 rjs3 Exp $
+dnl $Id: configure.in,v 1.106.2.11 2001/07/05 18:26:04 rjs3 Exp $
 dnl
 dnl Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
 dnl
@@ -748,7 +748,7 @@ if test "$with_sfio" != "no"; then
 
    SFIO_INC_FLAGS="-I$SFIO_INC_DIR"
    SFIO_LIB_FLAGS="-L$SFIO_LIBDIR -lsfio"
-   SASL_UTIL_LIBS_EXTRA=libsfsasl.la
+   SASL_UTIL_LIBS_EXTRA=libsfsasl2.la
    SASL_UTIL_HEADERS_EXTRA=sfsasl.h
 
    AC_MSG_RESULT(yes)

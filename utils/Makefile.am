@@ -61,16 +61,16 @@ smtptest_SOURCES =
 smtptest_DEPENDENCIES = ./smtptest.lo ./libsfsasl.la
 smtptest_LDADD = ./smtptest.lo ./libsfsasl.la @SFIO_LIB_FLAGS@ $(all_sasl_libs)
 
-include_HEADERS = @SASL_UTIL_HEADERS_EXTRA@
+saslinclude_HEADERS = @SASL_UTIL_HEADERS_EXTRA@
 EXTRA_HEADERS = sfsasl.h
 
 # Note: we explicitly do *not* link to libsfio, as people will need to
 # link to that anyway if they want to use this. 
 lib_LTLIBRARIES = @SASL_UTIL_LIBS_EXTRA@
-EXTRA_LTLIBRARIES = libsfsasl.la
-libsfsasl_la_SOURCES = 
-libsfsasl_la_LIBADD = sfsasl.lo
-libsfsasl_la_LDFLAGS = -version-info 1:0:0 -export-dynamic -rpath $(libdir)
+EXTRA_LTLIBRARIES = libsfsasl2.la
+libsfsasl2_la_SOURCES = 
+libsfsasl2_la_LIBADD = sfsasl.lo
+libsfsasl2_la_LDFLAGS = -version-info 1:0:0 -export-dynamic -rpath $(libdir)
 
 INCLUDES=-I$(top_srcdir)/include
 EXTRA_DIST = saslpasswd.8 sasldblistusers.8 sfsasl.h testsuite.c
