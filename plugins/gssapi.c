@@ -699,11 +699,13 @@ sasl_gss_server_step (void *conn_context,
 
 	if (equal == 1) /* xxx True doesn't seem to exist in gssapi.h */
 	{
-	    text->u.authid = (char *) params->utils->malloc(strlen(name_without_realm.value)+1);
+	    text->u.authid =
+		(char *)params->utils->malloc(strlen(name_without_realm.value)+1);
 	    if (text->u.authid == NULL) return SASL_NOMEM;
 	    strcpy(text->u.authid, name_without_realm.value);
 	} else {
-	    text->u.authid = (char *) params->utils->malloc(strlen(name_token.value)+1);
+	    text->u.authid =
+		(char *)params->utils->malloc(strlen(name_token.value)+1);
 	    if (text->u.authid == NULL) return SASL_NOMEM;
 	    strcpy(text->u.authid, name_token.value);
 	}
@@ -836,7 +838,7 @@ sasl_gss_server_step (void *conn_context,
 
 	    ret = params->canon_user(params->utils->conn,
 				     ((char *) output_token->value) + 4,
-				     (output_token->length - 3) * sizeof(char),
+				     (output_token->length - 4) * sizeof(char),
 				     text->u.authid,
 				     0, /* strlen(text->u.authid) */
 				     0, oparams);
