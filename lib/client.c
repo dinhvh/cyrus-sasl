@@ -309,6 +309,7 @@ int sasl_client_new(const char *service,
 
   conn->cparams=sasl_ALLOC(sizeof(sasl_client_params_t));
   if (conn->cparams==NULL) return SASL_NOMEM;
+  memset(conn->cparams,0,sizeof(sasl_client_params_t));
 
   utils=_sasl_alloc_utils(*pconn, &global_callbacks);
   if (utils==NULL)
@@ -529,8 +530,9 @@ int sasl_client_start(sasl_conn_t *conn,
 					 NULL,
 					 0,
 					 prompt_need,
-					 clientout, (int *) clientoutlen,
+					 clientout, clientoutlen,
 					 &conn->oparams);    
+
  done:
     return result;
 }

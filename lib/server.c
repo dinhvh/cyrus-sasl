@@ -1,6 +1,6 @@
 /* SASL server API implementation
  * Tim Martin
- * $Id: server.c,v 1.84.2.4 2001/05/31 21:31:02 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.5 2001/06/04 20:12:23 rjs3 Exp $
  */
 
 /* 
@@ -792,6 +792,7 @@ int sasl_server_new(const char *service,
   /* make sparams */
   serverconn->sparams=sasl_ALLOC(sizeof(sasl_server_params_t));
   if (serverconn->sparams==NULL) return SASL_NOMEM;
+  memset(serverconn->sparams, 0, sizeof(sasl_server_params_t));
 
   /* set util functions - need to do rest */
   utils=_sasl_alloc_utils(*pconn, &global_callbacks);
