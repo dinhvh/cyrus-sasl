@@ -2,7 +2,7 @@
  * Rob Siemborski
  * Tim Martin
  * Alexey Melnikov 
- * $Id: digestmd5.c,v 1.97.2.14 2001/07/06 17:52:11 rjs3 Exp $
+ * $Id: digestmd5.c,v 1.97.2.15 2001/07/06 17:53:19 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -2238,7 +2238,7 @@ server_continue_step(void *conn_context,
      * The size of a digest-challenge MUST be less than 2048 bytes!!!
      */
     if (*serveroutlen > 2048) {
-	SETERROR(sparams->utils->conn,
+	SETERROR(sparams->utils,
 		 "internal error: challenge larger than 2048 bytes");
 	return SASL_FAIL;
     }
