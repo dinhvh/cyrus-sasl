@@ -242,6 +242,8 @@ main(int argc, char *argv[])
 			   NULL,
 			   user_domain,
 			   NULL,
+			   NULL,
+			   NULL,
 			   0,
 			   &conn);
   if (result != SASL_OK)
@@ -271,9 +273,9 @@ main(int argc, char *argv[])
 			userid,
 			password,
 			passlen,
+			NULL, 0,
 			(flag_create ? SASL_SET_CREATE : 0)
-			| (flag_disable ? SASL_SET_DISABLE : 0),
-			&errstr);
+			| (flag_disable ? SASL_SET_DISABLE : 0));
 
   if (result != SASL_OK)
     exit_sasl(result, errstr);
