@@ -53,7 +53,7 @@
  * END SYNOPSIS */
 
 #ifdef __GNUC__
-#ident "$Id: auth_rimap.c,v 1.4 2001/02/11 09:18:39 esys Exp $"
+#ident "$Id: auth_rimap.c,v 1.4.2.1 2001/07/03 17:56:58 rjs3 Exp $"
 #endif
 
 /* PUBLIC DEPENDENCIES */
@@ -607,7 +607,7 @@ retry_writev (
 	}
 
 	n = writev(fd, iov, iovcnt > iov_max ? iov_max : iovcnt);
-	if (n == -1) {
+	if (n < 0) {
 	    if (errno == EINVAL && iov_max > 10) {
 		iov_max /= 2;
 		continue;
@@ -621,7 +621,7 @@ retry_writev (
 	}
 
 	for (i = 0; i < iovcnt; i++) {
-	    if (iov[i].iov_len > n) {
+	    if (iov[i].iov_len > (unsigned)n) {
 		iov[i].iov_base = (char *)iov[i].iov_base + n;
 		iov[i].iov_len -= n;
 		break;
