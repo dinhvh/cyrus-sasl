@@ -1,7 +1,7 @@
 /* Kerberos4 SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: kerberos4.c,v 1.65.2.21 2001/06/28 21:50:45 rjs3 Exp $
+ * $Id: kerberos4.c,v 1.65.2.22 2001/07/02 15:41:58 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -122,6 +122,12 @@ extern int gethostname(char *, int);
 #define KRB_DES_SECURITY_BITS (56)
 #define KRB_INTEGRITY_BITS (1)
 
+typedef enum Krb_sec {
+    KRB_SEC_NONE = 0,
+    KRB_SEC_INTEGRITY = 1,
+    KRB_SEC_ENCRYPTION = 2
+} Krb_sec_t;
+
 typedef struct context {
   int state;
 
@@ -154,10 +160,13 @@ typedef struct context {
 
   const sasl_utils_t *utils;       /* this is useful to have around */
 
+  Krb_sec_t sec_type;
   char *encode_buf;                /* For encoding/decoding mem management */
   char *decode_buf;
+  char *decode_once_buf;
   unsigned encode_buf_len;
   unsigned decode_buf_len;
+  unsigned decode_once_buf_len;
   buffer_info_t *enc_in_buf;
 
   char *out_buf;                   /* per-step mem management */
@@ -196,11 +205,11 @@ static void *krb_mutex = NULL;
 static char *srvtab = NULL;
 static unsigned refcount = 0;
 
-static int privacy_encode(void *context,
-			  const struct iovec *invec,
-			  unsigned numiov,
-			  const char **output,
-			  unsigned *outputlen)
+static int encode(void *context,
+		  const struct iovec *invec,
+		  unsigned numiov,
+		  const char **output,
+		  unsigned *outputlen)
 {
   int len, ret;
   context_t *text = (context_t *)context;
@@ -215,11 +224,19 @@ static int privacy_encode(void *context,
 
   KRB_LOCK_MUTEX(text->utils);
   
-  len=krb_mk_priv((char *) text->enc_in_buf->data, text->encode_buf+4,
-		  text->enc_in_buf->curlen,  text->init_keysched, 
-		  &text->session, &text->ip_local,
-		  &text->ip_remote);
-
+  if(text->sec_type == KRB_SEC_ENCRYPTION) {
+      len=krb_mk_priv(text->enc_in_buf->data, (text->encode_buf+4),
+		      text->enc_in_buf->curlen,  text->init_keysched, 
+		      &text->session, &text->ip_local,
+		      &text->ip_remote);
+  } else if (text->sec_type == KRB_SEC_INTEGRITY) {
+      len=krb_mk_safe(text->enc_in_buf->data, (text->encode_buf+4),
+		      text->enc_in_buf->curlen,
+		      &text->session, &text->ip_local, &text->ip_remote);
+  } else {
+      len = -1;
+  }
+  
   KRB_UNLOCK_MUTEX(text->utils);
   
   /* returns -1 on error */
@@ -237,9 +254,9 @@ static int privacy_encode(void *context,
 }
 
 
-static int privacy_decode_once(void *context,
-			       const char **input, unsigned *inputlen,
-			       char **output, unsigned *outputlen)
+static int decode_once(void *context,
+		       const char **input, unsigned *inputlen,
+		       char **output, unsigned *outputlen)
 {
     int tocopy, result;
     unsigned diff;
@@ -306,9 +323,20 @@ static int privacy_decode_once(void *context,
 
     KRB_LOCK_MUTEX(text->utils);
     
-    result=krb_rd_priv((char *) text->buffer,text->size,  text->init_keysched, 
-		       &text->session, &text->ip_remote,
-		       &text->ip_local, &data);
+    if(text->sec_type == KRB_SEC_ENCRYPTION) {
+	result=krb_rd_priv(text->buffer,text->size, text->init_keysched, 
+			   &text->session, &text->ip_remote,
+			   &text->ip_local, &data);
+    } else if (text->sec_type == KRB_SEC_INTEGRITY) {
+        result = krb_rd_safe(text->buffer, text->size,
+			     &text->session, &text->ip_remote,
+			     &text->ip_local, &data);
+    } else {
+        KRB_UNLOCK_MUTEX(text->utils);
+	text->utils->seterror(text->utils->conn, 0,
+			      "KERBEROS_4 decode called with KRB_SEC_NONE");
+	return SASL_FAIL;
+    }
 
     KRB_UNLOCK_MUTEX(text->utils);
 
@@ -330,12 +358,12 @@ static int privacy_decode_once(void *context,
     text->time_sec = data.time_sec;
     text->time_5ms = data.time_5ms;
 
-    *output = text->utils->malloc(data.app_length + 1);
-
-    if ((*output) == NULL) {
-	return SASL_NOMEM;
-    }
+    result = _plug_buf_alloc(text->utils, &text->decode_once_buf,
+			      &text->decode_once_buf_len,
+			      data.app_length + 1);
+    if(result != SASL_OK) return result;
     
+    *output = text->decode_once_buf;
     *outputlen = data.app_length;
     memcpy(*output, data.app_data, data.app_length);
     (*output)[*outputlen] = '\0';
@@ -346,9 +374,9 @@ static int privacy_decode_once(void *context,
     return SASL_OK;
 }
 
-static int privacy_decode(void *context,
-			  const char *input, unsigned inputlen,
-			  const char **output, unsigned *outputlen)
+static int decode(void *context,
+		  const char *input, unsigned inputlen,
+		  const char **output, unsigned *outputlen)
 {
     char *tmp = NULL;
     unsigned tmplen = 0;
@@ -359,15 +387,16 @@ static int privacy_decode(void *context,
 
     while (inputlen!=0)
     {
-      ret = privacy_decode_once(text, &input, &inputlen,
-				&tmp, &tmplen);
+      /* No need to free tmp, it will be reused */
+      ret = decode_once(text, &input, &inputlen, &tmp, &tmplen);
 
       if(ret != SASL_OK) return ret;
 
       if (tmp!=NULL) /* if received 2 packets merge them together */
       {
 	  ret = _plug_buf_alloc(text->utils, &text->decode_buf,
-				&text->decode_buf_len, *outputlen + tmplen + 1);
+				&text->decode_buf_len,
+				*outputlen + tmplen + 1);
 	  if(ret != SASL_OK) return ret;
 
 	  *output = text->decode_buf;
@@ -377,193 +406,11 @@ static int privacy_decode(void *context,
 	  *(text->decode_buf + *outputlen + tmplen) = '\0';	  
 
 	  *outputlen+=tmplen;
-	  text->utils->free(tmp);
       }
     }
 
     return SASL_OK;
 }
-
-static int
-integrity_encode(void *context,
-		 const struct iovec *invec,
-		 unsigned numiov,
-		 const char **output,
-		 unsigned *outputlen)
-{
-  int len, ret;
-  context_t *text;
-  text=context;
-
-  ret = _plug_iovec_to_buf(text->utils, invec, numiov, &text->enc_in_buf);
-  if(ret != SASL_OK) return ret;
-
-  ret = _plug_buf_alloc(text->utils, &text->encode_buf, &text->encode_buf_len,
-			text->enc_in_buf->curlen+40);
-
-  if(ret != SASL_OK) return ret;
-  
-  KRB_LOCK_MUTEX(text->utils);
-  
-  len=krb_mk_safe(text->enc_in_buf->data, (text->encode_buf+4),
-		  text->enc_in_buf->curlen,
-		  &text->session, &text->ip_local, &text->ip_remote);
-
-  KRB_UNLOCK_MUTEX(text->utils);
-
-  /* returns -1 on error */
-  if (len==-1) return SASL_FAIL;
-
-  /* now copy in the len of the buffer in network byte order */
-  *outputlen=len+4;
-  len=htonl(len);
-  memcpy(text->encode_buf, &len, 4);
-
-  /* Setup the const pointer */
-  *output = text->encode_buf;
-  
-  return SASL_OK;
-}
-
-static int integrity_decode_once(void *context,
-				 const char **input, unsigned *inputlen,
-				 char **output, unsigned *outputlen)
-{
-    int tocopy, result;
-    MSG_DAT data;
-    context_t *text=context;
-    unsigned diff;
-
-    if (text->needsize>0) /* 4 bytes for how long message is */
-    {
-      /* if less than 4 bytes just copy those we have into text->size */
-      if (*inputlen<4) 
-	tocopy=*inputlen;
-      else
-	tocopy=4;
-      
-      if (tocopy>text->needsize)
-	tocopy=text->needsize;
-
-      memcpy(text->sizebuf+4-text->needsize, *input, tocopy);
-      text->needsize-=tocopy;
-
-      *input+=tocopy;
-      *inputlen-=tocopy;
-
-      if (text->needsize==0) /* got all of size */
-      {
-	memcpy(&(text->size), text->sizebuf, 4);
-	text->cursize=0;
-	text->size=ntohl(text->size);
-	if ((text->size>0xFFFF) || (text->size < 0)) return SASL_FAIL; /* too big probably error */
-
-	if (text->bufsize < text->size) {
-	    text->buffer = text->utils->realloc(text->buffer, text->size);
-	    text->bufsize = text->size;
-	}
-	if (text->buffer == NULL) return SASL_NOMEM;
-      }
-
-      *outputlen=0;
-      *output=NULL;
-      if (*inputlen==0) /* have to wait until next time for data */
-	return SASL_OK;
-
-      if (text->size==0)  /* should never happen */
-	return SASL_FAIL;
-    }
-
-    diff=text->size - text->cursize; /* bytes need for full message */
-
-    if (*inputlen < diff) /* not enough for a decode */
-    {
-
-      memcpy(text->buffer+text->cursize, *input, *inputlen);
-      text->cursize+=*inputlen;
-      *inputlen=0;
-      *outputlen=0;
-      *output=NULL;
-      return SASL_OK;
-    } else {
-      memcpy(text->buffer+text->cursize, *input, diff);
-      input+=diff;      
-      *inputlen-=diff;
-    }
-
-    KRB_LOCK_MUTEX(text->utils);
-    
-    result = krb_rd_safe((char *) text->buffer, text->size,
-			 &text->session, &text->ip_remote,
-			 &text->ip_local, &data);
-
-    KRB_UNLOCK_MUTEX(text->utils);
-
-    /* see if the krb library found a problem with what we were given */
-    if (result != 0)
-    {
-	text->utils->seterror(text->utils->conn, 0, krb_err_txt[result]);
-	return SASL_FAIL;
-    }
-
-    /* check to make sure the timestamps are ok */
-    if ((data.time_sec < text->time_sec) || /* if an earlier time */
-	(((data.time_sec == text->time_sec) && /* or the exact same time */
-	 (data.time_5ms < text->time_5ms)))) 
-    {
-	text->utils->seterror(text->utils->conn, 0, "timestamps not ok");
-	return SASL_FAIL;
-    }
-
-    text->time_sec = data.time_sec;
-    text->time_5ms = data.time_5ms;
-
-    *output=text->utils->malloc(data.app_length+1);
-
-    if ((*output) == NULL) return SASL_NOMEM;
- 
-    *outputlen=data.app_length;
-    memcpy((char *)*output, data.app_data,data.app_length);
-
-    text->size=-1;
-    text->needsize=4;
-
-    return SASL_OK;
-}
-
-static int integrity_decode(void *context,
-			    const char *input, unsigned inputlen,
-			    const char **output, unsigned *outputlen)
-{
-    char *tmp = NULL;
-    unsigned tmplen = 0;
-    context_t *text=context;
-    int ret;
-    
-    *outputlen = 0;
-
-    while (inputlen!=0)
-    {
-      ret = integrity_decode_once(text, &input, &inputlen,
-			   &tmp, &tmplen);
-
-      if(ret != SASL_OK) return ret;
-
-      if (tmp!=NULL) /* if received 2 packets merge them together */
-      {
-	  ret = _plug_buf_alloc(text->utils, &text->decode_buf,
-				&text->decode_buf_len, *outputlen + tmplen);
-
-	  *output = text->decode_buf;
-	  memcpy(text->decode_buf + *outputlen, tmp, tmplen);
-	  *outputlen+=tmplen;
-	  text->utils->free(tmp);
-      }
-    }
-
-    return SASL_OK;
-}
-
 
 static int
 new_text(const sasl_utils_t *utils, context_t **text)
@@ -607,6 +454,7 @@ static void dispose(void *conn_context, const sasl_utils_t *utils)
     if (text->buffer) utils->free(text->buffer);
     if (text->encode_buf) utils->free(text->encode_buf);
     if (text->decode_buf) utils->free(text->decode_buf);
+    if (text->decode_once_buf) utils->free(text->decode_once_buf);
     if (text->out_buf) utils->free(text->out_buf);
     if (text->enc_in_buf) {
 	if(text->enc_in_buf->data) utils->free(text->enc_in_buf->data);
@@ -844,21 +692,23 @@ static int server_continue_step (void *conn_context,
 	/* invalid security property specified */
 	return SASL_BADPROT;
     }
+
+    oparams->encode=&encode;
+    oparams->decode=&decode;
     
     switch (in[4] & KRB_SECFLAGS) {
     case KRB_SECFLAG_NONE:
+	text->sec_type = KRB_SEC_NONE;
 	oparams->encode=NULL;
 	oparams->decode=NULL;
 	oparams->mech_ssf=0;
 	break;
     case KRB_SECFLAG_INTEGRITY:
-	oparams->encode=&integrity_encode;
-	oparams->decode=&integrity_decode;
+	text->sec_type = KRB_SEC_INTEGRITY;
 	oparams->mech_ssf=KRB_INTEGRITY_BITS;
 	break;
     case KRB_SECFLAG_ENCRYPTION:
-	oparams->encode=&privacy_encode;
-	oparams->decode=&privacy_decode;
+	text->sec_type = KRB_SEC_ENCRYPTION;
 	oparams->mech_ssf=KRB_DES_SECURITY_BITS;
 	break;
     default:
@@ -1317,24 +1167,26 @@ static int client_continue_step (void *conn_context,
 	need = cparams->props.max_ssf - cparams->external_ssf;
 	musthave = cparams->props.min_ssf - cparams->external_ssf;
 
+	oparams->decode = &decode;
+	oparams->encode = &encode;
+
 	if ((in[4] & KRB_SECFLAG_ENCRYPTION)
 	    && (need>=56) && (musthave <= 56)) {
 	    /* encryption */
-	    oparams->encode = &privacy_encode;
-	    oparams->decode = &privacy_decode;
+	    text->sec_type = KRB_SEC_ENCRYPTION;
 	    oparams->mech_ssf = 56;
 	    sout[4] = KRB_SECFLAG_ENCRYPTION;
 	    /* using encryption layer */
 	} else if ((in[4] & KRB_SECFLAG_INTEGRITY)
 		   && (need >= 1) && (musthave <= 1)) {
 	    /* integrity */
-	    oparams->encode=&integrity_encode;
-	    oparams->decode=&integrity_decode;
+	    text->sec_type = KRB_SEC_INTEGRITY;
 	    oparams->mech_ssf=1;
 	    sout[4] = KRB_SECFLAG_INTEGRITY;
 	    /* using integrity layer */
 	} else if ((in[4] & KRB_SECFLAG_NONE) && (musthave <= 0)) {
 	    /* no layer */
+	    text->sec_type = KRB_SEC_NONE;
 	    oparams->encode=NULL;
 	    oparams->decode=NULL;
 	    oparams->mech_ssf=0;
