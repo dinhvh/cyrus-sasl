@@ -1,6 +1,6 @@
 /* SASL server API implementation
  * Tim Martin
- * $Id: server.c,v 1.1 1998/11/16 20:06:37 rob Exp $
+ * $Id: server.c,v 1.1.1.1 1998/11/16 20:06:37 rob Exp $
  */
 /***********************************************************
         Copyright 1998 by Carnegie Mellon University

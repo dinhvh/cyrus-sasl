@@ -1,6 +1,6 @@
 /* test.c - SASL tester
  * Tim Martin
- * $Id: test.c,v 1.1 1998/11/16 20:06:37 rob Exp $
+ * $Id: test.c,v 1.1.1.1 1998/11/16 20:06:37 rob Exp $
  */
 /***********************************************************
         Copyright 1998 by Carnegie Mellon University

@@ -1,6 +1,6 @@
 # Makefile.am for the SASL plugins
 # Rob Earhart
-# $Id: Makefile.am,v 1.1 1998/11/16 20:06:40 rob Exp $
+# $Id: Makefile.am,v 1.1.1.1 1998/11/16 20:06:40 rob Exp $
 #
 #
 #         Copyright 1998 by Carnegie Mellon University

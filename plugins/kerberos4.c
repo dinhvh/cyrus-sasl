@@ -1,6 +1,6 @@
 /* Kerberos4 SASL plugin
  * Tim Martin 
- * $Id: kerberos4.c,v 1.1 1998/11/16 20:06:40 rob Exp $
+ * $Id: kerberos4.c,v 1.1.1.1 1998/11/16 20:06:40 rob Exp $
  */
 /***********************************************************
         Copyright 1998 by Carnegie Mellon University

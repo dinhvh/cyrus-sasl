@@ -1,6 +1,6 @@
 /* Plain SASL plugin
  * Tim Martin 
- * $Id: plain.c,v 1.1 1998/11/16 20:06:40 rob Exp $
+ * $Id: plain.c,v 1.1.1.1 1998/11/16 20:06:40 rob Exp $
  */
 /***********************************************************
         Copyright 1998 by Carnegie Mellon University

@@ -1,6 +1,6 @@
 /* acconfig.h - autoheader configuration input
  * Rob Earhart
- * $Id: acconfig.h,v 1.1 1998/11/16 20:06:36 rob Exp $
+ * $Id: acconfig.h,v 1.1.1.1 1998/11/16 20:06:36 rob Exp $
  */
 /***********************************************************
         Copyright 1998 by Carnegie Mellon University

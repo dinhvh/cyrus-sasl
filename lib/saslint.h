@@ -1,6 +1,6 @@
 /* saslint.h - internal SASL library definitions
  * Tim Martin
- * $Id: saslint.h,v 1.1 1998/11/16 20:06:37 rob Exp $
+ * $Id: saslint.h,v 1.1.1.1 1998/11/16 20:06:37 rob Exp $
  */
 /***********************************************************
         Copyright 1998 by Carnegie Mellon University
