@@ -1,7 +1,7 @@
 # Makefile.am for the SASL plugins
 # Rob Siemborski
 # Rob Earhart
-# $Id: Makefile.am,v 1.39.2.18 2001/07/17 21:48:46 rjs3 Exp $
+# $Id: Makefile.am,v 1.39.2.19 2001/07/30 18:59:16 rjs3 Exp $
 #
 ################################################################
 # Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
@@ -57,7 +57,7 @@ sasldb_version = 1:0:0
 srp_version = 1:1:0
 
 INCLUDES=-I$(top_srcdir)/include -I$(top_srcdir)/lib
-LDFLAGS = @LDFLAGS@ -export-dynamic -rpath $(plugindir)
+LDFLAGS = @LDFLAGS@ -module -export-dynamic -rpath $(plugindir)
 
 EXTRA_DIST = makeinit.sh
 noinst_SCRIPTS = makeinit.sh

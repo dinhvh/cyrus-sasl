@@ -1,7 +1,7 @@
 dnl configure.in for the SASL library
 dnl Rob Siemborski
 dnl Rob Earhart
-dnl $Id: configure.in,v 1.106.2.30 2001/07/27 15:57:44 rjs3 Exp $
+dnl $Id: configure.in,v 1.106.2.31 2001/07/30 18:59:14 rjs3 Exp $
 dnl
 dnl Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
 dnl
@@ -606,7 +606,7 @@ AC_DEFINE_UNQUOTED(PLUGINDIR, "$plugindir")
 AC_SUBST(plugindir)
 
 dnl look for rc4 libraries. we accept the CMU one or one from openSSL
-AC_ARG_WITH(rc4, [  --with-rc4=DIR          use internal rc4 routines [yes] ],
+AC_ARG_WITH(rc4, [  --with-rc4              use internal rc4 routines [yes] ],
 	with_rc4=$withval,
 	with_rc4=yes)
 
