@@ -1,4 +1,6 @@
-2001-08-28  Rob Siemborski <rjs3+@andrew.cmu.edu>
+2001-08-29  Rob Siemborski <rjs3+@andrew.cmu.edu>
+
+	* utils/testsuite.c: Minor testsuite fix (include paths)
 
 	* Ready for 2.0.4-BETA
 

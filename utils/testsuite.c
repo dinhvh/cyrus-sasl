@@ -1,7 +1,7 @@
 /* testsuite.c -- Stress the library a little
  * Rob Siemborski
  * Tim Martin
- * $Id: testsuite.c,v 1.13.2.34 2001/08/13 19:15:59 rjs3 Exp $
+ * $Id: testsuite.c,v 1.13.2.35 2001/08/29 15:36:24 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -55,7 +55,6 @@
 /*
  * TODO [FIXME]:
  *  put in alloc() routines that fail occasionally.
- *  verify ssf's
  */
 
 #include <config.h>
@@ -63,12 +62,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <sasl/sasl.h>
-#include <sasl/saslutil.h>
-#include <sasl/prop.h>
-#include <sasl/md5global.h>
-#include <sasl/md5.h>
-#include <sasl/hmac-md5.h>
+#include <sasl.h>
+#include <saslutil.h>
+#include <prop.h>
+#include <md5global.h>
+#include <md5.h>
+#include <hmac-md5.h>
 
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
