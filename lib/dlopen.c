@@ -1,7 +1,7 @@
 /* dlopen.c--Unix dlopen() dynamic loader interface
  * Rob Siemborski
  * Rob Earhart
- * $Id: dlopen.c,v 1.32.2.4 2001/07/06 21:06:16 rjs3 Exp $
+ * $Id: dlopen.c,v 1.32.2.5 2001/07/09 22:13:39 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -201,7 +201,8 @@ int _sasl_locate_entry(void *library, const char *entryname,
     return SASL_OK;
 }
 
-static int _sasl_plugin_load(char *file, void *library, const char *entryname,
+static int _sasl_plugin_load(char *plugin, void *library,
+			     const char *entryname,
 			     int (*add_plugin)(const char *, void *)) 
 {
     void *entry_point;
@@ -212,8 +213,8 @@ static int _sasl_plugin_load(char *file, void *library, const char *entryname,
 	result = add_plugin(NULL, entry_point);
 	if(result != SASL_OK)
 	    _sasl_log(NULL, SASL_LOG_ERR,
-		      "_sasl_plugin_load failed on %s in %s\n",
-		      entryname, file);
+		      "_sasl_plugin_load failed on %s for plugin: %s\n",
+		      entryname, plugin);
     }
 
     return result;
@@ -313,6 +314,7 @@ int _sasl_load_plugins(const add_plugin_list_t *entrypoints,
 	    {
 		size_t length;
 		void *library;
+		char plugname[PATH_MAX];
 		char name[PATH_MAX];
 
 		length = NAMLEN(dir);
@@ -321,18 +323,23 @@ int _sasl_load_plugins(const add_plugin_list_t *entrypoints,
 
 		if (length + pos>=PATH_MAX) continue; /* too big */
 
-		if (strcmp(dir->d_name + (length - 3), SO_SUFFIX)) continue;
+		if (strcmp(dir->d_name + (length - strlen(SO_SUFFIX)),
+			   SO_SUFFIX)) continue;
 
 		memcpy(name,dir->d_name,length);
 		name[length]='\0';
 	
-		strcpy(tmp,prefix);
-		strcat(tmp,name);
+		strcpy(tmp, prefix);
+		strcat(tmp, name);
+
+		/* skip "lib" and cut off ".so" */
+		strcpy(plugname, name + 3);
+		*(plugname + strlen(plugname) - strlen(SO_SUFFIX)) = '\0';
 	
 		result = _sasl_get_plugin(tmp, verifyfile_cb, &library);
 
 		for(cur_ep = entrypoints; cur_ep->entryname; cur_ep++) {
-			_sasl_plugin_load(tmp, library, cur_ep->entryname,
+			_sasl_plugin_load(plugname, library, cur_ep->entryname,
 					  cur_ep->add_plugin);
 			/* If this fails, it's not the end of the world */
 		}
