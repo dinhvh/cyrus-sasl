@@ -1773,6 +1773,7 @@ void notes(void)
     printf("NOTE:\n");
     printf("-For KERBEROS_V4 must be able to read srvtab file (usually /etc/srvtab)\n");
     printf("-For GSSAPI must be able to read srvtab (/etc/krb5.keytab)\n");
+    printf("-For both KERBEROS_V4 and GSSAPI you must have non-expired tickets\n");
     printf("-Must be able to read and write to sasldb.\n");
     printf("\n\n");
 }
