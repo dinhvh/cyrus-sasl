@@ -130,20 +130,158 @@ const char *corrupt_types[] = {
 typedef void *foreach_t(char *mech, void *rock);
 
 typedef struct tosend_s {
-
     corrupt_type_t type; /* type of corruption to make */
     int step; /* step it should send bogus data on */
-
 } tosend_t;
 
+typedef struct mem_info 
+{
+    void *addr;
+    struct mem_info *next;
+} mem_info_t;
+
+int DETAILED_MEMORY_DEBUGGING = 0;
+
+mem_info_t *head = NULL;
+
+void *test_malloc(size_t size)
+{
+    void *out;
+    mem_info_t *new_data;
+    
+    out = malloc(size);
+
+    if(DETAILED_MEMORY_DEBUGGING)
+	fprintf(stderr, "  %X = malloc(%d)\n", (unsigned)out, size);
+    
+    if(out) {
+	new_data = malloc(sizeof(mem_info_t));
+	if(!new_data) return out;
+
+	new_data->addr = out;
+	new_data->next = head;
+	head = new_data;
+    }
+
+    return out;
+}
+
+void *test_realloc(void *ptr, size_t size)
+{
+    void *out;
+    mem_info_t **prev, *cur;
+    
+    out = realloc(ptr, size);
+    
+    if(DETAILED_MEMORY_DEBUGGING)
+	fprintf(stderr, "  %X = realloc(%X,%d)\n",
+		(unsigned)out, (unsigned)ptr, size);
+
+    /* don't need to update the mem info structure */
+    if(out == ptr) return out;
+
+    prev = &head; cur = head;
+    
+    while(cur) {
+	if(cur->addr == ptr) {
+	    cur->addr = out;
+	    return out;
+	}
+	
+	prev = &cur->next;
+	cur = cur->next;
+    }
+    
+    if(DETAILED_MEMORY_DEBUGGING && cur == NULL) {
+	fprintf(stderr,
+		"  MEM WARNING: reallocing something we never allocated!\n");
+
+	cur = malloc(sizeof(mem_info_t));
+	if(!cur) return out;
+
+	cur->addr = out;
+	cur->next = head;
+	head = cur;
+    }
+
+    return out;
+}
+
+void *test_calloc(size_t nmemb, size_t size)
+{
+    void *out;
+    mem_info_t *new_data;
+    
+    out = calloc(nmemb, size);
+
+    if(DETAILED_MEMORY_DEBUGGING)    
+	fprintf(stderr, "  %X = calloc(%d, %d)\n",
+		(unsigned)out, nmemb, size);
+
+    if(out) {
+	new_data = malloc(sizeof(mem_info_t));
+	if(!new_data) return out;
+
+	new_data->addr = out;
+	new_data->next = head;
+	head = new_data;
+    }
+    
+    return out;
+}
+
+
+void test_free(void *ptr)
+{
+    mem_info_t **prev, *cur;
+
+    if(DETAILED_MEMORY_DEBUGGING)
+	fprintf(stderr, "  free(%X)\n",
+		(unsigned)ptr);
+
+    prev = &head; cur = head;
+    
+    while(cur) {
+	if(cur->addr == ptr) {
+	    *prev = cur->next;
+	    free(cur);
+	    break;
+	}
+	
+	prev = &cur->next;
+	cur = cur->next;
+    }
+
+    if(DETAILED_MEMORY_DEBUGGING && cur == NULL) {
+	fprintf(stderr,
+		"  MEM WARNING: Freeing something we never allocated!\n");
+    }
+
+    free(ptr);
+}
+
+int mem_stat() 
+{
+    mem_info_t *cur;
+
+    if(!head) {
+	fprintf(stderr, "  All memory accounted for!\n");
+	return SASL_OK;
+    }
+    
+    fprintf(stderr, "  Currently Still Allocated:\n");
+    for(cur = head; cur; cur = cur->next) {
+	fprintf(stderr, "    %X\n", (unsigned)cur->addr);
+    }
+    return SASL_FAIL;
+}
+/************* End Memory Allocation functions ******/
 
 void fatal(char *str)
 {
     printf("Failed with: %s\n",str);
     exit(3);
 }
-
-
 
 /* my mutex functions */
 int g_mutex_cnt = 0;
@@ -285,6 +423,11 @@ void init(unsigned int seed)
 		   (sasl_mutex_lock_t *) &my_mutex_lock,
 		   (sasl_mutex_unlock_t *) &my_mutex_unlock,
 		   (sasl_mutex_free_t *) &my_mutex_dispose);
+
+    sasl_set_alloc((sasl_malloc_t *)test_malloc,
+		   (sasl_calloc_t *)test_calloc,
+		   (sasl_realloc_t *)test_realloc,
+		   (sasl_free_t *)test_free);
 }
 
 /*
@@ -992,6 +1135,7 @@ int doauth(char *mech, sasl_conn_t **server_conn, sasl_conn_t **client_conn)
 			0,
 			&clientconn)!= SASL_OK) fatal("sasl_client_new() failure");
 
+    /* Set the security properties */
     set_properties(clientconn);
 
     if (sasl_server_new(service, myhostname, NULL,
@@ -1636,12 +1780,13 @@ void notes(void)
 void usage(void)
 {
     printf("Usage:\n" \
-           " testsuite [-g name] [-s seed] [-r tests] -a\n" \
+           " testsuite [-g name] [-s seed] [-r tests] -a -M\n" \
            "    g -- gssapi service name to use (default: host)\n" \
 	   "    r -- # of random tests to do (default: 25)\n" \
 	   "    a -- do all corruption tests (and ignores random ones unless -r specified)\n" \
 	   "    h -- show this screen\n" \
            "    s -- random seed to use\n" \
+	   "    M -- detailed memory debugging ON\n" \
            );
 }
 
@@ -1651,8 +1796,11 @@ int main(int argc, char **argv)
     int random_tests = -1;
     int do_all = 0;
     unsigned int seed = time(NULL);
-    while ((c = getopt(argc, argv, "s:g:r:h:a")) != EOF)
+    while ((c = getopt(argc, argv, "Ms:g:r:h:a")) != EOF)
 	switch (c) {
+	case 'M':
+	    DETAILED_MEMORY_DEBUGGING = 1;
+	    break;
 	case 's':
 	    seed = atoi(optarg);
 	    break;
@@ -1684,7 +1832,9 @@ int main(int argc, char **argv)
 
     create_ids();
     printf("Created id's in sasldb... ok\n");
-
+/*  FOR THE FUTURE (and below): 
+ *    if(mem_stat() != SASL_OK) fatal("memory error");
+ */  
     test_checkpass();
     printf("Checking plaintext passwords... ok\n");
 
