@@ -1,6 +1,6 @@
 /* db_berkeley.c--SASL berkeley db interface
  * Tim Martin
- * $Id: db_berkeley.c,v 1.16.2.2 2001/06/08 16:25:37 rjs3 Exp $
+ * $Id: db_berkeley.c,v 1.16.2.3 2001/06/11 16:43:23 rjs3 Exp $
  */
 
 /* 
@@ -128,28 +128,24 @@ static void berkeleydb_close(DB *mbdb)
  * Construct a key
  *
  */
-static int alloc_key(const char *mechanism,
-		     const char *auth_identity,
+static int alloc_key(const char *auth_identity,
 		     const char *realm,
 		     char **key,
 		     size_t *key_len)
 {
-  size_t auth_id_len, mech_len, realm_len;
+  size_t auth_id_len, realm_len;
 
-  assert(mechanism && auth_identity && realm && key && key_len);
+  assert(auth_identity && realm && key && key_len);
 
   auth_id_len = strlen(auth_identity);
-  mech_len = strlen(mechanism);
   realm_len = strlen(realm);
-  *key_len = auth_id_len + mech_len + realm_len + 2;
+  *key_len = auth_id_len + realm_len + 1;
   *key = sasl_ALLOC(*key_len);
   if (! *key)
     return SASL_NOMEM;
   memcpy(*key, auth_identity, auth_id_len);
   (*key)[auth_id_len] = '\0';
   memcpy(*key + auth_id_len + 1, realm, realm_len);
-  (*key)[auth_id_len + realm_len + 1] = '\0';
-  memcpy(*key + auth_id_len + realm_len + 2, mechanism, mech_len);
 
   return SASL_OK;
 }
@@ -163,7 +159,6 @@ static int alloc_key(const char *mechanism,
 
 static int
 getsecret(sasl_conn_t *context,
-	  const char *mechanism,
 	  const char *auth_identity,
 	  const char *realm,
 	  sasl_secret_t ** secret)
@@ -175,11 +170,11 @@ getsecret(sasl_conn_t *context,
   DB *mbdb = NULL;
 
   /* check parameters */
-  if (! mechanism || ! auth_identity || ! secret || ! realm || ! db_ok)
+  if (!auth_identity || !secret || !realm || !db_ok)
     return SASL_FAIL;
 
   /* allocate a key */
-  result = alloc_key(mechanism, auth_identity, realm,
+  result = alloc_key(auth_identity, realm,
 		     &key, &key_len);
   if (result != SASL_OK)
     return result;
@@ -244,7 +239,6 @@ getsecret(sasl_conn_t *context,
 
 static int
 putsecret(sasl_conn_t *context,
-	  const char *mechanism,
 	  const char *auth_identity,
 	  const char *realm,
 	  const sasl_secret_t * secret)
@@ -255,13 +249,12 @@ putsecret(sasl_conn_t *context,
   DBT dbkey;
   DB *mbdb = NULL;
 
-  if (! mechanism || ! auth_identity || ! realm)
+  if (!auth_identity || !realm)
       return SASL_FAIL;
 
-  VL(("Entering putsecret for %s\n",mechanism));
+  VL(("Entering putsecret\n"));
   
-  result = alloc_key(mechanism, auth_identity, realm,
-		     &key, &key_len);
+  result = alloc_key(auth_identity, realm, &key, &key_len);
   if (result != SASL_OK)
     return result;
 

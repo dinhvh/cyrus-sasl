@@ -55,35 +55,30 @@ static int db_ok = 0;
 /* This provides a version of _sasl_db_getsecret and
  * _sasl_db_putsecret which work with gdbm. */
 
-static int alloc_key(const char *mechanism,
-		     const char *auth_identity,
+static int alloc_key(const char *auth_identity,
 		     const char *realm,
 		     char **key,
 		     size_t *key_len)
 {
-  size_t auth_id_len, mech_len, realm_len;
+  size_t auth_id_len, realm_len;
 
-  assert(mechanism && auth_identity && realm && key && key_len);
+  assert(auth_identity && realm && key && key_len);
 
   auth_id_len = strlen(auth_identity);
-  mech_len = strlen(mechanism);
   realm_len = strlen(realm);
-  *key_len = auth_id_len + mech_len + realm_len + 2;
+  *key_len = auth_id_len + realm_len + 1;
   *key = sasl_ALLOC(*key_len);
   if (! *key)
     return SASL_NOMEM;
   memcpy(*key, auth_identity, auth_id_len);
   (*key)[auth_id_len] = '\0';
   memcpy(*key + auth_id_len + 1, realm, realm_len);
-  (*key)[auth_id_len + realm_len + 1] = '\0';
-  memcpy(*key + auth_id_len + realm_len + 2, mechanism, mech_len);
 
   return SASL_OK;
 }
 
 static int
 getsecret(sasl_conn_t *conn,
-	  const char *mechanism,
 	  const char *auth_identity,
 	  const char *realm,
 	  sasl_secret_t ** secret)
@@ -97,11 +92,10 @@ getsecret(sasl_conn_t *conn,
   sasl_getopt_t *getopt;
   const char *path = SASL_DB_PATH;
 
-  if (! mechanism || ! auth_identity || ! secret || ! realm || ! db_ok)
+  if (!auth_identity || !secret || !realm || !db_ok)
     return SASL_FAIL;
 
-  result = alloc_key(mechanism, auth_identity, realm,
-		     &key, &key_len);
+  result = alloc_key(auth_identity, realm, &key, &key_len);
   if (result != SASL_OK)
     return result;
 
@@ -149,7 +143,6 @@ getsecret(sasl_conn_t *conn,
 
 static int
 putsecret(sasl_conn_t *conn,
-	  const char *mechanism,
 	  const char *auth_identity,
 	  const char *realm,
 	  const sasl_secret_t * secret)
@@ -163,11 +156,10 @@ putsecret(sasl_conn_t *conn,
   sasl_getopt_t *getopt;
   const char *path = SASL_DB_PATH;
 
-  if (! mechanism || ! auth_identity || ! realm)
+  if (!auth_identity || !realm)
       return SASL_FAIL;
 
-  result = alloc_key(mechanism, auth_identity, realm,
-		     &key, &key_len);
+  result = alloc_key(auth_identity, realm, &key, &key_len);
   if (result != SASL_OK)
     return result;
 

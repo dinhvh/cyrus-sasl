@@ -266,13 +266,11 @@ _sasl_free_utils(sasl_utils_t ** utils);
 
 /* Database Stuff */
 typedef int sasl_server_getsecret_t(sasl_conn_t *context,
-				    const char *mechanism,
 				    const char *auth_identity,
 				    const char *realm,
 				    sasl_secret_t ** secret);
 
 typedef int sasl_server_putsecret_t(sasl_conn_t *context,
-				    const char *mechanism,
 				    const char *auth_identity,
 				    const char *realm,
 				    const sasl_secret_t * secret);

@@ -199,7 +199,7 @@ static int sasldb_verify_password(sasl_conn_t *conn,
 	goto done;
     }
 
-    ret = _sasl_db_getsecret(conn, "PLAIN", userid, realm, &secret);
+    ret = _sasl_db_getsecret(conn, userid, realm, &secret);
     if (ret != SASL_OK) {
 	/* error getting secret */
 	goto done;
@@ -253,7 +253,7 @@ int _sasl_sasldb_verify_apop(sasl_conn_t *conn,
       goto done;
     }
 
-    ret = _sasl_db_getsecret(conn, "PLAIN", userid, realm, &secret);
+    ret = _sasl_db_getsecret(conn, userid, realm, &secret);
     if (ret != SASL_OK) {
       /* error getting APOP secret */
       goto done;
@@ -309,7 +309,7 @@ int _sasl_sasldb_set_pass(sasl_conn_t *conn,
 	/* if SASL_SET_CREATE is set, we don't want to overwrite an
 	   existing account */
 	if (flags & SASL_SET_CREATE) {
-	    ret = _sasl_db_getsecret(conn, "PLAIN", userid, realm, &sec);
+	    ret = _sasl_db_getsecret(conn, userid, realm, &sec);
 	    if (ret == SASL_OK) {
 		_sasl_free_secret(&sec);
 		ret = SASL_NOCHANGE;
@@ -327,7 +327,7 @@ int _sasl_sasldb_set_pass(sasl_conn_t *conn,
 	    ret = _sasl_make_plain_secret(NULL, pass, passlen, &sec);
 	}
 	if (ret == SASL_OK) {
-	    ret = _sasl_db_putsecret(conn, "PLAIN", userid, realm, sec);
+	    ret = _sasl_db_putsecret(conn, userid, realm, sec);
 	}
 	if (ret != SASL_OK) {
 	    _sasl_log(conn, SASL_LOG_ERR, NULL, ret, 0,
@@ -338,7 +338,7 @@ int _sasl_sasldb_set_pass(sasl_conn_t *conn,
 	}
     } else { 
 	/* SASL_SET_DISABLE specified */
-	ret = _sasl_db_putsecret(conn, "PLAIN", userid, realm, NULL);
+	ret = _sasl_db_putsecret(conn, userid, realm, NULL);
 
 	if (ret != SASL_OK) {
 	    _sasl_log(conn, SASL_LOG_ERR, NULL, ret, 0,

@@ -69,7 +69,6 @@
 
 static int
 getsecret(sasl_conn_t *context __attribute__((unused)),
-	  const char *mechanism,
 	  const char *auth_identity,
 	  sasl_secret_t ** secret)
 {
@@ -79,11 +78,10 @@ getsecret(sasl_conn_t *context __attribute__((unused)),
   char the_secret[256],filename[100];
   int rvalue;
 
-  if (! mechanism || ! auth_identity || ! secret)
+  if (!auth_identity || !secret)
     return SASL_FAIL;
 
-  strcpy(filename, "c:\\tmp\\sasldata.");
-  strncat(filename, mechanism, 3);
+  strcpy(filename, "c:\\tmp\\sasldata.txt");
   db = fopen(filename, "rb");
 
   if (! db) {
@@ -124,7 +122,6 @@ getsecret(sasl_conn_t *context __attribute__((unused)),
 
 static int
 putsecret(sasl_conn_t *context __attribute__((unused)),
-	  const char *mechanism,
 	  const char *auth_identity,
 	  const sasl_secret_t * secret)
 {
@@ -132,12 +129,12 @@ putsecret(sasl_conn_t *context __attribute__((unused)),
   FILE *db;
   char filename[100];
 
-  if (! mechanism || ! auth_identity)
+  if (!auth_identity)
       return SASL_FAIL;
 
-  strcpy(filename, "c:\\tmp\\sasldata.");
-  strncat(filename, mechanism, 3);
+  strcpy(filename, "c:\\tmp\\sasldata.txt");
   db = fopen(filename, "wb");
+
   if (! db) {
     VL(("error opening password file. Do you have write permissions?\n"));
     result = SASL_FAIL;

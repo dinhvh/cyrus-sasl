@@ -50,7 +50,6 @@
  * couldn't find a database library. */
 
 static int getsecret(sasl_conn_t *context __attribute__((unused)),
-		     const char *mechanism __attribute__((unused)),
 		     const char *auth_identity __attribute__((unused)),
 		     const char *realm __attribute__((unused)),
 		     sasl_secret_t ** secret __attribute__((unused))) 
@@ -59,7 +58,6 @@ static int getsecret(sasl_conn_t *context __attribute__((unused)),
 }
 
 static int putsecret(sasl_conn_t *context __attribute__((unused)),
-		     const char *mechanism __attribute__((unused)),
 		     const char *auth_identity __attribute__((unused)),
 		     const char *realm __attribute__((unused)),
 		     const sasl_secret_t *secret __attribute__((unused))) 
