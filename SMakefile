@@ -32,6 +32,7 @@ esac
 MAKE=gmake
 LNCOMMAND="${SRCDIR}/configure --prefix=/usr/local --enable-cmulocal --enable-java ${LNEXTRA}"
 CPPFLAGS=-I/usr/local/include/gssapi
+INSTCOMMAND="make DESTDIR=${DESTDIR} install"
 
 export CC CFLAGS CPPFLAGS LIBS
 # -lgssapi_krb5 -lkrb5 -lk5crypto -lndbm
