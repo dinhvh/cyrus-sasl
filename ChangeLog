@@ -1,6 +1,7 @@
 2000-07-11  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* error reporting in KERBEROS_V4 plugin
 	* vague handling of SASL_AUTHSOURCE for getprop
+	* random misc error reporting bugs
 
 2000-07-10  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* added client-send-first logic in glue code
