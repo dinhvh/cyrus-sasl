@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: checkpw.c,v 1.41.2.21 2001/08/13 20:41:05 rjs3 Exp $
+ * $Id: checkpw.c,v 1.41.2.22 2001/08/14 20:30:20 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -496,12 +496,14 @@ static int saslauthd_verify_password(sasl_conn_t *conn,
 #endif
 
 #ifdef HAVE_ALWAYSTRUE
-static int always_true(sasl_conn_t *conn __attribute__((unused)),
-		       const char *userstr __attribute__((unused)),
+static int always_true(sasl_conn_t *conn,
+		       const char *userstr,
 		       const char *passwd __attribute__((unused)),
 		       const char *service __attribute__((unused)),
 		       const char *user_realm __attribute__((unused))) 
 {
+    _sasl_log(conn, SASL_LOG_WARN, "AlwaysTrue Password Verifier Verified: %s",
+	      userstr);
     return SASL_OK;
 }
 #endif
