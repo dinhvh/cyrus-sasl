@@ -154,8 +154,6 @@
 /* do we have an inttypes.h? */
 #undef HAVE_INTTYPES_H
 
-@BOTTOM@
-
 /* define if your system has getnameinfo() */
 #undef HAVE_GETADDRINFO
 
@@ -171,6 +169,8 @@
 /* do we have socklen_t? */
 #undef HAVE_SOCKLEN_T
 #undef HAVE_SOCKADDR_SA_LEN
+
+@BOTTOM@
 
 /* location of the random number generator */
 #ifndef DEV_RANDOM

@@ -26,11 +26,10 @@
  * END COPYRIGHT */
 
 #ifdef __GNUC__
-#ident "$Id: mechanisms.h,v 1.2.2.1 2001/06/25 20:08:09 rjs3 Exp $"
+#ident "$Id: mechanisms.h,v 1.2.2.2 2001/08/13 19:15:53 rjs3 Exp $"
 #endif
 
-#include <config.h>
-
+#include "saslauthd.h"
 
 /* PUBLIC DEPENDENCIES */
 /* Authentication mechanism dispatch table definition */

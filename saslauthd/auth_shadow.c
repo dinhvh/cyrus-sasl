@@ -28,11 +28,10 @@
  * END COPYRIGHT */
 
 #ifdef __GNUC__
-#ident "$Id: auth_shadow.c,v 1.3 2001/01/29 20:47:03 esys Exp $"
+#ident "$Id: auth_shadow.c,v 1.3.2.1 2001/08/13 19:15:53 rjs3 Exp $"
 #endif
 
 /* PUBLIC DEPENDENCIES */
-#include <config.h>
 #include "mechanisms.h"
 
 #ifdef AUTH_SHADOW

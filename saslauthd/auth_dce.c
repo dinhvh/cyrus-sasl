@@ -32,12 +32,10 @@
  * END SYNOPSIS */
 
 #ifdef __GNUC__
-#ident "$Id: auth_dce.c,v 1.2 2001/01/04 21:20:45 leg Exp $"
+#ident "$Id: auth_dce.c,v 1.2.2.1 2001/08/13 19:15:52 rjs3 Exp $"
 #endif
 
 /* PUBLIC DEPENDENCIES */
-#include <config.h>
-
 #include <stdlib.h>
 #include <string.h>
 #include "mechanisms.h"

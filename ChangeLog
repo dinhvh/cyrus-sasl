@@ -1,3 +1,20 @@
+2001-08-13  Rob Siemborski <rjs3+@andrew.cmu.edu>
+	* utils/testsuite.c (giveokpath): fix memory leak
+
+	* lib/common.c (sasl_ipfromstring): add call to freeaddrinfo()
+	* plugins/plugin_common.c (_plug_ipfromstring): add call to
+	  freeaddrinfo()
+
+	* lib/saslutil.c (sasl_randseed): actually initilize the randpool
+
+	* saslauthd/auth_getpwent.c (auth_getpwent): clear a warning
+
+2001-08-11  Rob Siemborski <rjs3+@andrew.cmu.edu>
+	* saslauthd/: Now configures separately from SASL, so as
+	  to localize tests for that package within that package
+
+	* utils/dbconverter-2.c (listusers_cb): fix handling of APOP 
+
 2001-08-10  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* saslauthd/Makefile.am (install-data-local):
 	  correct handling of $(DESTDIR) (and create the directory if it
@@ -5,6 +22,9 @@
 
 	* lib/server.c (sasl_server_init): Added plugname to add_plugin
 	  call for EXTERNAL
+
+	* doc/index.html: updated
+	* doc/appconvert.html: cleaned up
 
 2001-08-09  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* plugins/digestmd5.c (digestmd5_client_mech_step): handle

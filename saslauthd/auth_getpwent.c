@@ -32,12 +32,10 @@
  * END SYNOPSIS */
 
 #ifdef __GNUC__
-#ident "$Id: auth_getpwent.c,v 1.3 2001/01/04 21:20:45 leg Exp $"
+#ident "$Id: auth_getpwent.c,v 1.3.2.1 2001/08/13 19:15:52 rjs3 Exp $"
 #endif
 
 /* PUBLIC DEPENDENCIES */
-#include <config.h>
-
 #include <unistd.h>
 #include <string.h>
 #include <pwd.h>
@@ -69,7 +67,7 @@ auth_getpwent (
 	RETURN("NO");
     }
 
-    if (strcmp(pw->pw_passwd, crypt(password, pw->pw_passwd))) {
+    if (strcmp(pw->pw_passwd, (const char *)crypt(password, pw->pw_passwd))) {
 	RETURN("NO");
     }
 

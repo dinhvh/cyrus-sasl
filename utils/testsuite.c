@@ -1,7 +1,7 @@
 /* testsuite.c -- Stress the library a little
  * Rob Siemborski
  * Tim Martin
- * $Id: testsuite.c,v 1.13.2.33 2001/08/07 19:06:00 rjs3 Exp $
+ * $Id: testsuite.c,v 1.13.2.34 2001/08/13 19:15:59 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -401,10 +401,9 @@ static struct sasl_callback withbadpathsasl_cb[] = {
 };
 
 int giveokpath(void * context __attribute__((unused)), 
-		char ** path)
+		const char ** path)
 {
-    *path = malloc(1000);
-    strcpy(*path,"/tmp/");
+    *path = "/tmp/";
 
     return SASL_OK;
 }

@@ -53,11 +53,10 @@
  * END SYNOPSIS */
 
 #ifdef __GNUC__
-#ident "$Id: auth_rimap.c,v 1.4.2.2 2001/07/18 21:27:35 rjs3 Exp $"
+#ident "$Id: auth_rimap.c,v 1.4.2.3 2001/08/13 19:15:53 rjs3 Exp $"
 #endif
 
 /* PUBLIC DEPENDENCIES */
-#include <config.h>
 #include "mechanisms.h"
 
 #include <unistd.h>
@@ -77,7 +76,6 @@
 #include <netdb.h>
 #include <sys/uio.h>
 
-#include "config.h"
 #include "auth_rimap.h"
 #include "globals.h"
 /* END PUBLIC DEPENDENCIES */

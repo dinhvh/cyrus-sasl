@@ -28,7 +28,7 @@
  * END COPYRIGHT */
 
 #ifdef __GNUC__
-#ident "$Id: auth_krb5.c,v 1.1.2.1 2001/06/25 20:08:09 rjs3 Exp $"
+#ident "$Id: auth_krb5.c,v 1.1.2.2 2001/08/13 19:15:52 rjs3 Exp $"
 #endif
 
 /* ok, this is  wrong but the most convenient way of doing 
@@ -42,7 +42,6 @@
  */
 
 /* PUBLIC DEPENDENCIES */
-#include <config.h>
 #include "mechanisms.h"
 
 #ifdef AUTH_KRB5

@@ -43,8 +43,8 @@
  */
 
 /* PUBLIC DEPENDENCIES */
-#include <config.h>
 #include "mechanisms.h"
+#include <stdio.h>
 
 #ifdef AUTH_PAM
 

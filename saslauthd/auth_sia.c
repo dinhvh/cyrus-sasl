@@ -28,11 +28,10 @@
  * END COPYRIGHT */
 
 #ifdef __GNUC__
-#ident "$Id: auth_sia.c,v 1.2 2001/01/04 21:20:45 leg Exp $"
+#ident "$Id: auth_sia.c,v 1.2.2.1 2001/08/13 19:15:53 rjs3 Exp $"
 #endif
 
 /* PUBLIC DEPENDENCIES */
-#include <config.h>
 #include "mechanisms.h"
 
 #ifdef AUTH_SIA
