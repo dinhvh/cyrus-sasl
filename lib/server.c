@@ -1,6 +1,6 @@
 /* SASL server API implementation
  * Tim Martin
- * $Id: server.c,v 1.84.2.8 2001/06/06 21:16:58 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.9 2001/06/07 14:56:07 rjs3 Exp $
  */
 
 /* 
@@ -222,10 +222,13 @@ static void server_dispose(sasl_conn_t *pconn)
   sasl_server_conn_t *s_conn=  (sasl_server_conn_t *) pconn;
 
   if (s_conn->mech
-      && s_conn->mech->plug->mech_dispose)
-    s_conn->mech->plug->mech_dispose(&pconn->context,
+      && s_conn->mech->plug->mech_dispose) {
+    s_conn->mech->plug->mech_dispose(pconn->context,
 				     s_conn->sparams->utils);
+  }
 
+  pconn->context = NULL;
+  
   _sasl_free_utils(&s_conn->sparams->utils);
 
   if (s_conn->mechlist_buf)

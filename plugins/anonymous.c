@@ -183,20 +183,18 @@ int sasl_server_plug_init(const sasl_utils_t *utils __attribute__((unused)),
   return SASL_OK;
 }
 
-static void dispose(void **conn_context, const sasl_utils_t *utils)
+static void dispose(void *conn_context, const sasl_utils_t *utils)
 {
   context_t *text;
 
   if(!conn_context) return;
 
-  text=*conn_context;
+  text=(context_t *)conn_context;
   if (!text) return;
 
   if(text->out_buf) utils->free(text->out_buf);
 
   utils->free(text);
-
-  *conn_context = NULL;
 }
 
 /* FIXME: put in SASL_WRONGMECH check */

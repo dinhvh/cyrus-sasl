@@ -1,6 +1,6 @@
 /* Kerberos4 SASL plugin
  * Tim Martin 
- * $Id: kerberos4.c,v 1.65.2.8 2001/06/06 18:17:01 rjs3 Exp $
+ * $Id: kerberos4.c,v 1.65.2.9 2001/06/07 14:56:10 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
@@ -538,10 +538,9 @@ server_start(void *glob_context __attribute__((unused)),
 
 
 
-static void dispose(void **conn_context, const sasl_utils_t *utils)
+static void dispose(void *conn_context, const sasl_utils_t *utils)
 {
-    context_t *text;
-    text = (context_t *)(*conn_context);
+    context_t *text = (context_t *)conn_context;
 
     if (text->buffer) utils->free(text->buffer);
     if (text->encode_buf) utils->free(text->encode_buf);
@@ -554,7 +553,6 @@ static void dispose(void **conn_context, const sasl_utils_t *utils)
     if (text->user) utils->free(text->user);
     
     utils->free(text);
-    *conn_context = NULL;
 }
 
 static void mech_free(void *glob_context __attribute__((unused)),

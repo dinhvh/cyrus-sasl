@@ -244,7 +244,7 @@ typedef struct sasl_client_params {
      *  structure
      *
      *  default behavior is to strip leading and trailing whitespace, as
-     *  well as copying the parameters.
+     *  well as allocating space for and copying the parameters.
      *
      * results:
      *  SASL_OK       -- success
@@ -333,11 +333,7 @@ typedef struct sasl_client_plug {
     
     /* dispose of connection context from mech_new
      */
-    /*
-     * FIXME: This *DIFFERS* from chris newman's spec, which is actually
-     * void (*mech_dispose)(void *conn_context, const sasl_utils_t *utils);
-     */
-    void (*mech_dispose)(void **conn_context, const sasl_utils_t *utils);
+    void (*mech_dispose)(void *conn_context, const sasl_utils_t *utils);
     
     /* free all global space used by mechanism
      *  mech_dispose must be called on all mechanisms first
@@ -461,7 +457,7 @@ typedef struct sasl_server_params {
      *  structure
      *
      *  default behavior is to strip leading and trailing whitespace, as
-     *  well as copying the parameters.
+     *  well as allocating space for and copying the parameters.
      *
      * results:
      *  SASL_OK       -- success
@@ -585,11 +581,7 @@ typedef struct sasl_server_plug {
     
     /* dispose of a connection state
      */
-    /*
-     * FIXME: This *DIFFERS* from chris newman's spec, which is actually
-     * void (*mech_dispose)(void *conn_context, const sasl_utils_t *utils);
-     */
-    void (*mech_dispose)(void **conn_context, const sasl_utils_t *utils);
+    void (*mech_dispose)(void *conn_context, const sasl_utils_t *utils);
     
     /* free global state for mechanism
      *  mech_dispose must be called on all mechanisms first

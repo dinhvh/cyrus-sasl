@@ -208,9 +208,11 @@ static void client_dispose(sasl_conn_t *pconn)
 {
   sasl_client_conn_t *c_conn=(sasl_client_conn_t *) pconn;
 
-  if (c_conn->mech && c_conn->mech->plug->mech_dispose)
-    c_conn->mech->plug->mech_dispose(&c_conn->base.context,
+  if (c_conn->mech && c_conn->mech->plug->mech_dispose) {
+    c_conn->mech->plug->mech_dispose(pconn->context,
 				     c_conn->cparams->utils);
+    pconn->context = NULL;
+  }
 
   _sasl_free_utils(&(c_conn->cparams->utils));
 

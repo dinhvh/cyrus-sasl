@@ -460,11 +460,10 @@ sasl_gss_free_context_contents(context_t *text)
 }
 
 static void 
-sasl_gss_dispose(void **conn_context, const sasl_utils_t *utils)
+sasl_gss_dispose(void *conn_context, const sasl_utils_t *utils)
 {
-  sasl_gss_free_context_contents((context_t *)(*conn_context));
-  utils->free(*conn_context);
-  *conn_context = NULL;
+  sasl_gss_free_context_contents((context_t *)(conn_context));
+  utils->free(conn_context);
 }
 
 static void 
