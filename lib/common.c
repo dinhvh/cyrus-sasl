@@ -87,25 +87,25 @@ sasl_allocation_utils_t _sasl_allocation_utils={
   (sasl_free_t *) &free
 };
 
+/* Intenal mutex functions do as little as possible (no thread protection) */
 static void *sasl_mutex_alloc(void)
 {
-  /* got to return something; NULL => failure */
-  return sasl_ALLOC(1);
+  return (void *)0x1;
 }
 
 static int sasl_mutex_lock(void *mutex __attribute__((unused)))
 {
-  return SASL_OK;
+    return SASL_OK;
 }
 
 static int sasl_mutex_unlock(void *mutex __attribute__((unused)))
 {
-  return SASL_OK;
+    return SASL_OK;
 }
 
-static void sasl_mutex_free(void *mutex)
+static void sasl_mutex_free(void *mutex __attribute__((unused)))
 {
-  sasl_FREE(mutex);
+    return;
 }
 
 sasl_mutex_utils_t _sasl_mutex_utils={
@@ -163,10 +163,7 @@ int sasl_encode(sasl_conn_t *conn, const char *input,
     if(!conn || !input || !output || !outputlen)
 	return SASL_BADPARAM;
 
-    /* FIXME is this what we want? (valid to check this?  not per-plugin?) */
-    if(inputlen > conn->oparams.maxoutbuf) {
-	return SASL_BADPARAM;
-    }
+    /* maxoutbuf checking is done in sasl_encodev */
 
     /* Note: We are casting a const pointer here, but it's okay
      * because we believe people downstream of us are well-behaved, and the
@@ -184,11 +181,22 @@ int sasl_encodev(sasl_conn_t *conn,
 		 const char **output, unsigned *outputlen)
 {
     int result;
+    unsigned i;
+    size_t total_size = 0;
 
     if (! conn || ! invec || ! output || ! outputlen || numiov < 1)
 	return SASL_BADPARAM;
 
-    /* FIXME: How to check maxoutbuf violations? */
+    /* This might be better to check on a per-plugin basis, but I think
+     * it's cleaner and more effective here.  It also encourages plugins
+     * to be honest about what they accept */
+
+    for(i=0; i<numiov;i++) {
+	total_size += invec[i].iov_len;
+    }    
+    if(total_size > conn->oparams.maxoutbuf) {
+	return SASL_BADPARAM;
+    }
 
     if(conn->oparams.encode == NULL)  {
 	result = _iovec_to_buf(invec, numiov, &conn->encode_buf);
@@ -214,7 +222,7 @@ int sasl_decode(sasl_conn_t *conn,
     if(!conn || !input || !output || !outputlen)
 	return SASL_BADPARAM;
 
-    /* FIXME is this what we want? (valid to check this?  not per-plugin?) */
+    /* FIXME: do we verify maxoutbuf on incoming data as well? */
     if(inputlen > conn->oparams.maxoutbuf) return SASL_BADPARAM;
 
     if(conn->oparams.decode == NULL)
@@ -371,7 +379,6 @@ void sasl_dispose(sasl_conn_t **pconn)
 
   /* serialize disposes. this is necessary because we can't
      dispose of conn->mutex if someone else is locked on it */
-  /* FIXME: there probably is a better way to do this */
   result = sasl_MUTEX_LOCK(free_mutex);
   if (result!=SASL_OK) return;
   
@@ -409,11 +416,11 @@ void _sasl_conn_dispose(sasl_conn_t *conn) {
   if(conn->authid_buf)
       sasl_FREE(conn->authid_buf);
 
-  /* FIXME: does this belong here? */
   if(conn->service)
       sasl_FREE(conn->service);
 
-  /* FIXME: Free oparams sub-members? */
+  /* oparams sub-members should be freed by the plugin, in so much
+   * as they were allocated by the plugin */
 }
 
 
@@ -449,8 +456,7 @@ int sasl_getprop(sasl_conn_t *conn, int propnum, const void **pvalue)
       *(void **)pvalue = context;
       break;
   case SASL_CALLBACK:
-      /* FIXME: Which callback list do we return? */
-      result = SASL_FAIL;
+      *(const sasl_callback_t **)pvalue = conn->callbacks;
       break;
   case SASL_IPLOCALPORT:
       if (! conn->got_ip_local)
@@ -497,7 +503,6 @@ int sasl_getprop(sasl_conn_t *conn, int propnum, const void **pvalue)
       result=SASL_FAIL;
       break;
   case SASL_PLUGERR:
-      /* FIXME: either this is wrong or sasl_errdetail is */
       *((const char **)pvalue) = conn->error_buf;
       break;
   case SASL_SSF_EXTERNAL:
@@ -553,8 +558,6 @@ int sasl_setprop(sasl_conn_t *conn, int propnum, const void *value)
       memcpy(&(conn->props),(sasl_security_properties_t *)value,
 	     sizeof(sasl_security_properties_t));
       break;
-  /* FIXME: do we have to support setting of the other properties?  my guess
-   * is NO */
   default:
       result = SASL_BADPARAM;
   }
@@ -622,6 +625,8 @@ const char *sasl_errstring(int saslerr,
  * a connection */
 const char *sasl_errdetail(sasl_conn_t *conn) 
 {
+    /* FIXME: This should be different from getprop(SASL_PLUGERR) in
+     * that it takes the return code into effect */
     return conn->error_buf;
 }
 
@@ -1374,12 +1379,16 @@ int _sasl_canon_user(sasl_conn_t *conn,
                      sasl_out_params_t *oparams)
 {
     const char *begin_u, *begin_a;
+    sasl_server_conn_t *sconn = NULL;
+    int u_apprealm = 0, a_apprealm = 0;
     sasl_server_canon_user_t *cuser_cb;
     int result;
     void *cuser_ctx;
     unsigned i;
 
     if(!conn) return SASL_BADPARAM;    
+
+    if(conn->type == SASL_CONN_SERVER) sconn = (sasl_server_conn_t *)conn;
 
     /* check to see if we have been overridden by the application */
     result = _sasl_getcallback(conn, SASL_CB_CANON_USER,
@@ -1415,10 +1424,9 @@ int _sasl_canon_user(sasl_conn_t *conn,
 	goto done;
     }
     
-    /* FIXME: Plugin Support (also: how does this work with auxpropness?) */
-
     if(!user || !authid || !oparams) return SASL_BADPARAM;
 
+    /* FIXME: Plugin Support (also: how does this work with auxpropness?) */
     if(!ulen) ulen = strlen(user);
     if(!alen) alen = strlen(authid);
 
@@ -1438,16 +1446,22 @@ int _sasl_canon_user(sasl_conn_t *conn,
     for(;isspace(begin_a[alen-1]) && alen > 0; alen--);
     if(begin_a == &(user[alen])) return SASL_FAIL;
 
-    /* FIXME: Need to append realm if necessary (see sasl.h) */
+    /* Need to append realm if necessary (see sasl.h) */
+    if(sconn && sconn->user_realm && !strchr(user, '@')) {
+	u_apprealm = strlen(sconn->user_realm) + 1;
+    }
+    if(sconn && sconn->user_realm && !strchr(authid, '@')) {
+	a_apprealm = strlen(sconn->user_realm) + 1;
+    }
     
     /* Now allocate the memory */
-    if(!conn->user_buf) conn->user_buf = sasl_ALLOC(ulen + 1);
-    else conn->user_buf = sasl_REALLOC(conn->user_buf, ulen + 1);
+    if(!conn->user_buf) conn->user_buf = sasl_ALLOC(ulen + u_apprealm + 1);
+    else conn->user_buf = sasl_REALLOC(conn->user_buf, ulen + u_apprealm + 1);
     
     if(!conn->user_buf) return SASL_NOMEM;
     
-    if(!conn->authid_buf) conn->authid_buf = sasl_ALLOC(alen + 1);
-    else conn->authid_buf = sasl_REALLOC(conn->authid_buf, alen + 1);
+    if(!conn->authid_buf) conn->authid_buf = sasl_ALLOC(alen + a_apprealm + 1);
+    else conn->authid_buf = sasl_REALLOC(conn->authid_buf, alen + a_apprealm + 1);
 
     if(!conn->authid_buf) {
 	sasl_FREE(conn->user_buf);
@@ -1457,14 +1471,22 @@ int _sasl_canon_user(sasl_conn_t *conn,
 
     /* Now copy! */
     memcpy(conn->user_buf, begin_u, ulen);
-    conn->user_buf[ulen] = '\0';
+    if(u_apprealm) {
+	conn->user_buf[ulen] = '@';
+	memcpy(&(conn->user_buf[ulen+1]), sconn->user_realm, u_apprealm-1);
+    }
+    conn->user_buf[ulen + u_apprealm] = '\0';
     
     memcpy(conn->authid_buf, begin_a, alen);
-    conn->authid_buf[alen] = '\0';
+    if(a_apprealm) {
+	conn->authid_buf[alen] = '@';
+	memcpy(&(conn->user_buf[alen+1]), sconn->user_realm, a_apprealm-1);
+    }
+    conn->authid_buf[alen + a_apprealm] = '\0';
 
     done:
 
-    /* first, do auxprop lookups (server only) */
+    /* finally, do auxprop lookups (server only) */
     if(conn->type == SASL_CONN_SERVER) {
 	sasl_server_conn_t *sconn = (sasl_server_conn_t *)conn;
 
@@ -1587,6 +1609,75 @@ int _iovec_to_buf(const struct iovec *vec,
 	memcpy(pos, vec[i].iov_base, vec[i].iov_len);
 	pos += vec[i].iov_len;
     }
+
+    return SASL_OK;
+}
+
+/* FIXME: This only parses IPV4 addresses */
+int _sasl_iptostring(const struct sockaddr_in *addr,
+		     char *out, unsigned outlen) {
+    unsigned char a[4];
+    int i;
+    
+    /* FIXME: Weak bounds check, are we less than the largest possible size? */
+    /* (21 = 4*3 for address + 3 periods + 1 semicolon + 5 port digits */
+    if(outlen <= 21) return SASL_BUFOVER;
+    if(!addr || !out) return SASL_BADPARAM;
+
+    bzero(out,outlen);
+
+    for(i=3; i>=0; i--) {
+	a[i] = (addr->sin_addr.s_addr & (0xFF << (8*i))) >> (i*8);
+    }
+    
+    snprintf(out,outlen,"%d.%d.%d.%d;%d",(int)a[3],(int)a[2],
+	                                 (int)a[1],(int)a[0],
+	                                 (int)addr->sin_port);
+
+    return SASL_OK;
+}
+
+/* FIXME: This only parses IPV4 addresses */
+int _sasl_ipfromstring(const char *addr, struct sockaddr_in *out) 
+{
+    int i;
+    unsigned int val = 0;
+    unsigned int port;
+    
+    if(!addr || !out) return SASL_BADPARAM;
+
+    /* Parse the address */
+    for(i=0; i<4 && *addr && *addr != ';'; i++) {
+	int inval;
+	
+	inval = atoi(addr);
+	if(inval < 0 || inval > 255) return SASL_BADPARAM;
+
+	val = val << 8;
+	val |= inval;
+	
+        for(;*addr && *addr != '.' && *addr != ';'; addr++)
+	    if(!isdigit(*addr)) return SASL_BADPARAM;
+
+	/* skip the separator */
+	addr++;
+    }
+    
+    /* We have a bad ip address if we have less than 4 octets, or
+     * if we didn't just skip a semicolon */
+    if(i!=4 || *(addr-1) != ';') return SASL_BADPARAM;
+    
+    port = atoi(addr);
+
+    /* Ports can only be 16 bits in IPV4 */
+    if((port & 0xFFFF) != port) return SASL_BADPARAM;
+        
+    for(;*addr;addr++)
+	if(!isdigit(*addr)) return SASL_BADPARAM;
+    
+    bzero(out, sizeof(struct sockaddr_in));
+    out->sin_addr.s_addr = val;
+    out->sin_port = port;
 
     return SASL_OK;
 }

@@ -108,30 +108,6 @@ static void _sasl_free_secret(sasl_secret_t **secret)
   *secret=NULL;
 }
 
-/*
- * We don't do anything here now, and just store plaintext passwords
- * because they are easier to deal with, and mechanisms should implement
- * their own database support if this is not good enough for them.
- */
-static int _sasl_make_plain_secret(const char *salt __attribute__((unused)), 
-				   const char *passwd, int passlen,
-				   sasl_secret_t **secret)
-{
-    *secret = (sasl_secret_t *) sasl_ALLOC(sizeof(sasl_secret_t) +
-					   passlen);
-    if (*secret == NULL) {
-	return SASL_NOMEM;
-    }
-
-    memcpy((*secret)->data, passwd, passlen);
-    (*secret)->data[passlen] = '\0';
-    (*secret)->len = passlen + 1;
-    
-    return SASL_OK;
-}
-
-
-
 /* returns the realm we should pretend to be in */
 static int parseuser(char **user, char **realm, const char *user_realm, 
 		     const char *serverFQDN, const char *input)
@@ -182,16 +158,13 @@ static int sasldb_verify_password(sasl_conn_t *conn,
 				  const char *userstr,
 				  const char *passwd,
 				  const char *service __attribute__((unused)),
-				  const char *user_realm, 
-				  const char **reply)
+				  const char *user_realm)
 {
     int ret = SASL_FAIL;
     sasl_secret_t *secret = NULL;
-    sasl_secret_t *construct = NULL;
     char *userid = NULL;
     char *realm = NULL;
 
-    if (reply) { *reply = NULL; }
     if (!userstr || !passwd) {
 	return SASL_BADPARAM;
     }
@@ -207,13 +180,7 @@ static int sasldb_verify_password(sasl_conn_t *conn,
 	goto done;
     }
 
-    ret = _sasl_make_plain_secret(secret->data, passwd, strlen(passwd),
-				  &construct);
-    if (ret != SASL_OK) {
-	goto done;
-    }
-
-    if (!memcmp(secret->data, construct->data, secret->len)) {
+    if (!memcmp(secret->data, passwd, secret->len)) {
 	/* password verified! */
 	ret = SASL_OK;
     } else {
@@ -226,7 +193,6 @@ static int sasldb_verify_password(sasl_conn_t *conn,
     if (realm)  sasl_FREE(realm);
 
     if (secret) _sasl_free_secret(&secret);
-    if (construct) _sasl_free_secret(&construct);
     return ret;
 }
 
@@ -315,18 +281,23 @@ int _sasl_sasldb_set_pass(sasl_conn_t *conn,
 	    if (ret == SASL_OK) {
 		_sasl_free_secret(&sec);
 		ret = SASL_NOCHANGE;
-	    }
-/* FIXME this needs to be the way it was before ? */
-/*	    if (ret == SASL_NOUSER) { */
-	    else {
-		/* hmmm, don't want to change this */
+	    } else {
+		/* Don't give up yet-- the DB might have failed because
+		 * does not exist, but will be created later... */
 		ret = SASL_OK;
 	    }
 	}
 	
 	/* ret == SASL_OK iff we still want to set this password */
 	if (ret == SASL_OK) {
-	    ret = _sasl_make_plain_secret(NULL, pass, passlen, &sec);
+	    /* Create the sasl_secret_t */
+	    sec = sasl_ALLOC(sizeof(sasl_secret_t) + passlen);
+	    if(!sec) ret = SASL_NOMEM;
+	    else {
+		memcpy(sec->data, pass, passlen);
+		sec->data[passlen] = '\0';
+		sec->len = passlen;
+	    }
 	}
 	if (ret == SASL_OK) {
 	    ret = _sasl_db_putsecret(conn, userid, realm, sec);
@@ -497,8 +468,7 @@ static int pwcheck_verify_password(sasl_conn_t *conn,
 				   const char *passwd,
 				   const char *service __attribute__((unused)),
 				   const char *user_realm 
-				               __attribute__((unused)), 
-				   const char **reply)
+				               __attribute__((unused)))
 {
     int s;
     struct sockaddr_un srvaddr;
@@ -509,8 +479,6 @@ static int pwcheck_verify_password(sasl_conn_t *conn,
     char pwpath[1024];
     sasl_getopt_t *getopt;
     void *context;
-
-    if (reply) { *reply = NULL; }
 
     if (strlen(PWCHECKDIR)+8+1 > sizeof(pwpath)) return SASL_FAIL;
 
@@ -525,7 +493,7 @@ static int pwcheck_verify_password(sasl_conn_t *conn,
     strncpy(srvaddr.sun_path, pwpath, sizeof(srvaddr.sun_path));
     r = connect(s, (struct sockaddr *)&srvaddr, sizeof(srvaddr));
     if (r == -1) {
-	if (reply) { *reply = "cannot connect to pwcheck server"; }
+	sasl_seterror(conn,0,"cannot connect to pwcheck server");
 	return SASL_FAIL;
     }
 
@@ -550,7 +518,7 @@ static int pwcheck_verify_password(sasl_conn_t *conn,
     }
 
     response[start] = '\0';
-    if (reply) { *reply = response; }
+    sasl_seterror(conn,0,response);
     return SASL_BADAUTH;
 }
 
@@ -563,8 +531,7 @@ static int saslauthd_verify_password(sasl_conn_t *conn,
 				   const char *passwd,
 				   const char *service __attribute__((unused)),
 				   const char *user_realm 
-				               __attribute__((unused)), 
-				   const char **reply)
+				               __attribute__((unused)))
 {
     static char response[1024];
     int s;
@@ -575,9 +542,6 @@ static int saslauthd_verify_password(sasl_conn_t *conn,
     void *context;
     char pwpath[sizeof(srvaddr.sun_path)];
     const char *p = NULL;
-
-    if (reply)
-	*reply = NULL;
 
     /* check to see if the user configured a rundir */
     if (_sasl_getcallback(conn, SASL_CB_GETOPT, &getopt, &context) == SASL_OK) {
@@ -603,8 +567,7 @@ static int saslauthd_verify_password(sasl_conn_t *conn,
 
     r = connect(s, (struct sockaddr *) &srvaddr, sizeof(srvaddr));
     if (r == -1) {
-	if (reply)
-	    *reply = "cannot connect to pwcheck server";
+	sasl_seterror(conn, 0, "cannot connect to pwcheck server");
 	return SASL_FAIL;
     }
 
@@ -618,9 +581,8 @@ static int saslauthd_verify_password(sasl_conn_t *conn,
 	msg = sasl_ALLOC(u_len + p_len);
 	if (msg == NULL) {
 	    close(s);
-	    if (reply)
-		*reply = "not enough memory";
-	    return SASL_FAIL;
+	    sasl_seterror(conn, 0, "not enough memory");
+	    return SASL_NOMEM;
 	}
 	strcpy(msg, userid);
 	strcpy(msg + u_len, passwd);
@@ -631,8 +593,7 @@ static int saslauthd_verify_password(sasl_conn_t *conn,
 		continue;
 	    default:
 		sasl_FREE(msg);
-		if (reply)
-		    *reply = "write failed";
+		sasl_seterror(conn,0,"write failed");
 		return SASL_FAIL;
 	    }
 
@@ -653,8 +614,7 @@ static int saslauthd_verify_password(sasl_conn_t *conn,
 	return SASL_OK;
 
     response[start] = '\0';
-    if (reply)
-	*reply = response;
+    sasl_seterror(conn,0,response);
     return SASL_BADAUTH;
 }
 

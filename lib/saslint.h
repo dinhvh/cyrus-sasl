@@ -325,8 +325,7 @@ typedef int sasl_plaintext_verifier(sasl_conn_t *conn,
 				    const char *userid,
 				    const char *passwd,
 				    const char *service,
-				    const char *user_realm,
-				    const char **reply);
+				    const char *user_realm);
 struct sasl_verify_password_s {
     char *name;
     sasl_plaintext_verifier *verify;
@@ -368,8 +367,7 @@ int _buf_alloc(char **rwbuf, unsigned *curlen, unsigned newlen);
 int _iovec_to_buf(const struct iovec *vec,
 		  unsigned numiov, buffer_info_t **output);
 
-/* The following are defined in saslutil.c */
-/* FIXME: Should they be in common.c instead? */
+/* Convert between string formats and sockaddr formats */
 int _sasl_iptostring(const struct sockaddr_in *addr,
 		     char *out, unsigned outlen);
 int _sasl_ipfromstring(const char *addr, struct sockaddr_in *out);

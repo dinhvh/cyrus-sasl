@@ -1,6 +1,6 @@
 /* SASL server API implementation
  * Tim Martin
- * $Id: server.c,v 1.84.2.21 2001/06/22 15:37:52 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.22 2001/06/22 18:59:35 rjs3 Exp $
  */
 
 /* 
@@ -131,7 +131,6 @@ static sasl_global_callbacks_t global_callbacks;
 int sasl_setpass(sasl_conn_t *conn,
 		 const char *user,
 		 const char *pass, unsigned passlen,
-/* FIXME: I suspect I should do something with these */
 		 const char *oldpass __attribute__((unused)),
 		 unsigned oldpasslen __attribute__((unused)),
 		 unsigned flags)
@@ -186,7 +185,7 @@ int sasl_setpass(sasl_conn_t *conn,
 				     user,
 				     pass,
 				     passlen,
-				     NULL, 0, /* FIXME? */
+				     NULL, 0,
 				     flags);
 	if (tmpresult == SASL_OK) {
 	    _sasl_log(conn, SASL_LOG_NOTE,
@@ -852,7 +851,8 @@ static int mech_permitted(sasl_conn_t *conn,
     /* FIXME: it's probabally not valid to call this more than once per
      * connection context */
     if(plug->mech_avail
-       && plug->mech_avail(plug->glob_context, s_conn->sparams, (void **)&conn) != SASL_OK )
+       && plug->mech_avail(plug->glob_context,
+			   s_conn->sparams, (void **)&conn) != SASL_OK )
 	return 0;
 
     /* Generic mechanism */
@@ -1027,7 +1027,8 @@ int sasl_server_start(sasl_conn_t *conn,
 
     result = s_conn->mech->plug->mech_new(s_conn->mech->plug->glob_context,
 					  s_conn->sparams,
-					  NULL, /* FIXME: can we get away with this? */
+					  /* FIXME - probabally not legal */
+					  NULL,
 					  0,
 					  &(conn->context));
 
@@ -1236,8 +1237,7 @@ static int _sasl_checkpass(sasl_conn_t *conn, const char *service,
 
     for (v = _sasl_verify_password; v->name; v++) {
 	if (is_mech(DEFAULT_PLAIN_MECHANISM, v->name)) {
-	    /* FIXME: this reply paramter that is currently NULL can go away? */
-	    result = v->verify(conn, user, pass, service, s_conn->user_realm, NULL);
+	    result = v->verify(conn, user, pass, service, s_conn->user_realm);
 	    break;
 	}
     }

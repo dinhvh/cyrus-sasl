@@ -95,8 +95,7 @@ external_server_step(void *conn_context __attribute__((unused)),
 
   if ((sparams->props.security_flags & SASL_SEC_NOANONYMOUS) &&
       (!strcmp(sparams->utils->conn->external.auth_id, "anonymous"))) {
-/*      FIXME: use sasl_seterror */
-/*      *errstr = "anonymous login not allowed"; */
+      sasl_seterror(sparams->utils->conn,0,"anonymous login not allowed");
       return SASL_NOAUTHZ;
   }
   
