@@ -1,4 +1,8 @@
 2000-06-28  Rob Siemborski <rjs3+@andrew.cmu.edu>
+	* Added ability to disable sasl_checkapop (--disable-checkapop)
+	* Re-initialized kerberos mutex to NULL after it was freed
+
+2000-06-28  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Fixed a severe bug in DIGEST-MD5 Plugin
 	* KERBEROS_V4 plugin now thread safe
 	* Version 2.0.1-ALPHA Released (due to DIGEST-MD5 problem)
