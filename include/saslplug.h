@@ -231,6 +231,12 @@ typedef struct sasl_client_params {
     sasl_security_properties_t props;
     sasl_ssf_t external_ssf;	/* external SSF active */
 
+    /* for additions which don't require a version upgrade; set to 0 */
+    void *spare_ptr1;
+    void *spare_ptr2;
+    void *spare_ptr3;
+    void *spare_ptr4;
+
     /* Canonicalize a user name from on-wire to internal format
      *  added rjs3 2001-05-23
      *  Must be called once user name aquired if canon_user is non-NULL.
@@ -262,13 +268,8 @@ typedef struct sasl_client_params {
                     unsigned flags,
                     sasl_out_params_t *oparams);
 
-    /* for additions which don't require a version upgrade; set to 0 */
-    void *spare_ptr1;
-    void *spare_ptr2;
-    void *spare_ptr3;
-    void *spare_ptr4;
     int (*spare_fptr1)();
-    int (*spare_fptr2)();
+
     int spare_int1;
     int spare_int2;
     int spare_int3;
@@ -357,7 +358,7 @@ typedef struct sasl_client_plug {
     int (*spare_fptr2)();
 } sasl_client_plug_t;
 
-#define SASL_CLIENT_PLUG_VERSION         5
+#define SASL_CLIENT_PLUG_VERSION         4
 
 /* plug-in entry point:
  *  utils       -- utility callback functions
@@ -674,7 +675,7 @@ typedef struct sasl_server_plug {
     int (*spare_fptr2)();
 } sasl_server_plug_t;
 
-#define SASL_SERVER_PLUG_VERSION 5
+#define SASL_SERVER_PLUG_VERSION 4
 
 /* plug-in entry point:
  *  utils         -- utility callback functions
