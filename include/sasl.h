@@ -123,7 +123,7 @@
 
 #define SASL_VERSION_MAJOR 2
 #define SASL_VERSION_MINOR 0
-#define SASL_VERSION_STEP 2
+#define SASL_VERSION_STEP 3
 
 #include "prop.h"
 #define LIBSASL_API

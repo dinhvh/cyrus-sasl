@@ -1,7 +1,7 @@
 # Makefile.am for the SASL plugins
 # Rob Siemborski
 # Rob Earhart
-# $Id: Makefile.am,v 1.39.2.19 2001/07/30 18:59:16 rjs3 Exp $
+# $Id: Makefile.am,v 1.39.2.20 2001/07/30 20:14:02 rjs3 Exp $
 #
 ################################################################
 # Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
@@ -46,13 +46,13 @@
 
 # Library version info - here at the top, for sanity
 # CURRENT:REVISION:AGE
-plain_version = 1:1:0
-anonymous_version = 1:1:0
-kerberos4_version = 1:2:0
-crammd5_version = 1:1:0
-gssapiv2_version = 1:1:0
-digestmd5_version = 1:2:0
-login_version = 1:1:0
+plain_version = 1:2:0
+anonymous_version = 1:2:0
+kerberos4_version = 1:3:0
+crammd5_version = 1:2:0
+gssapiv2_version = 1:2:0
+digestmd5_version = 1:3:0
+login_version = 1:2:0
 sasldb_version = 1:0:0
 srp_version = 1:1:0
 

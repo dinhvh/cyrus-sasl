@@ -1,3 +1,25 @@
+New in 2.0.3-BETA
+-----------------
+* THIS IS A BETA-QUALITY RELEASE THAT IS ONLY INTENDED FOR USE BY
+  DEVELOPERS WHOSE APPLICATIONS MAKE USE OF THE CYRUS SASL LIBRARY.
+  IT *WILL BREAK* ANY APPLICATION EXPECTING THE SASLv1 API.
+* This library should be fairly close to the core features that will be
+  released in a final version of Cyrus SASLv2.  It probabally has bugs.
+* Major new features included in this release:
+  - The glue code now correctly handles client-send-first and server-send-last
+    situations based on what the protocol and mechanism each support.
+  - The sasldb code has been extracted from the main library and now resides
+    in a separate libsasldb.la that is available at build time.
+  - SASLdb now supports multiple auxilliary properties, though as distributed
+    only userPassword is implemented and used.
+  - Much improved configure checking for various items, including
+    Berkeley DB, Kerberos, and GSSAPI.
+  - Better (more standard) handling of realms in DIGEST-MD5.
+  - A new Plugin Programmer's guide.
+  - IPv6 support.
+  - Error reporting now works in the GSSAPI plugin.
+* See the ChangeLog for a more detailed list of changes.
+
 New in 2.0.2-ALPHA
 ------------------
 * THIS IS AN ALPHA-QUALITY RELEASE THAT IS ONLY INTENDED FOR DEVELOPERS

@@ -1,4 +1,4 @@
-$Id: README,v 1.25.4.4 2001/07/25 15:55:54 rjs3 Exp $
+$Id: README,v 1.25.4.5 2001/07/30 20:13:36 rjs3 Exp $
 
 This is the Cyrus SASL API implentation. It can be used on the client
 or server side to provide authentication and authorization services.
@@ -13,9 +13,9 @@ cyrus-sasl". The mailing list is available via anonymous IMAP at
 imap://cyrus.andrew.cmu.edu/archive.cyrus-sasl or via the web at
 http://asg.web.cmu.edu/archive/mailbox.php3?mailbox=archive.cyrus-sasl.
 
-ALPHA WARNING
+BETA WARNING
 -------------
-THIS CODE IS ALPHA-QUALITY AND IS INTENDED FOR DEVELOPERS ONLY.
+THIS CODE IS BETA-QUALITY AND IS INTENDED FOR DEVELOPERS ONLY.
 IT IS NOT BACKWARDS COMPATIBLE WITH SASLv1.
 
 Bugs can be searched/reported at: http://bugzilla.andrew.cmu.edu

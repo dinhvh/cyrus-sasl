@@ -15,7 +15,10 @@
 	* config/sasldb.m4: Allow specification of exact berkeley db
 	  lib and include paths
 	* sasldb/Makefile.am: Add proper include directory
+
+	* sasldb/sasldb.m4 (SASL_DB_BACKEND_STATIC): include allockey.o
 	
+	* Ready for 2.0.3-BETA	
 2001-07-27  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* configure.in: extracted SASLDB-related checking
 	* config/sasldb.m4: added
