@@ -1,6 +1,6 @@
 # Makefile.am for the SASL library
 # Rob Earhart
-# $Id: Makefile.am,v 1.41.2.5 2001/06/13 16:44:54 rjs3 Exp $
+# $Id: Makefile.am,v 1.41.2.6 2001/06/22 20:45:18 rjs3 Exp $
 # Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -49,7 +49,7 @@ EXTRA_DIST = saslint.h windlopen.c
 
 lib_LTLIBRARIES = libsasl2.la
 
-libsasl2_la_SOURCES = common.c saslutil.c server.c client.c md5.c dlopen.c checkpw.c config.c external.c auxprop.c
+libsasl2_la_SOURCES = auxprop.c canonusr.c checkpw.c client.c common.c config.c dlopen.c external.c md5.c saslutil.c server.c
 EXTRA_libsasl2_la_SOURCES = db_none.c db_ndbm.c db_gdbm.c db_berkeley.c db_testw32.c
 libsasl2_la_LDFLAGS = -version-info $(sasl_version)
 libsasl2_la_DEPENDENCIES = $(SASL_DB_BACKEND) @LTLIBOBJS@
