@@ -1,6 +1,6 @@
-/* Generic SASL plugin utility functions
+/* staticopen.h
  * Rob Siemborski
- * $Id: plugin_common.h,v 1.1.2.7 2001/07/02 22:50:10 rjs3 Exp $
+ * $Id: staticopen.h,v 1.1.2.1 2001/07/02 22:50:07 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -42,65 +42,64 @@
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef _PLUGIN_COMMON_H_
-#define _PLUGIN_COMMON_H_
-
 #include <config.h>
-
-#ifdef WIN32
-# include <winsock.h>
-#else
-# include <sys/param.h>
-# include <sys/socket.h>
-# include <netinet/in.h>
-# include <arpa/inet.h>
-# include <netdb.h>
-#endif /* WIN32 */
-
+#ifndef __hpux
+#include <dlfcn.h>
+#endif /* !__hpux */
+#include <stdlib.h>
+#include <limits.h>
+#include <sys/param.h>
 #include <sasl.h>
-#include <saslutil.h>
-#include <saslplug.h>
+#include "saslint.h"
 
-#include <sys/uio.h>
-
-#define SASL_CLIENT_PLUG_INIT( x ) \
-extern sasl_client_plug_init_t x##_client_plug_init; \
-int sasl_client_plug_init(const sasl_utils_t *utils, \
+/* For static linking */
+#define SPECIFIC_CLIENT_PLUG_INIT_PROTO( x ) \
+int x##_client_plug_init(const sasl_utils_t *utils, \
                          int maxversion, int *out_version, \
 			 sasl_client_plug_t **pluglist, \
                          int *plugcount, \
-                         const char *plugname) { \
-        return x##_client_plug_init(utils, maxversion, out_version, \
-				     pluglist, plugcount, plugname); \
-}
+                         const char *plugname)
 
-#define SASL_SERVER_PLUG_INIT( x ) \
-extern sasl_server_plug_init_t x##_server_plug_init; \
-int sasl_server_plug_init(const sasl_utils_t *utils, \
+#define SPECIFIC_SERVER_PLUG_INIT_PROTO( x ) \
+int x##_server_plug_init(const sasl_utils_t *utils, \
                          int maxversion, int *out_version, \
 			 sasl_server_plug_t **pluglist, \
                          int *plugcount, \
-                         const char *plugname) { \
-        return x##_server_plug_init(utils, maxversion, out_version, \
-				     pluglist, plugcount, plugname); \
-}
+                         const char *plugname)
 
+/* Static Compillation Foo */
+#define SPECIFIC_CLIENT_PLUG_INIT( x ) x##_client_plug_init
+#define SPECIFIC_SERVER_PLUG_INIT( x ) x##_server_plug_init
 
-typedef struct buffer_info 
-{
-    char *data;
-    unsigned curlen;   /* Current length of data in buffer */
-    unsigned reallen;  /* total length of buffer (>= curlen) */
-} buffer_info_t;
-
-int _plug_ipfromstring(const char *addr, struct sockaddr_in *out);
-int _plug_iovec_to_buf(const sasl_utils_t *utils, const struct iovec *vec,
-		       unsigned numiov, buffer_info_t **output);
-int _plug_buf_alloc(const sasl_utils_t *utils, char **rwbuf,
-		    unsigned *curlen, unsigned newlen);
-int _plug_strdup(const sasl_utils_t * utils, const char *in,
-	         char **out, int *outlen);
-void _plug_free_string(const sasl_utils_t *utils, char **str);
-void _plug_free_secret(const sasl_utils_t *utils, sasl_secret_t **secret);
-
-#endif /* _PLUGIN_COMMON_H_ */
+#ifdef STATIC_ANONYMOUS
+extern SPECIFIC_SERVER_PLUG_INIT_PROTO( anonymous );
+extern SPECIFIC_CLIENT_PLUG_INIT_PROTO( anonymous );
+#endif
+#ifdef STATIC_CRAMMD5
+extern SPECIFIC_SERVER_PLUG_INIT_PROTO( crammd5 );
+extern SPECIFIC_CLIENT_PLUG_INIT_PROTO( crammd5 );
+#endif
+#ifdef STATIC_DIGESTMD5
+extern SPECIFIC_SERVER_PLUG_INIT_PROTO( digestmd5 );
+extern SPECIFIC_CLIENT_PLUG_INIT_PROTO( digestmd5 );
+#endif
+#ifdef STATIC_GSSAPIV2
+extern SPECIFIC_SERVER_PLUG_INIT_PROTO( gssapiv2 );
+extern SPECIFIC_CLIENT_PLUG_INIT_PROTO( gssapiv2 );
+#endif
+#ifdef STATIC_KERBEROS4
+extern SPECIFIC_SERVER_PLUG_INIT_PROTO( kerberos4 );
+extern SPECIFIC_CLIENT_PLUG_INIT_PROTO( kerberos4 );
+#endif
+#ifdef STATIC_LOGIN
+extern SPECIFIC_SERVER_PLUG_INIT_PROTO( login );
+extern SPECIFIC_CLIENT_PLUG_INIT_PROTO( login );
+#endif
+#ifdef STATIC_PLAIN
+extern SPECIFIC_SERVER_PLUG_INIT_PROTO( plain );
+extern SPECIFIC_CLIENT_PLUG_INIT_PROTO( plain );
+#endif
+#ifdef STATIC_SRP
+extern SPECIFIC_SERVER_PLUG_INIT_PROTO( srp );
+extern SPECIFIC_CLIENT_PLUG_INIT_PROTO( srp );
+#endif

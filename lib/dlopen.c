@@ -1,7 +1,7 @@
 /* dlopen.c--Unix dlopen() dynamic loader interface
  * Rob Siemborski
  * Rob Earhart
- * $Id: dlopen.c,v 1.32.2.2 2001/06/25 18:44:38 rjs3 Exp $
+ * $Id: dlopen.c,v 1.32.2.3 2001/07/02 22:50:07 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -52,6 +52,8 @@
 #include <sys/param.h>
 #include <sasl.h>
 #include "saslint.h"
+
+const int _is_sasl_server_static = 0;
 
 #if HAVE_DIRENT_H
 # include <dirent.h>

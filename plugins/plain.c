@@ -1,7 +1,7 @@
 /* Plain SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: plain.c,v 1.43.2.7 2001/06/27 14:56:31 rjs3 Exp $
+ * $Id: plain.c,v 1.43.2.8 2001/07/02 22:50:10 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -279,12 +279,12 @@ static sasl_server_plug_t plugins[] =
   }
 };
 
-int sasl_server_plug_init(const sasl_utils_t *utils __attribute__((unused)),
-			  int maxversion,
-			  int *out_version,
-			  sasl_server_plug_t **pluglist,
-			  int *plugcount,
-			  const char *plugname __attribute__((unused)))
+int plain_server_plug_init(const sasl_utils_t *utils __attribute__((unused)),
+			   int maxversion,
+			   int *out_version,
+			   sasl_server_plug_t **pluglist,
+			   int *plugcount,
+			   const char *plugname __attribute__((unused)))
 {
   if (maxversion<SASL_SERVER_PLUG_VERSION)
     return SASL_BADVERS;
@@ -702,12 +702,12 @@ static sasl_client_plug_t client_plugins[] =
   }
 };
 
-int sasl_client_plug_init(sasl_utils_t *utils __attribute__((unused)),
-			  int maxversion,
-			  int *out_version,
-			  sasl_client_plug_t **pluglist,
-			  int *plugcount,
-			  const char *plugname __attribute__((unused)))
+int plain_client_plug_init(sasl_utils_t *utils __attribute__((unused)),
+			   int maxversion,
+			   int *out_version,
+			   sasl_client_plug_t **pluglist,
+			   int *plugcount,
+			   const char *plugname __attribute__((unused)))
 {
   if (maxversion<SASL_CLIENT_PLUG_VERSION)
     return SASL_BADVERS;

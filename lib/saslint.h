@@ -1,7 +1,7 @@
 /* saslint.h - internal SASL library definitions
  * Rob Siemborski
  * Tim Martin
- * $Id: saslint.h,v 1.33.2.25 2001/06/28 21:51:25 rjs3 Exp $
+ * $Id: saslint.h,v 1.33.2.26 2001/07/02 22:50:07 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -58,24 +58,25 @@ extern const sasl_utils_t *global_utils;
 extern int _sasl_common_init(void);
 extern int _is_sasl_server_active(void);
 
-/* dlopen.c */
+/* dlopen.c and staticopen.c */
+extern const int _is_sasl_server_static;
 extern int _sasl_get_mech_list(const char *entryname,
 			       const sasl_callback_t *getpath_callback,
 			       const sasl_callback_t *verifyfile_callback,
 			       int (*add_plugin)(void *,void *));
+extern int _sasl_done_with_plugin(void *plugin);
 extern int _sasl_get_plugin(const char *file,
 			    const char *entryname,
 			    const sasl_callback_t *verifyfile_callback,
 			    void **entrypoint,
 			    void **library);
 
+/* common.c */
 extern const sasl_callback_t *
 _sasl_find_getpath_callback(const sasl_callback_t *callbacks);
 
 extern const sasl_callback_t *
 _sasl_find_verifyfile_callback(const sasl_callback_t *callbacks);
-
-extern int _sasl_done_with_plugin(void *plugin);
 
 extern void (*_sasl_client_cleanup_hook)(void);
 extern void (*_sasl_server_cleanup_hook)(void);
@@ -395,6 +396,5 @@ extern int _sasl_canon_user(sasl_conn_t *conn,
 			    const char *authid, unsigned alen,
 			    unsigned flags,
 			    sasl_out_params_t *oparams);
-
 
 #endif /* SASLINT_H */

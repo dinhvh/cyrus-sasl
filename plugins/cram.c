@@ -1,7 +1,7 @@
 /* CRAM-MD5 SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: cram.c,v 1.55.2.10 2001/06/27 14:56:30 rjs3 Exp $
+ * $Id: cram.c,v 1.55.2.11 2001/07/02 22:50:09 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -516,12 +516,12 @@ static sasl_server_plug_t plugins[] =
   }
 };
 
-int sasl_server_plug_init(sasl_utils_t *utils __attribute__((unused)),
-			  int maxversion,
-			  int *out_version,
-			  sasl_server_plug_t **pluglist,
-			  int *plugcount,
-			  const char *plugname __attribute__((unused)))
+int crammd5_server_plug_init(const sasl_utils_t *utils __attribute__((unused)),
+				 int maxversion,
+				 int *out_version,
+				 sasl_server_plug_t **pluglist,
+				 int *plugcount,
+				 const char *plugname __attribute__((unused)))
 {
   if (maxversion<SASL_SERVER_PLUG_VERSION)
     return SASL_BADVERS;
@@ -535,7 +535,6 @@ int sasl_server_plug_init(sasl_utils_t *utils __attribute__((unused)),
 
   return SASL_OK;
 }
-
 
 static int c_start(void *glob_context __attribute__((unused)), 
 		 sasl_client_params_t *params,
@@ -921,12 +920,12 @@ static sasl_client_plug_t client_plugins[] =
   }
 };
 
-int sasl_client_plug_init(sasl_utils_t *utils __attribute__((unused)),
-			  int maxversion,
-			  int *out_version,
-			  sasl_client_plug_t **pluglist,
-			  int *plugcount,
-			  const char *plugname __attribute__((unused)))
+int crammd5_client_plug_init(const sasl_utils_t *utils __attribute__((unused)),
+				 int maxversion,
+				 int *out_version,
+				 sasl_client_plug_t **pluglist,
+				 int *plugcount,
+				 const char *plugname __attribute__((unused)))
 {
   if (maxversion<SASL_CLIENT_PLUG_VERSION)
     return SASL_BADVERS;

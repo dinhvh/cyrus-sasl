@@ -2,7 +2,7 @@
  * Rob Siemborski
  * Tim Martin
  * Alexey Melnikov 
- * $Id: digestmd5.c,v 1.97.2.10 2001/07/02 16:05:55 rjs3 Exp $
+ * $Id: digestmd5.c,v 1.97.2.11 2001/07/02 22:50:09 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -2091,7 +2091,7 @@ server_continue_step(void *conn_context,
   context_t      *text = (context_t *)conn_context;
   char           *realm;
 
-  if (clientinlen > 2048) return SASL_BADPROT;
+  if (clientinlen > 4096) return SASL_BADPROT;
 
   /* get realm */
   result = get_realm(sparams, &realm);
@@ -2787,12 +2787,12 @@ static sasl_server_plug_t plugins[] =
   }
 };
 
-int sasl_server_plug_init(sasl_utils_t * utils __attribute__((unused)),
-			  int maxversion __attribute__((unused)),
-			  int *out_version,
-			  sasl_server_plug_t ** pluglist,
-			  int *plugcount,
-			  const char *plugname __attribute__((unused))) 
+int digestmd5_server_plug_init(sasl_utils_t * utils __attribute__((unused)),
+				    int maxversion __attribute__((unused)),
+				    int *out_version,
+				    sasl_server_plug_t ** pluglist,
+				    int *plugcount,
+				    const char *plugname __attribute__((unused))) 
 {
   if (maxversion < SASL_SERVER_PLUG_VERSION)
       return SASL_BADVERS;
@@ -3956,12 +3956,12 @@ static sasl_client_plug_t client_plugins[] =
   }
 };
 
-int sasl_client_plug_init(sasl_utils_t * utils __attribute__((unused)),
-			  int maxversion,
-			  int *out_version,
-			  sasl_client_plug_t ** pluglist,
-			  int *plugcount,
-			  const char *plugname __attribute__((unused))) {
+int digestmd5_client_plug_init(sasl_utils_t * utils __attribute__((unused)),
+			       int maxversion,
+			       int *out_version,
+			       sasl_client_plug_t ** pluglist,
+			       int *plugcount,
+			       const char *plugname __attribute__((unused))) {
   if (maxversion < SASL_CLIENT_PLUG_VERSION)
     return SASL_BADVERS;
 

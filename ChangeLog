@@ -4,6 +4,7 @@
 	* Fixed a decode bug in DIGEST-MD5 (and testsuite improvements to
 	  help find similar ones)
 	* Fixed a number of solaris compiler warnings
+	* Static Library Build Support
 
 2000-06-30  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Cleanup of some man pages (added sasl_errors.3)

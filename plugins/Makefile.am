@@ -1,6 +1,7 @@
 # Makefile.am for the SASL plugins
+# Rob Siemborski
 # Rob Earhart
-#
+# $Id: Makefile.am,v 1.39.2.14 2001/07/02 22:50:09 rjs3 Exp $
 #
 ################################################################
 # Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
@@ -55,45 +56,75 @@ login_version = 1:0:0
 srp_version = 1:0:0
 
 INCLUDES=-I$(top_srcdir)/include -I$(top_srcdir)/lib
-
 LDFLAGS = @LDFLAGS@ -export-dynamic -rpath $(plugindir)
+
+noinst_SCRIPTS = makeinit.sh
 
 plugindir = @plugindir@
 
+common_sources = plugin_common.c plugin_common.h
+
 sasldir = $(prefix)/lib/sasl2
 sasl_LTLIBRARIES = @SASL_MECHS@
-EXTRA_LTLIBRARIES = libplain.la libanonymous.la libkerberos4.la libcrammd5.la libgssapiv2.la libdigestmd5.la liblogin.la libsrp.la
+EXTRA_LTLIBRARIES = libplain.la libanonymous.la libkerberos4.la libcrammd5.la \
+	libgssapiv2.la libdigestmd5.la liblogin.la libsrp.la
 
-libplain_la_SOURCES = plain.c plugin_common.c plugin_common.h
+sasl_LIBRARIES = @SASL_STATIC_MECHS@
+EXTRA_LIBRARIES = libanonymous.a libcrammd5.a libplain.a liblogin.a \
+	libdigestmd5.a libgssapiv2.a libkerberos4.a libsrp.a
+
+libplain_la_SOURCES = plain.c plain_init.c $(common_sources)
 libplain_la_LDFLAGS = -version-info $(plain_version)
 libplain_la_LIBADD = $(PLAIN_LIBS)
 
-libanonymous_la_SOURCES = anonymous.c plugin_common.c plugin_common.h
+libplain_a_SOURCES = plain.c $(common_sources)
+
+libanonymous_la_SOURCES = anonymous.c anonymous_init.c $(common_sources)
 libanonymous_la_LDFLAGS = -version-info $(anonymous_version)
 
-libkerberos4_la_SOURCES = kerberos4.c plugin_common.c plugin_common.h
+libanonymous_a_SOURCES = anonymous.c $(common_sources)
+
+libkerberos4_la_SOURCES = kerberos4.c kerberos4_init.c $(common_sources)
 libkerberos4_la_LDFLAGS = -version-info $(kerberos4_version)
 libkerberos4_la_LIBADD = $(SASL_KRB_LIB) $(LIB_SOCKET)
 
-libgssapiv2_la_SOURCES = gssapi.c plugin_common.c plugin_common.h
+libkerberos4_a_SOURCES = kerberos4.c $(common_sources)
+
+libgssapiv2_la_SOURCES = gssapi.c gssapiv2_init.c $(common_sources)
 libgssapiv2_la_LDFLAGS = -version-info $(gssapiv2_version)
 libgssapiv2_la_LIBADD = $(GSSAPIBASE_LIBS) $(GSSAPI_LIBS) $(LIB_SOCKET)
 
-libcrammd5_la_SOURCES = cram.c plugin_common.c plugin_common.h
+libgssapiv2_a_SOURCES = gssapi.c $(common_sources)
+
+libcrammd5_la_SOURCES = cram.c cram_init.c $(common_sources)
 libcrammd5_la_LDFLAGS = -version-info $(crammd5_version)
 
-libdigestmd5_la_SOURCES = digestmd5.c plugin_common.c plugin_common.h
+libcrammd5_a_SOURCES = cram.c $(common_sources)
+
+libdigestmd5_la_SOURCES = digestmd5.c digestmd5_init.c $(common_sources)
 libdigestmd5_la_LDFLAGS = -version-info $(digestmd5_version)
 libdigestmd5_la_LIBADD = $(LIB_DES) $(LIB_SOCKET)
 
-liblogin_la_SOURCES = login.c plugin_common.c plugin_common.h
+libdigestmd5_a_SOURCES = digestmd5.c $(common_sources)
+
+liblogin_la_SOURCES = login.c login_init.c $(common_sources)
 liblogin_la_LDFLAGS = -version-info $(login_version)
 liblogin_la_LIBADD = $(PLAIN_LIBS)
 
-libsrp_la_SOURCES = srp.c
+liblogin_a_SOURCES = kerberos4.c $(common_sources)
+
+libsrp_la_SOURCES = srp.c srp_init.c $(common_sources)
 libsrp_la_LDFLAGS = -version-info $(srp_version)
 libsrp_la_LIBADD = $(SRP_LIBS)
 
-# libx509_la_SOURCES = x509.c
-# libx509_la_LDFLAGS = -version-info $(x509_version)
-# libx509_la_LIBADD = $(X509_LIBS)
+libsrp_a_SOURCES = kerberos4.c $(common_sources)
+
+# Instructions for making the _init files
+
+init_src=anonymous_init.c crammd5_init.c digestmd5_init.c gssapiv2_init.c \
+kerberos4_init.c login_init.c plain_init.c srp_init.c
+
+CLEANFILES=$(init_src)
+
+${init_src}: makeinit.sh
+	$(SHELL) makeinit.sh

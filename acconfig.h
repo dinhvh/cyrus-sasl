@@ -61,6 +61,16 @@
 #undef SASL_NDBM
 #undef SASL_BERKELEYDB
 
+/* which mechs can we link staticly? */
+#undef STATIC_ANONYMOUS
+#undef STATIC_CRAMMD5
+#undef STATIC_DIGESTMD5
+#undef STATIC_GSSAPIV2
+#undef STATIC_KERBEROS4
+#undef STATIC_LOGIN
+#undef STATIC_PLAIN
+#undef STATIC_SRP
+
 /* This is where plugins will live at runtime */
 #undef PLUGINDIR
 

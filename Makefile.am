@@ -63,7 +63,7 @@ else
 JAV =
 endif
 
-SUBDIRS=include lib plugins utils doc man $(PWC) $(SAM) $(JAV) $(SAD)
+SUBDIRS=include plugins lib utils doc man $(PWC) $(SAM) $(JAV) $(SAD)
 EXTRA_DIST=config cmulocal win32 testing.txt
 
 dist-hook:

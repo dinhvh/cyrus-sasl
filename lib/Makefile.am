@@ -1,6 +1,6 @@
 # Makefile.am for the SASL library
 # Rob Earhart
-# $Id: Makefile.am,v 1.41.2.6 2001/06/22 20:45:18 rjs3 Exp $
+# $Id: Makefile.am,v 1.41.2.7 2001/07/02 22:50:07 rjs3 Exp $
 # Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -45,14 +45,25 @@ sasl_version = 1:0:0
 
 INCLUDES=-I$(top_srcdir)/include
 
-EXTRA_DIST = saslint.h windlopen.c
+EXTRA_DIST = windlopen.c
+
+common_headers = saslint.h
+common_sources = auxprop.c canonusr.c checkpw.c client.c common.c config.c external.c md5.c saslutil.c server.c
+
+extra_common_sources = db_none.c db_ndbm.c db_gdbm.c db_berkeley.c db_testw32.c
 
 lib_LTLIBRARIES = libsasl2.la
 
-libsasl2_la_SOURCES = auxprop.c canonusr.c checkpw.c client.c common.c config.c dlopen.c external.c md5.c saslutil.c server.c
-EXTRA_libsasl2_la_SOURCES = db_none.c db_ndbm.c db_gdbm.c db_berkeley.c db_testw32.c
+libsasl2_la_SOURCES = $(common_sources) dlopen.c $(common_headers)
+EXTRA_libsasl2_la_SOURCES = $(extra_common_sources)
 libsasl2_la_LDFLAGS = -version-info $(sasl_version)
 libsasl2_la_DEPENDENCIES = $(SASL_DB_BACKEND) @LTLIBOBJS@
 libsasl2_la_LIBADD = @LTLIBOBJS@ $(SASL_DB_BACKEND) $(SASL_DB_LIB) $(SASL_DL_LIB) $(PLAIN_LIBS) $(LIB_SOCKET)
 # PLAIN_LIBS are linked in for sasl_checkpass
 
+#static version
+lib_LIBRARIES = libsasl2.a
+libsasl2_a_SOURCES = $(common_sources) staticopen.c $(common_headers) staticopen.h
+EXTRA_libsasl2_a_SOURCES = $(extra_common_sources)
+libsasl2_a_DEPENDENCIES = @SASL_STATIC_OBJS@ $(SASL_DB_BACKEND_STATIC)
+libsasl2_a_LIBADD = @SASL_STATIC_OBJS@ $(SASL_DB_BACKEND_STATIC)

@@ -1,7 +1,7 @@
 /* Kerberos4 SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: kerberos4.c,v 1.65.2.22 2001/07/02 15:41:58 rjs3 Exp $
+ * $Id: kerberos4.c,v 1.65.2.23 2001/07/02 22:50:10 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -822,12 +822,12 @@ static sasl_server_plug_t plugins[] =
 };
 #endif
 
-int sasl_server_plug_init(const sasl_utils_t *utils,
-			  int maxversion,
-			  int *out_version,
-			  sasl_server_plug_t **pluglist,
-			  int *plugcount,
-			  const char *plugname __attribute__((unused)))
+int kerberos4_server_plug_init(const sasl_utils_t *utils,
+			       int maxversion,
+			       int *out_version,
+			       sasl_server_plug_t **pluglist,
+			       int *plugcount,
+			       const char *plugname __attribute__((unused)))
 {
 #ifdef macintosh
 	return SASL_BADVERS;
@@ -1328,12 +1328,13 @@ static sasl_client_plug_t client_plugins[] =
   }
 };
 
-int sasl_client_plug_init(const sasl_utils_t *utils __attribute__((unused)),
-			  int maxversion,
-			  int *out_version,
-			  sasl_client_plug_t **pluglist,
-			  int *plugcount,
-			  const char *plugname __attribute__((unused)))
+int kerberos4_client_plug_init(
+    const sasl_utils_t *utils __attribute__((unused)),
+    int maxversion,
+    int *out_version,
+    sasl_client_plug_t **pluglist,
+    int *plugcount,
+    const char *plugname __attribute__((unused)))
 {
   if (maxversion < SASL_CLIENT_PLUG_VERSION)
     return SASL_BADVERS;
