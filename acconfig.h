@@ -195,7 +195,7 @@ struct iovec {
 #define DEV_RANDOM "/dev/random"
 #endif
 
-/* if we've got get_krb_err_txt, we might as well use it;
+/* if we've got krb_get_err_txt, we might as well use it;
    especially since krb_err_txt isn't in some newer distributions
    (MIT Kerb for Mac 4 being a notable example). If we don't have
    it, we fall back to the krb_err_txt array */
