@@ -385,7 +385,7 @@ main(int argc, char *argv[])
 		  "%s: usage: %s [-a appname] [-p] [-c] [-d] [-f sasldb] [-u DOM] userid\n"
 		  "\t-p\tpipe mode -- no prompt, password read on stdin\n"
 		  "\t-c\tcreate -- ask mechs to create the account\n"
-		  "\t-d\tdisable -- ask mechs to disable the account\n"
+		  "\t-d\tdisable -- ask mechs to disable/delete the account\n"
 		  "\t-f sasldb\tuse given file as sasldb\n"
 		  "\t-a appname\tuse appname as application name\n"
 		  "\t-u DOM\tuse DOM for user domain\n",

@@ -1,7 +1,7 @@
 /* saslint.h - internal SASL library definitions
  * Rob Siemborski
  * Tim Martin
- * $Id: sasldb.h,v 1.1.2.1 2001/07/17 21:48:48 rjs3 Exp $
+ * $Id: sasldb.h,v 1.1.2.2 2001/07/24 19:16:44 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -49,11 +49,15 @@
 #include "sasl.h"
 #include "saslplug.h"
 
+/* Get a secret from sasldb for the given authid/realm */
 typedef int sasl_server_getsecret_t(const sasl_utils_t *utils,
 				    sasl_conn_t *context,
 				    const char *auth_identity,
 				    const char *realm,
 				    sasl_secret_t ** secret);
+
+/* Put a secret into sasldb for the given authid/realm */
+/* A NULL secret here means to delete the key */
 typedef int sasl_server_putsecret_t(const sasl_utils_t *utils,
 				    sasl_conn_t *context,
 				    const char *auth_identity,
