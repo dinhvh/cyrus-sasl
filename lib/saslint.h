@@ -1,7 +1,7 @@
 /* saslint.h - internal SASL library definitions
  * Rob Siemborski
  * Tim Martin
- * $Id: saslint.h,v 1.33.2.29 2001/07/06 17:39:14 rjs3 Exp $
+ * $Id: saslint.h,v 1.33.2.30 2001/07/06 18:14:23 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -359,15 +359,13 @@ int external_client_init(const sasl_utils_t *utils,
 			 int max_version,
 			 int *out_version,
 			 sasl_client_plug_t **pluglist,
-			 int *plugcount,
-			 const char *plugname);
+			 int *plugcount);
 extern sasl_client_plug_t external_client_mech;
 int external_server_init(const sasl_utils_t *utils,
 			 int max_version,
 			 int *out_version,
 			 sasl_server_plug_t **pluglist,
-			 int *plugcount,
-			 const char *plugname);
+			 int *plugcount);
 extern sasl_server_plug_t external_server_mech;
 
 /*

@@ -1,7 +1,7 @@
 /* GSSAPI SASL plugin
  * Leif Johansson
  * Rob Siemborski (SASL v2 Conversion)
- * $Id: gssapi.c,v 1.41.2.16 2001/07/03 18:01:04 rjs3 Exp $
+ * $Id: gssapi.c,v 1.41.2.17 2001/07/06 18:15:35 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -924,8 +924,7 @@ int gssapiv2_server_plug_init(
 		      int maxversion,
 		      int *out_version,
 		      sasl_server_plug_t **pluglist,
-		      int *plugcount,
-		      const char *plugname __attribute__((unused)))
+		      int *plugcount)
 {
 #ifdef HAVE_GSSKRB5_REGISTER_ACCEPTOR_IDENTITY
     const char *keytab;
@@ -1454,8 +1453,7 @@ int gssapiv2_client_plug_init(
     int maxversion,
     int *out_version, 
     sasl_client_plug_t **pluglist,
-    int *plugcount,
-    const char *plugname __attribute__((unused)))
+    int *plugcount)
 {
   if (maxversion<SASL_CLIENT_PLUG_VERSION)
     return SASL_BADVERS;

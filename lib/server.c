@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: server.c,v 1.84.2.38 2001/07/06 17:39:14 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.39 2001/07/06 18:14:23 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -286,7 +286,7 @@ static int add_plugin(void *p, void *library)
     /* call into the shared library asking for information about it */
     /* version is filled in with the version of the plugin */
     result = entry_point(mechlist->utils, SASL_SERVER_PLUG_VERSION, &version,
-			 &pluglist, &plugcount, NULL);
+			 &pluglist, &plugcount);
 
     if ((result != SASL_OK) && (result != SASL_NOUSER)) {
 	_sasl_log(NULL, SASL_LOG_WARN,
@@ -1014,7 +1014,7 @@ int sasl_server_start(sasl_conn_t *conn,
 				  (void **) &entry_point, &library);
 	if (result == SASL_OK) {
 	    result = entry_point(mechlist->utils, SASL_SERVER_PLUG_VERSION,
-				 &version, &pluglist, &plugcount, NULL);
+				 &version, &pluglist, &plugcount);
 	}
 	if (result == SASL_OK) {
 	    /* find the correct mechanism in this plugin */

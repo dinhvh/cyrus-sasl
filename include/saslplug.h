@@ -360,7 +360,6 @@ typedef struct sasl_client_plug {
 
 /* plug-in entry point:
  *  utils       -- utility callback functions
- *  plugname    -- name of plugin (may be NULL)
  *  max_version -- highest client plug version supported
  * returns:
  *  out_version -- client plug version of result
@@ -377,8 +376,7 @@ typedef int sasl_client_plug_init_t(const sasl_utils_t *utils,
 				    int max_version,
 				    int *out_version,
 				    sasl_client_plug_t **pluglist,
-				    int *plugcount,
-				    const char *plugname);
+				    int *plugcount);
 
 /* add a client plug-in
  */
@@ -694,8 +692,7 @@ typedef int sasl_server_plug_init_t(const sasl_utils_t *utils,
 				    int max_version,
 				    int *out_version,
 				    sasl_server_plug_t **pluglist,
-				    int *plugcount,
-				    const char *plugname);
+				    int *plugcount);
 
 /* 
  * add a server plug-in

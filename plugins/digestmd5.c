@@ -2,7 +2,7 @@
  * Rob Siemborski
  * Tim Martin
  * Alexey Melnikov 
- * $Id: digestmd5.c,v 1.97.2.15 2001/07/06 17:53:19 rjs3 Exp $
+ * $Id: digestmd5.c,v 1.97.2.16 2001/07/06 18:15:35 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -2748,8 +2748,7 @@ int digestmd5_server_plug_init(sasl_utils_t * utils __attribute__((unused)),
 				    int maxversion __attribute__((unused)),
 				    int *out_version,
 				    sasl_server_plug_t ** pluglist,
-				    int *plugcount,
-				    const char *plugname __attribute__((unused))) 
+				    int *plugcount) 
 {
   if (maxversion < SASL_SERVER_PLUG_VERSION)
       return SASL_BADVERS;
@@ -3903,8 +3902,7 @@ int digestmd5_client_plug_init(sasl_utils_t * utils __attribute__((unused)),
 			       int maxversion,
 			       int *out_version,
 			       sasl_client_plug_t ** pluglist,
-			       int *plugcount,
-			       const char *plugname __attribute__((unused))) {
+			       int *plugcount) {
   if (maxversion < SASL_CLIENT_PLUG_VERSION)
     return SASL_BADVERS;
 

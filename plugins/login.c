@@ -2,7 +2,7 @@
  * Rob Siemborski (SASLv2 Conversion)
  * contributed by Rainer Schoepf <schoepf@uni-mainz.de>
  * based on PLAIN, by Tim Martin <tmartin@andrew.cmu.edu>
- * $Id: login.c,v 1.6.2.10 2001/07/05 21:30:32 rjs3 Exp $
+ * $Id: login.c,v 1.6.2.11 2001/07/06 18:15:36 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -274,8 +274,7 @@ int login_server_plug_init(sasl_utils_t *utils __attribute__((unused)),
 			   int maxversion,
 			   int *out_version,
 			   sasl_server_plug_t **pluglist,
-			   int *plugcount,
-			   const char *plugname __attribute__((unused)))
+			   int *plugcount)
 {
     if (maxversion<SASL_SERVER_PLUG_VERSION) {
 	SETERROR(utils, "LOGIN version mismatch");
@@ -658,8 +657,7 @@ int login_client_plug_init(sasl_utils_t *utils,
 			   int maxversion,
 			   int *out_version,
 			   sasl_client_plug_t **pluglist,
-			   int *plugcount,
-			   const char *plugname __attribute__((unused)))
+			   int *plugcount)
 {
     if (maxversion<SASL_CLIENT_PLUG_VERSION) {
 	SETERROR(utils, "Version mismatch in LOGIN");

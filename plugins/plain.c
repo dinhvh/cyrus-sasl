@@ -1,7 +1,7 @@
 /* Plain SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: plain.c,v 1.43.2.10 2001/07/05 21:30:33 rjs3 Exp $
+ * $Id: plain.c,v 1.43.2.11 2001/07/06 18:15:36 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -290,8 +290,7 @@ int plain_server_plug_init(const sasl_utils_t *utils,
 			   int maxversion,
 			   int *out_version,
 			   sasl_server_plug_t **pluglist,
-			   int *plugcount,
-			   const char *plugname __attribute__((unused)))
+			   int *plugcount)
 {
     if (maxversion<SASL_SERVER_PLUG_VERSION) {
 	SETERROR(utils, "PLAIN version mismatch");
@@ -724,8 +723,7 @@ int plain_client_plug_init(sasl_utils_t *utils,
 			   int maxversion,
 			   int *out_version,
 			   sasl_client_plug_t **pluglist,
-			   int *plugcount,
-			   const char *plugname __attribute__((unused)))
+			   int *plugcount)
 {
     if (maxversion<SASL_CLIENT_PLUG_VERSION) {
 	SETERROR(utils, "PLAIN version mismatch");

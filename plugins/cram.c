@@ -1,7 +1,7 @@
 /* CRAM-MD5 SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: cram.c,v 1.55.2.15 2001/07/06 17:52:11 rjs3 Exp $
+ * $Id: cram.c,v 1.55.2.16 2001/07/06 18:15:35 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -517,8 +517,7 @@ int crammd5_server_plug_init(const sasl_utils_t *utils,
 				 int maxversion,
 				 int *out_version,
 				 sasl_server_plug_t **pluglist,
-				 int *plugcount,
-				 const char *plugname __attribute__((unused)))
+				 int *plugcount)
 {
     if (maxversion<SASL_SERVER_PLUG_VERSION) {
 	SETERROR( utils, "CRAM version mismatch");
@@ -942,8 +941,7 @@ int crammd5_client_plug_init(const sasl_utils_t *utils,
 				 int maxversion,
 				 int *out_version,
 				 sasl_client_plug_t **pluglist,
-				 int *plugcount,
-				 const char *plugname __attribute__((unused)))
+				 int *plugcount)
 {
     if (maxversion<SASL_CLIENT_PLUG_VERSION) {
 	SETERROR( utils, "CRAM version mismatch");

@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: external.c,v 1.1.2.7 2001/06/27 14:56:28 rjs3 Exp $
+ * $Id: external.c,v 1.1.2.8 2001/07/06 18:14:23 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -161,8 +161,7 @@ int external_server_init(const sasl_utils_t *utils __attribute__((unused)),
 			 int max_version,
 			 int *out_version,
 			 sasl_server_plug_t **pluglist,
-			 int *plugcount,
-			 const char *plugname __attribute__((unused)))
+			 int *plugcount)
 {
   if (!out_version || !pluglist || !plugcount)
     return SASL_BADPARAM;
@@ -353,8 +352,7 @@ int external_client_init(const sasl_utils_t *utils,
 			 int max_version,
 			 int *out_version,
 			 sasl_client_plug_t **pluglist,
-			 int *plugcount,
-			 const char *plugname __attribute__((unused)))
+			 int *plugcount)
 {
   if (!utils || !out_version || !pluglist || !plugcount)
     return SASL_BADPARAM;
