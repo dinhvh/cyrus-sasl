@@ -139,19 +139,14 @@ int dprintf(int lvl, const char *fmt, ...)
     return ret;
 }
 
-void saslerr(int why, const char *what, const char *errstr)
+void saslerr(int why, const char *what)
 {
   fprintf(stderr, "%s: %s", what, sasl_errstring(why, NULL, NULL));
-  if (errstr) {
-      fprintf(stderr, " (%s)\n", errstr);
-  } else {
-      putc('\n', stderr);
-  }
 }
 
-void saslfail(int why, const char *what, const char *errstr)
+void saslfail(int why, const char *what)
 {
-    saslerr(why, what, errstr);
+    saslerr(why, what);
     exit(EX_TEMPFAIL);
 }
 

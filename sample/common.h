@@ -44,5 +44,5 @@ extern int recv_string(FILE *f, char *buf, int buflen);
 extern int debuglevel;
 extern int dprintf(int lvl, const char *fmt, ...);
 
-extern void saslerr(int why, const char *what, const char *errstr);
-extern void saslfail(int why, const char *what, const char *errstr);
+extern void saslerr(int why, const char *what);
+extern void saslfail(int why, const char *what);

@@ -122,10 +122,9 @@ int mysasl_negotiate(FILE *in, FILE *out, sasl_conn_t *conn)
 {
     char buf[8192];
     char chosenmech[128];
-    char *data;
+    const char *data;
     int len;
     int r;
-    const char *errstr;
     const char *userid;
     
     /* generate the capability list */
@@ -138,7 +137,7 @@ int mysasl_negotiate(FILE *in, FILE *out, sasl_conn_t *conn)
 	dprintf(1, "generating client mechanism list... ");
 	r = sasl_listmech(conn, NULL, NULL, " ", NULL,
 			  &data, &len, &count);
-	if (r != SASL_OK) saslfail(r, "generating mechanism list", NULL);
+	if (r != SASL_OK) saslfail(r, "generating mechanism list");
 	dprintf(1, "%d mechanisms\n", count);
     }
 
@@ -166,9 +165,9 @@ int mysasl_negotiate(FILE *in, FILE *out, sasl_conn_t *conn)
 
     /* start libsasl negotiation */
     r = sasl_server_start(conn, chosenmech, buf, len,
-			  &data, &len, &errstr);
+			  &data, &len);
     if (r != SASL_OK && r != SASL_CONTINUE) {
-	saslerr(r, "starting SASL negotiation", errstr);
+	saslerr(r, "starting SASL negotiation");
 	fputc('N', out); /* send NO to client */
 	fflush(out);
 	return -1;
@@ -179,7 +178,6 @@ int mysasl_negotiate(FILE *in, FILE *out, sasl_conn_t *conn)
 	    dprintf(2, "sending response length %d...\n", len);
 	    fputc('C', out); /* send CONTINUE to client */
 	    send_string(out, data, len);
-	    free(data);
 	} else {
 	    dprintf(2, "sending null response...\n");
 	    fputc('C', out); /* send CONTINUE to client */
@@ -193,9 +191,9 @@ int mysasl_negotiate(FILE *in, FILE *out, sasl_conn_t *conn)
 	    return -1;
 	}
 
-	r = sasl_server_step(conn, buf, len, &data, &len, &errstr);
+	r = sasl_server_step(conn, buf, len, &data, &len);
 	if (r != SASL_OK && r != SASL_CONTINUE) {
-	    saslerr(r, "performing SASL negotiation", errstr);
+	    saslerr(r, "performing SASL negotiation");
 	    fputc('N', out); /* send NO to client */
 	    fflush(out);
 	    return -1;
@@ -203,7 +201,7 @@ int mysasl_negotiate(FILE *in, FILE *out, sasl_conn_t *conn)
     }
 
     if (r != SASL_OK) {
-	saslerr(r, "incorrect authentication", errstr);
+	saslerr(r, "incorrect authentication");
 	fputc('N', out); /* send NO to client */
 	fflush(out);
 	return -1;
@@ -212,11 +210,8 @@ int mysasl_negotiate(FILE *in, FILE *out, sasl_conn_t *conn)
     fputc('O', out); /* send OK to client */
     fflush(out);
     dprintf(1, "negotiation complete\n");
-    if (data) {
-	free(data);
-    }
 
-    r = sasl_getprop(conn, SASL_USERNAME, (void **) &userid);
+    r = sasl_getprop(conn, SASL_USERNAME, (const void **) &userid);
     printf("successful authentication '%s'\n", userid);
 
     return 0;
@@ -253,12 +248,13 @@ int main(int argc, char *argv[])
 
     /* initialize the sasl library */
     r = sasl_server_init(NULL, "sample");
-    if (r != SASL_OK) saslfail(r, "initializing libsasl", NULL);
+    if (r != SASL_OK) saslfail(r, "initializing libsasl");
 
     /* get a listening socket */
     l = listensock(port);
     for (;;) {
-	struct sockaddr_in localaddr, remoteaddr;
+	char localaddr[55], remoteaddr[55];
+	struct sockaddr_in local_ip, remote_ip;
 	int salen;
 	int fd = -1;
 	FILE *in, *out;
@@ -271,16 +267,6 @@ int main(int argc, char *argv[])
 
 	printf("accepted new connection\n");
 
-	r = sasl_server_new(service, NULL, NULL, NULL,
-			    SASL_SECURITY_LAYER, &conn);
-	if (r != SASL_OK) saslfail(r, "allocating connection state", NULL);
-
-	/* set external properties here
-	   sasl_setprop(conn, SASL_SSF_EXTERNAL, &extprops); */
-
-	/* set required security properties here
-	   sasl_setprop(conn, SASL_SEC_PROPS, &secprops); */
-
 	/* set ip addresses */
 	salen = sizeof(localaddr);
 	if (getsockname(fd, (struct sockaddr *)&localaddr, &salen) < 0) {
@@ -291,10 +277,18 @@ int main(int argc, char *argv[])
 	    perror("getpeername");
 	}
 
-	r = sasl_setprop(conn, SASL_IP_LOCAL, &localaddr);
-	if (r != SASL_OK) saslfail(r, "setting local IP address", NULL);
-	r = sasl_setprop(conn, SASL_IP_REMOTE, &remoteaddr);
-	if (r != SASL_OK) saslfail(r, "setting local IP address", NULL);
+	snprintf(localaddr, 55, "%s;%s", inet_ntoa(local_ip.sin_addr), port);
+	snprintf(remoteaddr, 55, "%s;%s", inet_ntoa(remote_ip.sin_addr), port);
+
+	r = sasl_server_new(service, NULL, NULL, localaddr, remoteaddr,
+			    NULL, 0, &conn);
+	if (r != SASL_OK) saslfail(r, "allocating connection state");
+
+	/* set external properties here
+	   sasl_setprop(conn, SASL_SSF_EXTERNAL, &extprops); */
+
+	/* set required security properties here
+	   sasl_setprop(conn, SASL_SEC_PROPS, &secprops); */
 
 	in = fdopen(fd, "r");
 	out = fdopen(fd, "w");

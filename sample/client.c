@@ -243,7 +243,7 @@ char *mech;
 int mysasl_negotiate(FILE *in, FILE *out, sasl_conn_t *conn)
 {
     char buf[8192];
-    char *data;
+    const char *data;
     const char *chosenmech;
     int len;
     int r, c;
@@ -263,7 +263,7 @@ int mysasl_negotiate(FILE *in, FILE *out, sasl_conn_t *conn)
 	mech = buf;
     }
 
-    r = sasl_client_start(conn, mech, NULL, NULL, &data, &len, &chosenmech);
+    r = sasl_client_start(conn, mech, NULL, &data, &len, &chosenmech);
     if (r != SASL_OK && r != SASL_CONTINUE) {
 	saslerr(r, "starting SASL negotiation", NULL);
 	return -1;
@@ -304,7 +304,6 @@ int mysasl_negotiate(FILE *in, FILE *out, sasl_conn_t *conn)
 	if (data) {
 	    dprintf(2, "sending response length %d...\n", len);
 	    send_string(out, data, len);
-	    free(data);
 	} else {
 	    dprintf(2, "sending null response...\n");
 	    send_string(out, "", 0);
@@ -331,13 +330,14 @@ int main(int argc, char *argv[])
     int c;
     char *host = "localhost";
     char *port = "12345";
+    char localaddr[55], remoteaddr[55];
     char *service = "rcmd";
     int r;
     sasl_conn_t *conn;
     FILE *in, *out;
     int fd;
-    struct sockaddr_in localaddr, remoteaddr;
     int salen;
+    struct sockaddr_in local_ip, remote_ip;
 
     while ((c = getopt(argc, argv, "p:s:m:")) != EOF) {
 	switch(c) {
@@ -373,9 +373,21 @@ int main(int argc, char *argv[])
     /* connect to remote server */
     fd = getconn(host, port);
 
+    /* set ip addresses */
+    salen = sizeof(local_ip);
+    if (getsockname(fd, (struct sockaddr *)&local_ip, &salen) < 0) {
+	perror("getsockname");
+    }
+    salen = sizeof(remote_ip);
+    if (getpeername(fd, (struct sockaddr *)&remote_ip, &salen) < 0) {
+	perror("getpeername");
+    }
+
+    snprintf(localaddr, 55, "%s;%s", inet_ntoa(local_ip.sin_addr), port);
+    snprintf(remoteaddr, 55, "%s;%s", inet_ntoa(remote_ip.sin_addr), port);
+
     /* client new connection */
-    r = sasl_client_new(service, host, NULL, 
-			SASL_SECURITY_LAYER, &conn);
+    r = sasl_client_new(service, host, localaddr, remoteaddr, NULL, 0, &conn);
     if (r != SASL_OK) saslfail(r, "allocating connection state", NULL);
 
     /* set external properties here
@@ -384,21 +396,6 @@ int main(int argc, char *argv[])
     /* set required security properties here
        sasl_setprop(conn, SASL_SEC_PROPS, &secprops); */
 
-    /* set ip addresses */
-    salen = sizeof(localaddr);
-    if (getsockname(fd, (struct sockaddr *)&localaddr, &salen) < 0) {
-	perror("getsockname");
-    }
-    salen = sizeof(remoteaddr);
-    if (getpeername(fd, (struct sockaddr *)&remoteaddr, &salen) < 0) {
-	perror("getpeername");
-    }
-
-    r = sasl_setprop(conn, SASL_IP_LOCAL, &localaddr);
-    if (r != SASL_OK) saslfail(r, "setting local IP address", NULL);
-    r = sasl_setprop(conn, SASL_IP_REMOTE, &remoteaddr);
-    if (r != SASL_OK) saslfail(r, "setting local IP address", NULL);
-    
     in = fdopen(fd, "r");
     out = fdopen(fd, "w");
 
