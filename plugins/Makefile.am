@@ -1,7 +1,7 @@
 # Makefile.am for the SASL plugins
 # Rob Siemborski
 # Rob Earhart
-# $Id: Makefile.am,v 1.39.2.16 2001/07/03 14:19:03 rjs3 Exp $
+# $Id: Makefile.am,v 1.39.2.17 2001/07/13 20:00:22 rjs3 Exp $
 #
 ################################################################
 # Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
@@ -46,18 +46,19 @@
 
 # Library version info - here at the top, for sanity
 # CURRENT:REVISION:AGE
-plain_version = 1:0:0
-anonymous_version = 1:0:0
-kerberos4_version = 1:1:0
-crammd5_version = 1:0:0
-gssapiv2_version = 1:0:0
-digestmd5_version = 1:1:0
-login_version = 1:0:0
-srp_version = 1:0:0
+plain_version = 1:1:0
+anonymous_version = 1:1:0
+kerberos4_version = 1:2:0
+crammd5_version = 1:1:0
+gssapiv2_version = 1:1:0
+digestmd5_version = 1:2:0
+login_version = 1:1:0
+srp_version = 1:1:0
 
 INCLUDES=-I$(top_srcdir)/include -I$(top_srcdir)/lib
 LDFLAGS = @LDFLAGS@ -export-dynamic -rpath $(plugindir)
 
+EXTRA_DIST = makeinit.sh
 noinst_SCRIPTS = makeinit.sh
 
 plugindir = @plugindir@
@@ -106,5 +107,5 @@ kerberos4_init.c login_init.c plain_init.c srp_init.c
 
 CLEANFILES=$(init_src)
 
-${init_src}: makeinit.sh
+${init_src}: $(srcdir)/makeinit.sh
 	$(SHELL) $(srcdir)/makeinit.sh

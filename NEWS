@@ -1,3 +1,31 @@
+New in 2.0.2-ALPHA
+------------------
+* THIS IS AN ALPHA-QUALITY RELEASE THAT IS ONLY INTENDED FOR DEVELOPERS
+  WHOSE APPLICATIONS MAKE USE OF THE CYRUS SASL LIBRARY.  
+* This release is intended to show developers that use Cyrus SASL what
+  direction we are planning on taking the library so that they can make
+  plans to migrate their applications accordingly
+* Major new features included in this release:
+  - Ability to compile a static library including all mechanisms.  This
+    means lower memory usage and faster mechanism loading time, but
+    is not for everyone (or even many people). See doc/advanced.html,
+    as well as the '--with-staticsasl' configure flag.
+  - Man pages should now all be present and are close to being correct.
+  - Can now build libsfsasl and the smtptest program (using the --with-sfio
+    configure flag)
+  - Reverted to the v1 entry points for mechanisms, to allow v1 mechanisms
+    to fail loading cleanly.
+  - Auxprop and canon_user plugins can now load from DSOs
+  - Java code now compiles (but is not well tested, or up to date with the
+    current Java API draft)
+  - Error handling and use of sasl_errdetail has been fleshed out and
+    should now work in most cases.
+* Still Coming:
+  - Cleanup of the client-send-first and server-send-last situation
+  - Error reporting in GSSAPI plugin
+  - Move the sasldb code out of the main library and into plugins and
+    utilities only.
+
 New in 2.0.0-ALPHA
 ------------------
 * THIS IS AN ALPHA-QUALITY RELEASE THAT IS ONLY INTENDED FOR DEVELOPERS
@@ -9,13 +37,13 @@ New in 2.0.0-ALPHA
   Some of the major improvements in the API include:
   - Memory management is now sane (whoever allocates the memory is responsible
     for freeing it)
-  - Auxilliary Property plugin support (ability to interface with directory
+  - Auxiliary Property plugin support (ability to interface with directory
     services as part of authentication)
   - Username canonification plugin support
   - Improved error reporting (not fully implemented in this release)
   - Database support has been simplified.  We now maintain only a single
     store of plaintext passwords that is shared by all supplied plugins
-    (using the auxilliary property interface).
+    (using the auxiliary property interface).
   The new API is more fully documented in the header files sasl.h, saslplug.h
   saslutil.h, and prop.h.  The man pages, programmers guide, and system
   administrators guide have also been rewritten to deal with the new API.

@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: checkpw.c,v 1.41.2.16 2001/07/06 15:22:55 rjs3 Exp $
+ * $Id: checkpw.c,v 1.41.2.17 2001/07/13 20:00:21 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -338,7 +338,7 @@ static void sasldb_auxprop_lookup(void *glob_context __attribute__((unused)),
 				  sasl_server_params_t *sparams,
 				  unsigned flags,
 				  const char *user,
-				  unsigned ulen __attribute__((unused))) 
+				  unsigned ulen) 
 {
     char *userid = NULL;
     char *realm = NULL;
@@ -347,8 +347,17 @@ static void sasldb_auxprop_lookup(void *glob_context __attribute__((unused)),
     int ret;
     const char *proplookup[] = { SASL_AUX_PASSWORD, NULL };
     struct propval values[2];
-
+    char *user_buf;
+    
     if(!sparams || !user) return;
+
+    user_buf = sparams->utils->malloc(ulen + 1);
+    if(!user_buf)
+	goto done;
+
+    memcpy(user_buf, user, ulen);
+    user_buf[ulen] = '\0';
+    user = user_buf;
 
     sconn = (sasl_server_conn_t *)(sparams->utils->conn);
     
@@ -379,6 +388,7 @@ static void sasldb_auxprop_lookup(void *glob_context __attribute__((unused)),
  done:
     if (userid) sasl_FREE(userid);
     if (realm)  sasl_FREE(realm);
+    if (user_buf) sasl_FREE(user_buf);
 
     if (secret) _sasl_free_secret(&secret);
 }

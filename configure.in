@@ -1,6 +1,6 @@
 dnl configure.in for the SASL library
 dnl Rob Earhart
-dnl $Id: configure.in,v 1.106.2.14 2001/07/10 21:59:16 rjs3 Exp $
+dnl $Id: configure.in,v 1.106.2.15 2001/07/13 20:00:17 rjs3 Exp $
 dnl
 dnl Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
 dnl
@@ -49,7 +49,7 @@ dnl
 dnl REMINDER: When changing the version number here, please also update
 dnl the values in win32/include/config.h and include/sasl.h as well.
 dnl
-AM_INIT_AUTOMAKE(cyrus-sasl, 2.0.1-ALPHA)
+AM_INIT_AUTOMAKE(cyrus-sasl, 2.0.2-ALPHA)
 CMU_INIT_AUTOMAKE
 
 DIRS=""
@@ -110,6 +110,11 @@ if test "$enable_java" = yes; then
     AC_WARN([Disabling Java support])
     enable_java=no
   fi
+else
+# Make distcheck work
+  JAVAC="true"
+  JAVAH="true"
+  JAVADOC="true"
 fi
 AM_CONDITIONAL(JAVA, test "$enable_java" = yes)
 

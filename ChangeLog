@@ -1,3 +1,8 @@
+2000-07-13  Rob Siemborski <rjs3+@andrew.cmu.edu>
+	* Fixed buffer overrun problem in sasldb auxprop plugin
+	* Removed severe memory leak from testsuite
+	* Version 2.0.2-ALPHA Released
+
 2000-07-11  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* error reporting in KERBEROS_V4 plugin
 	* vague handling of SASL_AUTHSOURCE for getprop

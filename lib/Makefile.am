@@ -1,6 +1,6 @@
 # Makefile.am for the SASL library
 # Rob Earhart
-# $Id: Makefile.am,v 1.41.2.8 2001/07/03 15:56:43 rjs3 Exp $
+# $Id: Makefile.am,v 1.41.2.9 2001/07/13 20:00:20 rjs3 Exp $
 # Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -41,7 +41,7 @@
 #
 
 # Library version info - here at the top, for sanity
-sasl_version = 1:0:0
+sasl_version = 1:1:0
 
 INCLUDES=-I$(top_srcdir)/include
 
