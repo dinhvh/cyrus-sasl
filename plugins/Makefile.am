@@ -82,7 +82,7 @@ libgssapiv2_la_LIBADD = $(GSSAPIBASE_LIBS) $(GSSAPI_LIBS) $(LIB_SOCKET)
 libcrammd5_la_SOURCES = cram.c plugin_common.c
 libcrammd5_la_LDFLAGS = -version-info $(crammd5_version)
 
-libdigestmd5_la_SOURCES = digestmd5.c
+libdigestmd5_la_SOURCES = digestmd5.c plugin_common.c
 libdigestmd5_la_LDFLAGS = -version-info $(digestmd5_version)
 libdigestmd5_la_LIBADD = $(LIB_DES) $(LIB_SOCKET)
 
