@@ -2,15 +2,12 @@ Library
 ~~~~~~~
 ) Better/FASTER random numbers (init time is pretty miserable)
 ) Test suite [still] needs work
-) configure stuff: static libs, etc.
 ) parse the .la file instead of assuming we load the ".so" file
 ) better support for including missing routines
 ) check return settings (ssf, etc.) on auth failure
 ) Make real global objects in cram, digest
 ) add SASL_SEC_MUTUAL_AUTHENTICATION
 ) fix DIGEST-MD5 interoperability
-) load auxprop/canonuser plugins from shared libs
-) convert java bindings to new API
 
 Documentation
 ~~~~~~~~~~~~~
