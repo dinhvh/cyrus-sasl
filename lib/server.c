@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: server.c,v 1.84.2.26 2001/06/25 18:44:39 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.27 2001/06/25 20:28:43 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -57,8 +57,6 @@
 #include <fcntl.h>
 #include <string.h>
 #include <ctype.h>
-
-#define DEFAULT_PLAIN_MECHANISM "sasldb"
 
 #include "sasl.h"
 #include "saslint.h"
@@ -1225,13 +1223,6 @@ int sasl_listmech(sasl_conn_t *conn,
   
 }
 
-#define EOSTR(s,n) (((s)[n] == '\0') || ((s)[n] == ' ') || ((s)[n] == '\t'))
-static int is_mech(const char *t, const char *m)
-{
-    int sl = strlen(m);
-    return ((!strncasecmp(m, t, sl)) && EOSTR(t, sl));
-}
-
 /* returns OK if it's valid */
 static int _sasl_checkpass(sasl_conn_t *conn, const char *service,
 			   const char *user, const char *pass)
@@ -1241,16 +1232,13 @@ static int _sasl_checkpass(sasl_conn_t *conn, const char *service,
     struct sasl_verify_password_s *v;
 
     for (v = _sasl_verify_password; v->name; v++) {
-	if (is_mech(DEFAULT_PLAIN_MECHANISM, v->name)) {
-	    result = v->verify(conn, user, pass, service, s_conn->user_realm);
-	    break;
-	}
+	result = v->verify(conn, user, pass, service, s_conn->user_realm);
+	if(result == SASL_OK) break;
     }
 
     if (result == SASL_NOMECH) {
 	/* no mechanism available ?!? */
-	_sasl_log(conn, SASL_LOG_ERR, "unrecognized plaintext verifier %s",
-		  DEFAULT_PLAIN_MECHANISM);
+	_sasl_log(conn, SASL_LOG_ERR, "no password verifiers available");
     }
 
     return result;
@@ -1324,10 +1312,8 @@ int sasl_user_exists(sasl_conn_t *conn,
     if(!conn || !service || !user) return SASL_BADPARAM;
 
     for (v = _sasl_verify_password; v->name; v++) {
-	if (is_mech(DEFAULT_PLAIN_MECHANISM, v->name)) {
-	    result = v->verify(conn, user, NULL, service, user_realm);
-	    break;
-	}
+	result = v->verify(conn, user, NULL, service, user_realm);
+	if(result == SASL_BADPARAM || result == SASL_OK) break;
     }
 
     /* Screen out the SASL_BADPARAM response
@@ -1338,8 +1324,7 @@ int sasl_user_exists(sasl_conn_t *conn,
 
     if (result == SASL_NOMECH) {
 	/* no mechanism available ?!? */
-	_sasl_log(conn, SASL_LOG_ERR, "unrecognized plaintext verifier %s",
-		  DEFAULT_PLAIN_MECHANISM);
+	_sasl_log(conn, SASL_LOG_ERR, "no plaintext password verifier?");
     }
     
     return result;
