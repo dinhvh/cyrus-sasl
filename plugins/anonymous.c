@@ -427,7 +427,5 @@ int sasl_client_plug_init(sasl_utils_t *utils __attribute__((unused)),
   *plugcount=1;
   *out_version=ANONYMOUS_VERSION;
 
-  printf("Anonymous plugin [client] started.\n");
-
   return SASL_OK;
 }
