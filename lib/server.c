@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: server.c,v 1.84.2.52 2001/07/25 15:32:06 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.53 2001/07/31 22:34:35 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -756,14 +756,6 @@ int sasl_server_new(const char *service,
 
   memset(*pconn, 0, sizeof(sasl_server_conn_t));
 
-  (*pconn)->destroy_conn = &server_dispose;
-  result = _sasl_conn_init(*pconn, service, flags, SASL_CONN_SERVER,
-			   &server_idle, serverFQDN,
-			   iplocalport, ipremoteport,
-			   callbacks, &global_callbacks);
-  if (result != SASL_OK)
-      goto done_error;
-
   serverconn = (sasl_server_conn_t *)*pconn;
 
   /* make sparams */
@@ -772,6 +764,15 @@ int sasl_server_new(const char *service,
       MEMERROR(*pconn);
 
   memset(serverconn->sparams, 0, sizeof(sasl_server_params_t));
+
+  (*pconn)->destroy_conn = &server_dispose;
+  result = _sasl_conn_init(*pconn, service, flags, SASL_CONN_SERVER,
+			   &server_idle, serverFQDN,
+			   iplocalport, ipremoteport,
+			   callbacks, &global_callbacks);
+  if (result != SASL_OK)
+      goto done_error;
+
 
   /* set util functions - need to do rest */
   utils=_sasl_alloc_utils(*pconn, &global_callbacks);
@@ -796,19 +797,6 @@ int sasl_server_new(const char *service,
   serverconn->sparams->props = serverconn->base.props;
 
   /* set some variables */
-
-  if((*pconn)->got_ip_local) {      
-     serverconn->sparams->iplocalport = (*pconn)->iplocalport;
-  } else {
-     serverconn->sparams->iplocalport = NULL;
-  }
-
-  if((*pconn)->got_ip_remote) {
-      serverconn->sparams->ipremoteport = (*pconn)->ipremoteport;
-  } else {
-      serverconn->sparams->ipremoteport = NULL;
-  }
-
   if (user_realm) {
     result = _sasl_strdup(user_realm, &serverconn->user_realm, NULL);
   } else {

@@ -22,6 +22,7 @@ conn_t, however)</LI>
 and SASL_IPREMOTEPORT and take strings instead of sockaddrs</LI>
 <li>error handling is different, everything that used to return a "reply" string no longer does.  Now you should (always) check sasl_errdetail.  Callbacks
 should likewise use sasl_seterror instead of setting their reply parameter</li>
+<li>remember your sasl_seterrors</li>
 </OL></LI>
 
 <LI> Clients:</LI>
@@ -51,6 +52,8 @@ security layer is solely determined by the security properties information</LI>
 <li>sasl_server_start / sasl_server_step have same output parameter deal as
 client side</li>
 <li>sasl_listmech has a constant output parameter</li>
+<li>if you used to canonicalized in a SASL_CB_PROXY_POLICY callback you
+need to move it to a SASL_CB_CANON_USER callback</li>
 </OL></LI>
 
 </UL>

@@ -1,7 +1,7 @@
 /* common.c - Functions that are common to server and clinet
  * Rob Siemborski
  * Tim Martin
- * $Id: common.c,v 1.64.2.48 2001/07/30 17:23:30 rjs3 Exp $
+ * $Id: common.c,v 1.64.2.49 2001/07/31 22:34:34 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -604,6 +604,25 @@ int sasl_setprop(sasl_conn_t *conn, int propnum, const void *value)
 	  strcpy(conn->ipremoteport, ipremoteport);
 	  conn->got_ip_remote = 1;
       }
+      
+      if(conn->got_ip_remote) {
+	  if(conn->type == SASL_CONN_CLIENT) {
+	      ((sasl_client_conn_t *)conn)->cparams->ipremoteport
+		  = conn->ipremoteport;
+	  } else if (conn->type == SASL_CONN_SERVER) {
+	      ((sasl_server_conn_t *)conn)->sparams->ipremoteport
+		  = conn->ipremoteport;
+	  }
+      } else {
+	  if(conn->type == SASL_CONN_CLIENT) {
+	      ((sasl_client_conn_t *)conn)->cparams->ipremoteport
+		  = NULL;
+	  } else if (conn->type == SASL_CONN_SERVER) {
+	      ((sasl_server_conn_t *)conn)->sparams->ipremoteport
+		  = NULL;
+	  }
+      }
+
       break;
   }
 
@@ -619,6 +638,24 @@ int sasl_setprop(sasl_conn_t *conn, int propnum, const void *value)
       } else {
 	  strcpy(conn->iplocalport, iplocalport);
 	  conn->got_ip_local = 1;
+      }
+
+      if(conn->got_ip_local) {
+	  if(conn->type == SASL_CONN_CLIENT) {
+	      ((sasl_client_conn_t *)conn)->cparams->iplocalport
+		  = conn->iplocalport;
+	  } else if (conn->type == SASL_CONN_SERVER) {
+	      ((sasl_server_conn_t *)conn)->sparams->iplocalport
+		  = conn->iplocalport;
+	  }
+      } else {
+	  if(conn->type == SASL_CONN_CLIENT) {
+	      ((sasl_client_conn_t *)conn)->cparams->iplocalport
+		  = NULL;
+	  } else if (conn->type == SASL_CONN_SERVER) {
+	      ((sasl_server_conn_t *)conn)->sparams->iplocalport
+		  = NULL;
+	  }
       }
       break;
   }

@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: client.c,v 1.34.4.29 2001/07/23 21:23:40 rjs3 Exp $
+ * $Id: client.c,v 1.34.4.30 2001/07/31 22:34:34 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -278,12 +278,6 @@ int sasl_client_new(const char *service,
 
   (*pconn)->destroy_conn = &client_dispose;
 
-  result = _sasl_conn_init(*pconn, service, flags, SASL_CONN_CLIENT,
-			   &client_idle, serverFQDN,
-			   iplocalport, ipremoteport,
-			   prompt_supp, &global_callbacks);
-  if (result != SASL_OK) RETURN(*pconn, result);
-  
   conn = (sasl_client_conn_t *)*pconn;
   
   conn->mech = NULL;
@@ -293,6 +287,12 @@ int sasl_client_new(const char *service,
       MEMERROR(*pconn);
   memset(conn->cparams,0,sizeof(sasl_client_params_t));
 
+  result = _sasl_conn_init(*pconn, service, flags, SASL_CONN_CLIENT,
+			   &client_idle, serverFQDN,
+			   iplocalport, ipremoteport,
+			   prompt_supp, &global_callbacks);
+  if (result != SASL_OK) RETURN(*pconn, result);
+  
   utils=_sasl_alloc_utils(*pconn, &global_callbacks);
   if (utils==NULL)
       MEMERROR(*pconn);
@@ -300,16 +300,6 @@ int sasl_client_new(const char *service,
   utils->conn= *pconn;
   conn->cparams->utils = utils;
   conn->cparams->canon_user = &_sasl_canon_user;
-
-  if(conn->base.got_ip_local)
-      conn->cparams->iplocalport = (*pconn)->iplocalport;
-  else
-      conn->cparams->iplocalport = NULL;
-  
-  if(conn->base.got_ip_remote)
-      conn->cparams->ipremoteport = (*pconn)->ipremoteport;
-  else
-      conn->cparams->ipremoteport = NULL;
   
   result = _sasl_strdup(serverFQDN, &conn->serverFQDN, NULL);
   if(result == SASL_OK) return SASL_OK;

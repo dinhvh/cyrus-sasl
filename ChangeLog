@@ -8,6 +8,13 @@
 	  porting Cyrus IMAPd to use SASLv2
 	* doc/Makefile.am: added appconvert.html
 
+	* lib/client.c (sasl_client_new): fixed ip address setting to hit
+		relevant params structures as well
+	* lib/server.c (sasl_server_new): fixed ip address setting to hit
+		relevant params structures as well
+	* lib/common.c (sasl_setprop): fixed ip address setting to hit
+		relevant params structures as well
+
 2001-07-30  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* sasldb/db_berkeley.c: utils->seterror() calls
 	* sasldb/db_gdbm.c: utils->seterror() calls
