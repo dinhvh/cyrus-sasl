@@ -1,7 +1,7 @@
 /* testsuite.c -- Stress the library a little
  * Rob Siemborski
  * Tim Martin
- * $Id: testsuite.c,v 1.13.2.18 2001/06/30 01:29:55 rjs3 Exp $
+ * $Id: testsuite.c,v 1.13.2.19 2001/07/02 16:06:28 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -767,17 +767,22 @@ const sasl_security_properties_t security_props = {
     NULL	    
 };
 
-void set_properties(sasl_conn_t *conn)
+void set_properties(sasl_conn_t *conn, const sasl_security_properties_t *props)
 {
-  if (sasl_setprop(conn, SASL_SEC_PROPS, &security_props)!=SASL_OK)
-      fatal("sasl_setprop() failed");
+    if(!props) {
+	if (sasl_setprop(conn, SASL_SEC_PROPS, &security_props)!=SASL_OK)
+	    fatal("sasl_setprop() failed");
+    } else {
+       	if (sasl_setprop(conn, SASL_SEC_PROPS, props)!=SASL_OK)
+	    fatal("sasl_setprop() failed");
+    }
 }
 
 /*
  * This corrupts the string for us
  */
-
-void corrupt(corrupt_type_t type, char *in, int inlen, char **out, unsigned *outlen)
+void corrupt(corrupt_type_t type, char *in, int inlen,
+	     char **out, unsigned *outlen)
 {
     unsigned lup;
     
@@ -911,14 +916,14 @@ void sendbadsecond(char *mech, void *rock)
 			0,
 			&clientconn)!= SASL_OK) fatal("sasl_client_new() failure");
 
-    set_properties(clientconn);
+    set_properties(clientconn, NULL);
 
     if (sasl_server_new(service, myhostname, NULL,
 			buf, buf, NULL, 0, 
 			&saslconn) != SASL_OK) {
 	fatal("");
     }
-    set_properties(saslconn);
+    set_properties(saslconn, NULL);
 
     do {
 	result = sasl_client_start(clientconn, mech,
@@ -1111,7 +1116,8 @@ void sendbadsecond(char *mech, void *rock)
 
 /* Authenticate two sasl_conn_t's to eachother, validly.
  * used to test the security layer */
-int doauth(char *mech, sasl_conn_t **server_conn, sasl_conn_t **client_conn)
+int doauth(char *mech, sasl_conn_t **server_conn, sasl_conn_t **client_conn,
+           const sasl_security_properties_t *props)
 {
     int result, need_another_client = 0;
     sasl_conn_t *saslconn;
@@ -1153,14 +1159,14 @@ int doauth(char *mech, sasl_conn_t **server_conn, sasl_conn_t **client_conn)
 			&clientconn)!= SASL_OK) fatal("sasl_client_new() failure");
 
     /* Set the security properties */
-    set_properties(clientconn);
+    set_properties(clientconn, props);
 
     if (sasl_server_new(service, myhostname, NULL,
 			buf, buf, NULL, 0, 
 			&saslconn) != SASL_OK) {
 	fatal("");
     }
-    set_properties(saslconn);
+    set_properties(saslconn, props);
 
     do {
 	result = sasl_client_start(clientconn, mech,
@@ -1252,6 +1258,16 @@ void cleanup_auth(sasl_conn_t **client, sasl_conn_t **server)
     sasl_done();
 }
 
+
+const sasl_security_properties_t int_only = {
+    0,
+    1,
+    8192,
+    0,
+    NULL,
+    NULL	    
+};
+
 void testseclayer(char *mech, void *rock __attribute__((unused))) 
 {
     sasl_conn_t *sconn, *cconn;
@@ -1260,15 +1276,28 @@ void testseclayer(char *mech, void *rock __attribute__((unused)))
     const char *txstring = "THIS IS A TEST";
     const char *out, *out2;
     char *tmp;
+    const sasl_security_properties_t *test_props[2] =
+                                          { &security_props, &int_only };
+    const unsigned num_properties = 2;
+    unsigned i;
+    const sasl_ssf_t *this_ssf;
     unsigned outlen, outlen2, totlen;
     
     printf("%s --> security layer start\n", mech);
-    
 
+    for(i=0; i<num_properties; i++) {
+        
     /* Basic crash-tests (none should cause a crash): */
-    if(doauth(mech, &sconn, &cconn) != SASL_OK) {
+    if(doauth(mech, &sconn, &cconn, test_props[i]) != SASL_OK) {
 	fatal("doauth failed in testseclayer");
     }
+
+    if(sasl_getprop(cconn, SASL_SSF, (const void **)&this_ssf) != SASL_OK) {
+	fatal("sasl_getprop in testseclayer");
+    }
+
+    printf("  Testing SSF: %d (requested %d/%d)\n", (unsigned)(*this_ssf),
+	   test_props[i]->min_ssf, test_props[i]->max_ssf);
 
     sasl_encode(NULL, txstring, strlen(txstring), &out, &outlen);
     sasl_encode(cconn, NULL, strlen(txstring), &out, &outlen);
@@ -1287,7 +1316,7 @@ void testseclayer(char *mech, void *rock __attribute__((unused)))
     cleanup_auth(&sconn, &cconn);
 
     /* Basic I/O Test */
-    if(doauth(mech, &sconn, &cconn) != SASL_OK) {
+    if(doauth(mech, &sconn, &cconn, test_props[i]) != SASL_OK) {
 	fatal("doauth failed in testseclayer");
     }
 
@@ -1304,7 +1333,7 @@ void testseclayer(char *mech, void *rock __attribute__((unused)))
     cleanup_auth(&sconn, &cconn);
 
     /* Split one block and reassemble */
-    if(doauth(mech, &sconn, &cconn) != SASL_OK) {
+    if(doauth(mech, &sconn, &cconn, test_props[i]) != SASL_OK) {
 	fatal("doauth failed in testseclayer");
     }
 
@@ -1334,13 +1363,14 @@ void testseclayer(char *mech, void *rock __attribute__((unused)))
 
     strcat(buf2, out);
     if(strcmp(buf2, txstring)) {
+	printf("Exptected '%s' but got '%s'\n", txstring, buf2);
 	fatal("did not get correct string back after 2 sasl_decodes");
     }
 
     cleanup_auth(&sconn, &cconn);
 
     /* Combine 2 blocks */
-    if(doauth(mech, &sconn, &cconn) != SASL_OK) {
+    if(doauth(mech, &sconn, &cconn, test_props[i]) != SASL_OK) {
 	fatal("doauth failed in testseclayer");
     }
 
@@ -1377,7 +1407,7 @@ void testseclayer(char *mech, void *rock __attribute__((unused)))
     cleanup_auth(&sconn, &cconn);
 
     /* Combine 2 blocks with 1 split */
-    if(doauth(mech, &sconn, &cconn) != SASL_OK) {
+    if(doauth(mech, &sconn, &cconn, test_props[i]) != SASL_OK) {
 	fatal("doauth failed in testseclayer");
     }
 
@@ -1427,7 +1457,9 @@ void testseclayer(char *mech, void *rock __attribute__((unused)))
     }
 
     cleanup_auth(&sconn, &cconn);
-
+    
+    } /* for each properties type we want to test */
+     
     printf("%s --> security layer OK\n", mech);
     
 }
@@ -1819,6 +1851,7 @@ void usage(void)
            "    g -- gssapi service name to use (default: host)\n" \
 	   "    r -- # of random tests to do (default: 25)\n" \
 	   "    a -- do all corruption tests (and ignores random ones unless -r specified)\n" \
+	   "    n -- skip the initial \"do correctly\" tests\n"
 	   "    h -- show this screen\n" \
            "    s -- random seed to use\n" \
 	   "    M -- detailed memory debugging ON\n" \
@@ -1830,8 +1863,9 @@ int main(int argc, char **argv)
     char c;
     int random_tests = -1;
     int do_all = 0;
+    int skip_do_correct = 0;
     unsigned int seed = time(NULL);
-    while ((c = getopt(argc, argv, "Ms:g:r:h:a")) != EOF)
+    while ((c = getopt(argc, argv, "Ms:g:r:h:an")) != EOF)
 	switch (c) {
 	case 'M':
 	    DETAILED_MEMORY_DEBUGGING = 1;
@@ -1848,6 +1882,9 @@ int main(int argc, char **argv)
 	case 'a':
 	    random_tests = 0;
 	    do_all = 1;
+	    break;
+	case 'n':
+	    skip_do_correct = 1;
 	    break;
 	case 'h':
 	    usage();
@@ -1889,10 +1926,14 @@ int main(int argc, char **argv)
     printf("Tests of sasl_listmech()... ok\n");
     if(mem_stat() != SASL_OK) fatal("memory error");
 
-    test_serverstart();
-    printf("Tests of serverstart... ok\n");
-    if(mem_stat() != SASL_OK) fatal("memory error");
-
+    if(!skip_do_correct) {
+	test_serverstart();
+	printf("Tests of serverstart (correct)... ok\n");
+	if(mem_stat() != SASL_OK) fatal("memory error");
+    } else {
+	printf("Tests of serverstart (correct)... skipped\n");
+    }
+    
     /* FIXME: do memory tests below here on the things
      * that are MEANT to fail sometime. */
     if(do_all) {	
@@ -1903,6 +1944,8 @@ int main(int argc, char **argv)
     if(random_tests) {
 	test_rand_corrupt(random_tests);
 	printf("Random tests... ok\n");
+    } else {
+	printf("Random tests... skipped\n");
     }
 
     test_seclayer();
