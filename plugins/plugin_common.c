@@ -1,6 +1,6 @@
 /* Generic SASL plugin utility functions
  * Rob Siemborski
- * $Id: plugin_common.c,v 1.1.2.6 2001/06/19 20:50:16 rjs3 Exp $
+ * $Id: plugin_common.c,v 1.1.2.7 2001/06/20 15:37:30 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
@@ -184,16 +184,16 @@ int _plug_strdup(const sasl_utils_t * utils, const char *in,
 {
   size_t len = strlen(in);
 
-  if (outlen!=NULL) {
-      *outlen = len;
-  }
-
   *out = utils->malloc(len + 1);
   if (!*out) {
       return SASL_NOMEM;
   }
 
   strcpy((char *) *out, in);
+
+  if (outlen)
+      *outlen = len;
+
   return SASL_OK;
 }
 
