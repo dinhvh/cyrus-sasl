@@ -2,6 +2,8 @@
 	* configure.in: extracted SASLDB-related checking
 	* config/sasldb.m4: added
 
+	* configure.in: now cache the JNI include directory path
+
 2001-07-26  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* lib/common.c (_sasl_getcallback): fixed reference to
 	  	possibly NULL conn
