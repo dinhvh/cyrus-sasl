@@ -1,21 +1,27 @@
 New in 2.0.0-ALPHA
 ------------------
 * THIS IS AN ALPHA-QUALITY RELEASE THAT IS ONLY INTENDED FOR DEVELOPERS
-  WHOSE APPLICATIONS MAKE USE OF THE CYRUS SASL LIBRARY.
-* Implements the SASLv2 API.
-  Improvements include:
+  WHOSE APPLICATIONS MAKE USE OF THE CYRUS SASL LIBRARY.  
+* This release is intended to show developers that use Cyrus SASL what
+  direction we are planning on taking the library so that they can make
+  plans to migrate their applications accordingly
+* This release implements the SASLv2 API.
+  Some of the major improvements in the API include:
   - Memory management is now sane (whoever allocates the memory is responsible
     for freeing it)
   - Auxilliary Property plugin support (ability to interface with directory
     services as part of authentication)
-  - Username Canonification plugin Support
+  - Username canonification plugin support
   - Improved error reporting (not fully implemented in this release)
   - Database support has been simplified.  We now maintain only a single
     store of plaintext passwords that is shared by all supplied plugins
     (using the auxilliary property interface).
   The new API is more fully documented in the header files sasl.h, saslplug.h
-  saslutil.h, and prop.h.
+  saslutil.h, and prop.h.  The man pages, programmers guide, and system
+  administrators guide have also been rewritten to deal with the new API.
 * There is still a good amount of work to be done, and as this code is alpha
-  quality, it probabally has bugs.  Please either use our bugzilla at
+  quality, it has bugs, known and unknown.  Please either use our bugzilla at
   http://bugzilla.andrew.cmu.edu, or email cyrus-bugs@andrew.cmu.edu with
   questions, comments, or bug reports.
+  - Most notably, the Java bindings have not been converted to work with
+    the new API, and thus will not compile successfully.

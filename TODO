@@ -10,7 +10,7 @@ Library
 ) add SASL_SEC_MUTUAL_AUTHENTICATION
 ) fix DIGEST-MD5 interoperability
 ) load auxprop/canonuser plugins from shared libs
-) java bindings
+) convert java bindings to new API
 
 Documentation
 ~~~~~~~~~~~~~
