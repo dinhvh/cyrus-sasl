@@ -1,7 +1,7 @@
 /* common.c - Functions that are common to server and clinet
  * Rob Siemborski
  * Tim Martin
- * $Id: common.c,v 1.64.2.46 2001/07/24 15:31:22 rjs3 Exp $
+ * $Id: common.c,v 1.64.2.47 2001/07/26 21:11:14 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -1087,15 +1087,14 @@ int _sasl_getcallback(sasl_conn_t * conn,
 {
   const sasl_callback_t *callback;
 
-  if (! pproc || ! pcontext)
-    PARAMERROR(conn);
+  if (!pproc || !pcontext)
+      PARAMERROR(conn);
 
   /* Some callbacks are always provided by the library */
   switch (callbackid) {
   case SASL_CB_LIST_END:
     /* Nothing ever gets to provide this */
-      sasl_seterror(conn, 0, "Someone attempted lookup of SASL_CB_LIST_END");
-      RETURN(conn, SASL_FAIL);
+      INTERROR(conn, SASL_FAIL);
   case SASL_CB_GETOPT:
       if (conn) {
 	  *pproc = &_sasl_conn_getopt;

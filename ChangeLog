@@ -1,3 +1,7 @@
+2001-07-26  Rob Siemborski <rjs3+@andrew.cmu.edu>
+	* lib/common.c (_sasl_getcallback): fixed reference to
+	  possibly NULL conn
+
 2001-07-25  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* lib/saslint.h: changed "sasldb" verifier to "auxprop"
 	* lib/server.c: changed "sasldb" verifier to "auxprop"
