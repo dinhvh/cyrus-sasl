@@ -271,7 +271,9 @@ int _sasl_conn_init(sasl_conn_t *conn,
   result = _sasl_strdup(service, &conn->service, NULL);
   if (result != SASL_OK) return result;
 
-  memset(&conn->oparams, 0, sizeof(conn->oparams));
+  memset(&conn->oparams, 0, sizeof(sasl_out_params_t));
+  memset(&conn->external, 0, sizeof(_sasl_external_properties_t));
+  
   conn->secflags = secflags;
 
   if(!iplocalport ||
@@ -357,6 +359,9 @@ void sasl_dispose(sasl_conn_t **pconn)
 void _sasl_conn_dispose(sasl_conn_t *conn) {
   if (conn->serverFQDN)
       sasl_FREE(conn->serverFQDN);
+
+  if (conn->external.auth_id)
+      sasl_FREE(conn->external.auth_id);
 
   if(conn->encode_buf)
       sasl_FREE(conn->encode_buf);
@@ -448,6 +453,8 @@ int sasl_getprop(sasl_conn_t *conn, int propnum, const void **pvalue)
 int sasl_setprop(sasl_conn_t *conn, int propnum, const void *value)
 {
   int result = SASL_OK;
+  char *str;
+  struct sockaddr_in addr;
 
   /* make sure the sasl context is valid */
   if (!conn)
@@ -455,29 +462,50 @@ int sasl_setprop(sasl_conn_t *conn, int propnum, const void *value)
 
   switch(propnum)
   {
-    case SASL_SSF_EXTERNAL:
-    {
-	fprintf(stderr, "STUB sasl_setprop external hit\n");
+  case SASL_SSF_EXTERNAL:
+      conn->external.ssf = *((sasl_ssf_t *)value);
       break;
-    }
-    case SASL_SEC_PROPS:
+  case SASL_AUTH_EXTERNAL:
+      if(value && strlen(value)) {
+	  result = _sasl_strdup(value, &str, NULL);
+	  if(result != SASL_OK) return result;
+      } else {
+	  str = NULL;
+      }
+
+      if(conn->external.auth_id)
+	  sasl_FREE(conn->external.auth_id);
+
+      conn->external.auth_id = str;
+
+      break;
+  case SASL_SEC_PROPS:
       memcpy(&(conn->props),(sasl_security_properties_t *)value,
 	     sizeof(sasl_security_properties_t));
       break;
-    case SASL_IPLOCALPORT:
-      conn->got_ip_local = 1;
-      conn->ip_local= *(struct sockaddr_in *) value;
+  case SASL_IPLOCALPORT: /* FIXME: WRONG */
+      if(value && _sasl_ipfromstring(value, &addr) != SASL_OK) {
+	  /* It checks out OK */
+	  memcpy(&conn->ip_local, &addr, sizeof(struct sockaddr_in));
+	  strcpy(conn->iplocalport, value);
+	  conn->got_ip_local = 1;
+      } else {
+	  return SASL_BADPARAM;
+      }
       break;
-    case SASL_IPREMOTEPORT:
-      conn->got_ip_remote = 1;
-      conn->ip_remote= *(struct sockaddr_in *) value;
+  case SASL_IPREMOTEPORT:
+      if(value && _sasl_ipfromstring(value, &addr) != SASL_OK) {
+	  /* It checks out OK */
+	  memcpy(&conn->ip_remote, &addr, sizeof(struct sockaddr_in));
+	  strcpy(conn->ipremoteport, value);
+	  conn->got_ip_remote = 1;
+      } else {
+	  return SASL_BADPARAM;
+      }
       break;
-    default:
+  default:
       result = SASL_BADPARAM;
   }
-
-
-  fprintf(stderr, "OLD sasl_setprop hit\n");
   
   return result;
 }

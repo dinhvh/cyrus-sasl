@@ -82,6 +82,12 @@ typedef struct {
   const char *appname;
 } sasl_global_callbacks_t;
 
+typedef struct _sasl_external_properties 
+{
+    sasl_ssf_t ssf;
+    char *auth_id;
+} _sasl_external_properties_t;
+
 struct sasl_conn {
   void (*destroy_conn)(sasl_conn_t *); /* destroy function */
 
@@ -96,13 +102,13 @@ struct sasl_conn {
        way to a sockaddr_in. */
   int got_ip_local, got_ip_remote;
   char iplocalport[52], ipremoteport[52];
-  struct sockaddr_in ip_local, ip_remote;
-    
+  struct sockaddr_in ip_local, ip_remote;    
 
   void *context;
   sasl_out_params_t oparams;
 
   sasl_security_properties_t props;
+  _sasl_external_properties_t external;
 
   sasl_secret_t *secret;
 
@@ -187,6 +193,22 @@ _sasl_log(sasl_conn_t *conn,
 	  int level,
 	  const char *fmt,
 	  ...);
+
+/* external plugin (external.c) */
+int external_client_init(const sasl_utils_t *utils,
+			 int max_version,
+			 int *out_version,
+			 const sasl_client_plug_t **pluglist,
+			 int *plugcount);
+extern const sasl_client_plug_t external_client_mech;
+int external_server_init(const sasl_utils_t *utils,
+			 int max_version,
+			 int *out_version,
+			 const sasl_server_plug_t **pluglist,
+			 int *plugcount);
+extern const sasl_server_plug_t external_server_mech;
+
+
 
 /* config file declarations (config.c) */
 extern int sasl_config_init(const char *filename);

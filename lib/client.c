@@ -51,8 +51,6 @@
 #include <saslutil.h>
 #include "saslint.h"
 
-/* FIXME/TODO: External Plugin */
-
 typedef struct cmechanism
 {
   int version;
@@ -105,11 +103,11 @@ static void client_done(void) {
   cmechanism_t *cprevm;
 
   cm=cmechlist->mech_list; /* m point to begging of the list */
-
   while (cm!=NULL)
   {
     cprevm=cm;
     cm=cm->next;
+
     if (cprevm->plug->mech_free) {
 	cprevm->plug->mech_free(cprevm->plug->glob_context,
 				cmechlist->utils);
@@ -136,7 +134,7 @@ static int add_plugin(void *p, void *library) {
   int version;
   int lupe;
 
-  if(!p || !library) return SASL_BADPARAM;
+  if(!p) return SASL_BADPARAM;
 
   entry_point = (sasl_client_plug_init_t *)p;
 
@@ -221,8 +219,7 @@ int sasl_client_init(const sasl_callback_t *callbacks)
   if (ret!=SASL_OK)
     return ret;
 
-/* FIXME: External Plugin */
-/*  add_plugin((void *) &external_client_init, NULL); */
+  add_plugin((void *) &external_client_init, NULL);
 
   ret = _sasl_common_init();
 
@@ -435,6 +432,12 @@ int sasl_client_start(sasl_conn_t *conn,
 	return result;
     }
 
+    if(conn->props.min_ssf < conn->external.ssf) {
+	minssf = 0;
+    } else {
+	minssf = conn->props.min_ssf - conn->external.ssf;
+    }
+
     /* parse mechlist */
     VL(("mech list from server is %s\n", mechlist));
     list_len = strlen(mechlist);
@@ -516,6 +519,7 @@ int sasl_client_start(sasl_conn_t *conn,
     /* make cparams */
     c_conn->cparams->serverFQDN = c_conn->serverFQDN; 
     c_conn->cparams->service = conn->service;
+    c_conn->cparams->external_ssf = conn->external.ssf;
     c_conn->cparams->props = conn->props;
     c_conn->mech = bestm;
 

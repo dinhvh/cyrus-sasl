@@ -1,6 +1,6 @@
 /* SASL server API implementation
  * Tim Martin
- * $Id: server.c,v 1.84.2.5 2001/06/04 20:12:23 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.6 2001/06/05 19:45:33 rjs3 Exp $
  */
 
 /* 
@@ -306,6 +306,8 @@ static int add_plugin(void *p, void *library)
     int result;
     int version;
     int lupe;
+
+    if(!p) return SASL_BADPARAM;
 
     entry_point = (sasl_server_plug_init_t *)p;
 
@@ -652,8 +654,7 @@ int sasl_server_init(const sasl_callback_t *callbacks,
 #endif
 
     /* load plugins */
-    /* FIXME: need to load the external plugin as well! */
-    /* add_plugin((void *)&external_server_init, NULL); */
+    add_plugin((void *)&external_server_init, NULL);
 
     /* delayed loading of plugins? */
     if (_sasl_getcallback(NULL, SASL_CB_GETOPT, &getopt, &context) 
@@ -852,7 +853,24 @@ static int mech_permitted(sasl_conn_t *conn,
     if (! plug || ! conn)
 	return 0;
 
-    /* FIXME: we are not handleing external */
+    if (plug == &external_server_mech) {
+	/* Special case for the external mechanism */
+	if (conn->props.min_ssf > conn->external.ssf
+	    || ! conn->external.auth_id)
+	    return 0;
+    } else {
+	sasl_ssf_t minssf;
+
+	if (conn->props.min_ssf < conn->external.ssf) {
+	    minssf = 0;
+	} else {
+	    minssf = conn->props.min_ssf - conn->external.ssf;
+	}
+
+	/* Generic mechanism */
+	if (plug->max_ssf < minssf)
+	    return 0; /* too weak */
+    }
 
     /* FIXME: it's probabally not valid to call this more than once per
      * connection context */
@@ -874,12 +892,11 @@ static int mech_permitted(sasl_conn_t *conn,
     myflags = conn->props.security_flags;
 
     /* if there's an external layer this is no longer plaintext */
-/* FIXME
     if ((conn->props.min_ssf <= conn->external.ssf) && 
 	(conn->external.ssf > 1)) {
 	myflags &= ~SASL_SEC_NOPLAINTEXT;
     }
-*/
+
     /* do we want to special case SASL_SEC_PASS_CREDENTIALS? nah.. */
     if (((myflags ^ plug->security_flags) & myflags) != 0) {
 	return 0;
@@ -1033,7 +1050,7 @@ int sasl_server_start(sasl_conn_t *conn,
     s_conn->sparams->service=conn->service;
     s_conn->sparams->user_realm=s_conn->user_realm;
     s_conn->sparams->props=conn->props;
-/* (FIXME?)    s_conn->sparams->external_ssf=conn->external.ssf; */
+    s_conn->sparams->external_ssf=conn->external.ssf;
 
     result = s_conn->mech->plug->mech_new(s_conn->mech->plug->glob_context,
 					  s_conn->sparams,
