@@ -129,6 +129,8 @@ struct sasl_conn {
   /* Pointers to memory that we are responsible for */
   buffer_info_t *encode_buf;
 
+  char *error_buf;
+  unsigned error_buf_len;
   char *decode_buf;
   unsigned decode_buf_len;
 

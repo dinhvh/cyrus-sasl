@@ -130,6 +130,23 @@ int _sasl_strdup(const char *in, char **out, int *outlen)
   return SASL_OK;
 }
 
+/* adds a string to the buffer; reallocing if need be */
+static int add_string(char **out, int *alloclen, int *outlen, char *add)
+{
+  int addlen;
+
+  if (add==NULL) add = "(null)";
+
+  addlen=strlen(add); /* only compute once */
+  if (_buf_alloc(out, alloclen, (*outlen)+addlen)!=SASL_OK)
+    return SASL_NOMEM;
+
+  strncpy(*out + *outlen, add, addlen);
+  *outlen += addlen;
+
+  return SASL_OK;
+}
+
 /* security-encode a regular string.  Mostly a wrapper for sasl_encodev */
 /* output is only valid until next call to sasl_encode or sasl_encodev */
 int sasl_encode(sasl_conn_t *conn, const char *input,
@@ -291,9 +308,9 @@ int _sasl_conn_init(sasl_conn_t *conn,
 
   memset(&conn->props, 0, sizeof(conn->props));
 
-  conn->decode_buf = 
+  conn->error_buf = conn->decode_buf =  
       conn->user_buf = conn->authid_buf = NULL;
-  conn->decode_buf_len = 0;
+  conn->error_buf_len = conn->decode_buf_len = 0;
 
   if (serverFQDN==NULL) {
     char name[MAXHOSTNAMELEN];
@@ -354,6 +371,9 @@ void _sasl_conn_dispose(sasl_conn_t *conn) {
       if(conn->encode_buf->data) sasl_FREE(conn->encode_buf->data);
       sasl_FREE(conn->encode_buf);
   }
+
+  if(conn->error_buf)
+      sasl_FREE(conn->error_buf);
   
   if(conn->decode_buf)
       sasl_FREE(conn->decode_buf);
@@ -501,10 +521,11 @@ int sasl_setprop(sasl_conn_t *conn, int propnum, const void *value)
 
 int sasl_usererr(int saslerr)
 {
+    /* Hide the difference in a username failure and a password failure */
     if (saslerr == SASL_NOUSER)
 	return SASL_BADAUTH;
 
-    /* return the error given; no transform necessary */
+    /* otherwise return the error given; no transform necessary */
     return saslerr;
 }
 
@@ -554,11 +575,173 @@ const char *sasl_errstring(int saslerr,
 
 }
 
-void sasl_seterror(sasl_conn_t *conn __attribute__((unused)),
-		   unsigned flags __attribute__((unused)),
-		   const char *fmt __attribute__((unused)), ...) 
+/* Return the sanitized error detail about the last error that occured for 
+ * a connection */
+const char *sasl_errdetail(sasl_conn_t *conn) 
 {
-    fprintf(stderr, "STUB sasl_seterror called\n");
+    return conn->error_buf;
+}
+
+
+/* set the error string which will be returned by sasl_errdetail() using  
+ *  syslog()-style formatting (e.g. printf-style with %m as most recent
+ *  errno error)
+ * 
+ *  primarily for use by server callbacks such as the sasl_authorize_t
+ *  callback and internally to plug-ins
+ *
+ * This will also trigger a call to the SASL logging callback (if any)
+ * with a level of SASL_LOG_FAIL unless the SASL_NOLOG flag is set.
+ *
+ * Messages should be sensitive to the current language setting.  If there
+ * is no SASL_CB_LANGUAGE callback messages MUST be US-ASCII otherwise UTF-8
+ * is used and use of RFC 2482 for mixed-language text is encouraged.
+ * 
+ * if conn is NULL, function does nothing
+ */
+void sasl_seterror(sasl_conn_t *conn,
+		   unsigned flags,
+		   const char *fmt, ...) 
+{
+  int outlen=0; /* current length of output buffer */
+  int pos=0; /* current position in format string */
+  int formatlen;
+  int result;
+  sasl_log_t *log_cb;
+  void *log_ctx;
+  
+  int ival;
+  char *cval;
+  va_list ap; /* varargs thing */
+
+  if(!conn || !fmt) return;    
+
+  formatlen = strlen(fmt);
+
+  if(!conn->error_buf)
+      _buf_alloc(&conn->error_buf, &conn->error_buf_len, 100);
+
+  va_start(ap, fmt); /* start varargs */
+
+  while(pos<formatlen)
+  {
+    if (fmt[pos]!='%') /* regular character */
+    {
+      conn->error_buf[outlen]=fmt[pos];
+      result = _buf_alloc(&conn->error_buf, &conn->error_buf_len, outlen+1);
+      if (result != SASL_OK)
+	return;
+      outlen++;
+      pos++;
+    } else { /* formating thing */
+      int done=0;
+      char frmt[10];
+      int frmtpos=1;
+      char tempbuf[21];
+      frmt[0]='%';
+      pos++;
+
+      while (done==0)
+      {
+	switch(fmt[pos])
+	  {
+	  case 's': /* need to handle this */
+	    cval = va_arg(ap, char *); /* get the next arg */
+	    result = add_string(&conn->error_buf, &conn->error_buf_len,
+				&outlen, cval);
+	      
+	    if (result != SASL_OK) /* add the string */
+	      return;
+
+	    done=1;
+	    break;
+
+	  case '%': /* double % output the '%' character */
+	    conn->error_buf[outlen]='%';
+	    result = _buf_alloc(&conn->error_buf,&conn->error_buf_len,
+				outlen+1);
+	    if (result != SASL_OK)
+	      return;
+	    outlen++;
+	    done=1;
+	    break;
+
+	  case 'm': /* insert the errno string */
+	    result = add_string(&conn->error_buf, &conn->error_buf_len,
+				&outlen, strerror(va_arg(ap, int)));
+	    if (result != SASL_OK)
+	      return;
+	    done=1;
+	    break;
+
+	  case 'z': /* insert the sasl error string */
+	    result = add_string(&conn->error_buf, &conn->error_buf_len,
+				&outlen,
+				(char *)sasl_errstring(sasl_usererr(
+				    va_arg(ap, int)),NULL,NULL));
+	    if (result != SASL_OK)
+	      return;
+	    done=1;
+	    break;
+
+	  case 'c':
+	    frmt[frmtpos++]=fmt[pos];
+	    frmt[frmtpos]=0;
+	    tempbuf[0] = (char) va_arg(ap, int); /* get the next arg */
+	    tempbuf[1]='\0';
+	    
+	    /* now add the character */
+	    result = add_string(&conn->error_buf, &conn->error_buf_len,
+				&outlen, tempbuf);
+	    if (result != SASL_OK)
+	      return;
+	    done=1;
+	    break;
+
+	  case 'd':
+	  case 'i':
+	    frmt[frmtpos++]=fmt[pos];
+	    frmt[frmtpos]=0;
+	    ival = va_arg(ap, int); /* get the next arg */
+
+	    snprintf(tempbuf,20,frmt,ival); /* have snprintf do the work */
+	    /* now add the string */
+	    result = add_string(&conn->error_buf, &conn->error_buf_len,
+				&outlen, tempbuf);
+	    if (result != SASL_OK)
+	      return;
+	    done=1;
+
+	    break;
+	  default: 
+	    frmt[frmtpos++]=fmt[pos]; /* add to the formating */
+	    frmt[frmtpos]=0;	    
+	    if (frmtpos>9) 
+	      done=1;
+	  }
+	pos++;
+	if (pos>formatlen)
+	  done=1;
+      }
+
+    }
+  }
+
+
+  conn->error_buf[outlen]='\0'; /* put 0 at end */
+
+  va_end(ap);  
+
+    if(!(flags & SASL_NOLOG)) {
+	/* See if we have a logging callback... */
+	result = _sasl_getcallback(conn, SASL_CB_LOG, &log_cb, &log_ctx);
+	if (result == SASL_OK && ! log_cb)
+	    result = SASL_FAIL;
+	if (result != SASL_OK)
+	    return;
+
+	result = log_cb(log_ctx, SASL_LOG_FAIL, conn->error_buf);
+    }
 }
 
 
@@ -658,12 +841,11 @@ static int _sasl_syslog(void *context __attribute__((unused)),
 	syslog_priority = LOG_WARNING;
 	break;
     case SASL_LOG_NOTE:
-	syslog_priority = LOG_INFO;
-	break;
     case SASL_LOG_FAIL:
-    case SASL_LOG_TRACE:
+	syslog_priority = LOG_NOTICE;
+	break;
     case SASL_LOG_PASS:
-	fprintf(stderr, "STUB unimplemented syslog priority hit\n");
+    case SASL_LOG_TRACE:
     case SASL_LOG_DEBUG:
     default:
 	syslog_priority = LOG_DEBUG;
@@ -869,36 +1051,6 @@ _sasl_getcallback(sasl_conn_t * conn,
   return SASL_FAIL;
 }
 
-/* checks size of buffer and resizes if needed */
-static int checksize(char **out, int *alloclen, int newlen)
-{
-  if (*alloclen>newlen+2)
-    return SASL_OK;
-
-  *out=sasl_REALLOC(*out, newlen+10);  
-  if (! *out) return SASL_NOMEM; 
-  
-  *alloclen=newlen+10;
-
-  return SASL_OK;
-}
-
-/* adds a string to the buffer; reallocing if need be */
-static int add_string(char **out, int *alloclen, int *outlen, char *add)
-{
-  int addlen;
-
-  if (add==NULL) add = "(null)";
-
-  addlen=strlen(add); /* only compute once */
-  if (checksize(out, alloclen, (*outlen)+addlen)!=SASL_OK)
-    return SASL_NOMEM;
-
-  strncpy(*out + *outlen, add, addlen);
-  *outlen += addlen;
-
-  return SASL_OK;
-}
 
 /*
  * This function is typically called from a plugin.
@@ -928,7 +1080,8 @@ _sasl_log (sasl_conn_t *conn,
   char *cval;
   va_list ap; /* varargs thing */
 
-  /* What if fmt is not a good ptr?  FIXME */
+  if(!fmt) return;
+
   formatlen = strlen(fmt);
 
   /* See if we have a logging callback... */
@@ -945,7 +1098,7 @@ _sasl_log (sasl_conn_t *conn,
     if (fmt[pos]!='%') /* regular character */
     {
       out[outlen]=fmt[pos];
-      result = checksize(&out, &alloclen, outlen+1);
+      result = _buf_alloc(&out, &alloclen, outlen+1);
       if (result != SASL_OK)
 	return;
       outlen++;
@@ -976,7 +1129,7 @@ _sasl_log (sasl_conn_t *conn,
 
 	  case '%': /* double % output the '%' character */
 	    out[outlen]='%';
-	    result = checksize(&out,&alloclen,outlen+1);
+	    result = _buf_alloc(&out,&alloclen,outlen+1);
 	    if (result != SASL_OK)
 	      return;
 	    outlen++;
@@ -1211,7 +1364,11 @@ int _buf_alloc(char **rwbuf, unsigned *curlen, unsigned newlen)
 	}
 	*curlen = newlen;
     } else if(*rwbuf && *curlen < newlen) {
+	if(newlen < 2*(*curlen))
+	    newlen = 2*(*curlen);
+	
 	*rwbuf = sasl_REALLOC(*rwbuf, newlen);
+	
 	if (*rwbuf == NULL) {
 	    *curlen = 0;
 	    return SASL_NOMEM;
