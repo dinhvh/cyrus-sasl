@@ -1,6 +1,6 @@
 /* SASL server API implementation
  * Tim Martin
- * $Id: server.c,v 1.84.2.7 2001/06/06 18:41:06 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.8 2001/06/06 21:16:58 rjs3 Exp $
  */
 
 /* 
@@ -100,40 +100,6 @@ static int _sasl_checkpass(sasl_conn_t *conn,
 			   const char *user, unsigned userlen,
 			   const char *pass, unsigned passlen);
 */
-
-typedef struct mechanism
-{
-    int version;
-    int condition; /* set to SASL_NOUSER if no available users;
-		      set to SASL_CONTINUE if delayed plugn loading */
-    const sasl_server_plug_t *plug;
-    struct mechanism *next;
-    union {
-	void *library; /* this a pointer to shared library returned by dlopen 
-			  or some similar function on other platforms */
-	char *f;       /* where should i load the mechanism from? */
-    } u;
-} mechanism_t;
-
-typedef struct mech_list {
-  sasl_utils_t *utils;  /* gotten from plug_init */
-
-  void *mutex;            /* mutex for this data */ 
-  mechanism_t *mech_list; /* list of mechanisms */
-  int mech_length;       /* number of mechanisms */
-} mech_list_t;
-
-typedef struct sasl_server_conn {
-    sasl_conn_t base; /* parts common to server + client */
-
-    char *mechlist_buf;
-    unsigned mechlist_buf_len;
-    
-    char *user_realm; /* domain the user authenticating is in */
-    int authenticated;
-    mechanism_t *mech; /* mechanism trying to use */
-    sasl_server_params_t *sparams;
-} sasl_server_conn_t;
 
 static mech_list_t *mechlist = NULL; /* global var which holds the list */
 
@@ -784,6 +750,8 @@ int sasl_server_new(const char *service,
 
   serverconn = (sasl_server_conn_t *)*pconn;
 
+  serverconn->base.type=SASL_CONN_SERVER;
+
   serverconn->mechlist_buf = NULL;
   serverconn->mechlist_buf_len = 0;
 
@@ -967,7 +935,8 @@ int sasl_server_start(sasl_conn_t *conn,
     m=mechlist->mech_list;
 
     /* check parameters */
-    if ((conn == NULL) || (mech==NULL) || ((clientin==NULL) && (clientinlen>0)))
+    if ((conn == NULL) || (mech==NULL)
+	|| ((clientin==NULL) && (clientinlen>0)))
 	return SASL_BADPARAM;
 
     while (m!=NULL)

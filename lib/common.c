@@ -271,6 +271,8 @@ int _sasl_conn_init(sasl_conn_t *conn,
   I(conn);
   I(service);
 
+  conn->type = SASL_CONN_UNKNOWN;
+
   result = _sasl_strdup(service, &conn->service, NULL);
   if (result != SASL_OK) return result;
 
@@ -308,9 +310,15 @@ int _sasl_conn_init(sasl_conn_t *conn,
 
   memset(&conn->props, 0, sizeof(conn->props));
 
-  conn->error_buf = conn->decode_buf =  
+  /* Start this buffer out as an empty string */
+  result = _buf_alloc(&conn->error_buf, &conn->error_buf_len, 100);     
+  if(result != SASL_OK) return result;
+
+  conn->error_buf[0] = '\0';
+
+  conn->decode_buf =  
       conn->user_buf = conn->authid_buf = NULL;
-  conn->error_buf_len = conn->decode_buf_len = 0;
+  conn->decode_buf_len = 0;
 
   if (serverFQDN==NULL) {
     char name[MAXHOSTNAMELEN];
@@ -403,7 +411,9 @@ void _sasl_conn_dispose(sasl_conn_t *conn) {
 int sasl_getprop(sasl_conn_t *conn, int propnum, const void **pvalue)
 {
   int result = SASL_OK;
-
+  sasl_getopt_t *getopt;
+  void *context;
+  
   if (! conn) return SASL_FAIL;
   if (! pvalue) return SASL_FAIL;
 
@@ -416,20 +426,26 @@ int sasl_getprop(sasl_conn_t *conn, int propnum, const void **pvalue)
       *(unsigned **)pvalue = &conn->oparams.maxoutbuf;
       break;
   case SASL_GETOPTCTX:
+      result = _sasl_getcallback(conn, SASL_CB_GETOPT, &getopt, &context);
+      if(result != SASL_OK) return result;
+      
+      *(void **)pvalue = context;
+      break;
+  case SASL_CALLBACK:
+      /* FIXME: Which callback list do we return? */
       result = SASL_FAIL;
-      /* ??? */
       break;
   case SASL_IPLOCALPORT:
       if (! conn->got_ip_local)
 	result = SASL_NOTDONE;
       else
-	*(struct sockaddr_in **)pvalue = &conn->ip_local;
+	*(const char **)pvalue = conn->iplocalport;
       break;
   case SASL_IPREMOTEPORT:
       if (! conn->got_ip_remote)
 	result = SASL_NOTDONE;
       else
-	*(struct sockaddr_in **)pvalue = &conn->ip_remote;
+	*(const char **)pvalue = conn->ipremoteport;
       break;
   case SASL_USERNAME:
       if(! conn->oparams.user)
@@ -437,16 +453,36 @@ int sasl_getprop(sasl_conn_t *conn, int propnum, const void **pvalue)
       else
 	  *((const char **)pvalue) = conn->oparams.user;
       break;
-/* FIXME: fill these in! */
-  case SASL_DEFUSERREALM:
-  case SASL_SERVICE:
   case SASL_SERVERFQDN:
-  case SASL_AUTHSOURCE:
+      *((const char **)pvalue) = conn->serverFQDN;
+      break;
+  case SASL_DEFUSERREALM:
+      if(conn->type != SASL_CONN_SERVER) result = SASL_BADPROT;
+      else
+	  *((const char **)pvalue) = ((sasl_server_conn_t *)conn)->user_realm;
+      break;
+  case SASL_SERVICE:
+      *((const char **)pvalue) = conn->service;
+      break;
   case SASL_MECHNAME:
-      fprintf(stderr, "STUB PART OF sasl_getprop hit\n");
+      if(conn->type == SASL_CONN_CLIENT) {
+	  *((const char **)pvalue) = ((sasl_client_conn_t *)conn)->mech->plug->mech_name;
+      } else if (conn->type == SASL_CONN_SERVER) {
+	  *((const char **)pvalue) = ((sasl_server_conn_t *)conn)->mech->plug->mech_name;
+      } else {
+	  result = SASL_BADPARAM;
+      }
+      
+      if(!(*pvalue) && result == SASL_OK) result = SASL_NOTDONE;
+      break;
+  case SASL_AUTHSOURCE:
+      /* FIXME: What is this? */
       result=SASL_FAIL;
       break;
-
+  case SASL_PLUGERR:
+      /* FIXME: either this is wrong or sasl_errdetail is */
+      *((const char **)pvalue) = conn->error_buf;
+      break;
     default: 
       result = SASL_BADPARAM;
   }
@@ -617,9 +653,6 @@ void sasl_seterror(sasl_conn_t *conn,
   if(!conn || !fmt) return;    
 
   formatlen = strlen(fmt);
-
-  if(!conn->error_buf)
-      _buf_alloc(&conn->error_buf, &conn->error_buf_len, 100);
 
   va_start(ap, fmt); /* start varargs */
 

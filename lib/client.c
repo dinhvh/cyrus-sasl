@@ -51,34 +51,6 @@
 #include <saslutil.h>
 #include "saslint.h"
 
-typedef struct cmechanism
-{
-  int version;
-  const sasl_client_plug_t *plug;
-  void *library;
-
-  struct cmechanism *next;  
-} cmechanism_t;
-
-typedef struct sasl_client_conn {
-  sasl_conn_t base; /* parts common to server + client */
-
-  cmechanism_t *mech;
-  sasl_client_params_t *cparams;
-
-  char *serverFQDN;
-
-} sasl_client_conn_t;
-
-typedef struct cmech_list {
-  const sasl_utils_t *utils; 
-
-  void *mutex;            /* mutex for this data */ 
-  cmechanism_t *mech_list; /* list of mechanisms */
-  int mech_length;       /* number of mechanisms */
-
-} cmech_list_t;
-
 static cmech_list_t *cmechlist; /* global var which holds the list */
 
 static sasl_global_callbacks_t global_callbacks;
@@ -302,6 +274,8 @@ int sasl_client_new(const char *service,
   
   conn = (sasl_client_conn_t *)*pconn;
 
+  conn->base.type = SASL_CONN_CLIENT;
+  
   conn->mech = NULL;
 
   conn->cparams=sasl_ALLOC(sizeof(sasl_client_params_t));
@@ -527,6 +501,7 @@ int sasl_client_start(sasl_conn_t *conn,
     c_conn->mech->plug->mech_new(NULL,
 				 c_conn->cparams,
 				 &(conn->context));
+
 
     /* do a step */
     result = c_conn->mech->plug->mech_step(conn->context,

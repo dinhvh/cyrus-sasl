@@ -95,7 +95,13 @@ typedef struct buffer_info
     unsigned reallen;
 } buffer_info_t;
 
+#define SASL_CONN_UNKNOWN 0
+#define SASL_CONN_SERVER 1
+#define SASL_CONN_CLIENT 2
+
 struct sasl_conn {
+  int type;
+
   void (*destroy_conn)(sasl_conn_t *); /* destroy function */
 
   char *service;
@@ -136,6 +142,72 @@ struct sasl_conn {
 
   char *user_buf, *authid_buf;
 };
+
+/* Server Conn Type Information */
+
+typedef struct mechanism
+{
+    int version;
+    int condition; /* set to SASL_NOUSER if no available users;
+		      set to SASL_CONTINUE if delayed plugn loading */
+    const sasl_server_plug_t *plug;
+    struct mechanism *next;
+    union {
+	void *library; /* this a pointer to shared library returned by dlopen 
+			  or some similar function on other platforms */
+	char *f;       /* where should i load the mechanism from? */
+    } u;
+} mechanism_t;
+
+typedef struct mech_list {
+  sasl_utils_t *utils;  /* gotten from plug_init */
+
+  void *mutex;            /* mutex for this data */ 
+  mechanism_t *mech_list; /* list of mechanisms */
+  int mech_length;       /* number of mechanisms */
+} mech_list_t;
+
+typedef struct sasl_server_conn {
+    sasl_conn_t base; /* parts common to server + client */
+
+    char *mechlist_buf;
+    unsigned mechlist_buf_len;
+    
+    char *user_realm; /* domain the user authenticating is in */
+    int authenticated;
+    mechanism_t *mech; /* mechanism trying to use */
+    sasl_server_params_t *sparams;
+} sasl_server_conn_t;
+
+/* Client Conn Type Information */
+
+typedef struct cmechanism
+{
+  int version;
+  const sasl_client_plug_t *plug;
+  void *library;
+
+  struct cmechanism *next;  
+} cmechanism_t;
+
+typedef struct cmech_list {
+  const sasl_utils_t *utils; 
+
+  void *mutex;            /* mutex for this data */ 
+  cmechanism_t *mech_list; /* list of mechanisms */
+  int mech_length;       /* number of mechanisms */
+
+} cmech_list_t;
+
+typedef struct sasl_client_conn {
+  sasl_conn_t base; /* parts common to server + client */
+
+  cmechanism_t *mech;
+  sasl_client_params_t *cparams;
+
+  char *serverFQDN;
+
+} sasl_client_conn_t;
 
 extern int _sasl_conn_init(sasl_conn_t *conn,
 			   const char *service,
