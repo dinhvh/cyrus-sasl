@@ -1,7 +1,7 @@
 /* saslint.h - internal SASL library definitions
  * Rob Siemborski
  * Tim Martin
- * $Id: saslint.h,v 1.33.2.32 2001/07/10 14:48:29 rjs3 Exp $
+ * $Id: saslint.h,v 1.33.2.33 2001/07/11 15:41:05 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -104,14 +104,10 @@ struct sasl_conn {
 
   int secflags;  /* security layer flags passed to sasl_*_new */
 
-    /* IP information.  A buffer of size 52 is adequate for this in its
-       longest format (see sasl.h) */
-    /* We keep this in 2 formats, because in verifying the format
-       of what is passed ot us, we might as well just convert it all the
-       way to a sockaddr_in. */
+  /* IP information.  A buffer of size 52 is adequate for this in its
+     longest format (see sasl.h) */
   int got_ip_local, got_ip_remote;
   char iplocalport[52], ipremoteport[52];
-  struct sockaddr_in ip_local, ip_remote;    
 
   void *context;
   sasl_out_params_t oparams;

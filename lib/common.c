@@ -1,7 +1,7 @@
 /* common.c - Functions that are common to server and clinet
  * Rob Siemborski
  * Tim Martin
- * $Id: common.c,v 1.64.2.33 2001/07/09 17:05:14 rjs3 Exp $
+ * $Id: common.c,v 1.64.2.34 2001/07/11 15:41:05 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -457,16 +457,20 @@ int sasl_getprop(sasl_conn_t *conn, int propnum, const void **pvalue)
       *(const sasl_callback_t **)pvalue = conn->callbacks;
       break;
   case SASL_IPLOCALPORT:
-      if (! conn->got_ip_local)
-	result = SASL_NOTDONE;
-      else
-	*(const char **)pvalue = conn->iplocalport;
+      if(conn->got_ip_local)
+	  *(const char **)pvalue = conn->iplocalport;
+      else {
+	  *(const char **)pvalue = NULL;
+	  result = SASL_NOTDONE;
+      }
       break;
   case SASL_IPREMOTEPORT:
-      if (! conn->got_ip_remote)
-	result = SASL_NOTDONE;
-      else
-	*(const char **)pvalue = conn->ipremoteport;
+      if(conn->got_ip_remote)
+	  *(const char **)pvalue = conn->ipremoteport;
+      else {
+	  *(const char **)pvalue = NULL;
+	  result = SASL_NOTDONE;
+      }	  
       break;
   case SASL_USERNAME:
       if(! conn->oparams.user)
@@ -563,9 +567,8 @@ int sasl_setprop(sasl_conn_t *conn, int propnum, const void *value)
   {
       const char *ipremoteport = (const char *)value;
       if(!value) {
-	  memset(&conn->ip_remote, 0, sizeof(conn->ip_remote));
 	  conn->got_ip_remote = 0; 
-      } else if (_sasl_ipfromstring(ipremoteport, &(conn->ip_remote))
+      } else if (_sasl_ipfromstring(ipremoteport, NULL)
 		 != SASL_OK) {
 	  sasl_seterror(conn, 0, "Bad IPREMOTEPORT value");
 	  result = SASL_BADPARAM;
@@ -580,9 +583,8 @@ int sasl_setprop(sasl_conn_t *conn, int propnum, const void *value)
   {
       const char *iplocalport = (const char *)value;
       if(!value) {
-	  memset(&conn->ip_local, 0, sizeof(conn->ip_local));
 	  conn->got_ip_local = 0;	  
-      } else if (_sasl_ipfromstring(iplocalport, &(conn->ip_local))
+      } else if (_sasl_ipfromstring(iplocalport, NULL)
 		 != SASL_OK) {
 	  sasl_seterror(conn, 0, "Bad IPLOCALPORT value");
 	  result = SASL_BADPARAM;
@@ -1553,7 +1555,9 @@ int _sasl_ipfromstring(const char *addr, struct sockaddr_in *out)
     unsigned int val = 0;
     unsigned int port;
     
-    if(!addr || !out) return SASL_BADPARAM;
+    /* A NULL out pointer just implies we don't do a copy, just verify it */
+
+    if(!addr) return SASL_BADPARAM;
 
     /* Parse the address */
     for(i=0; i<4 && *addr && *addr != ';'; i++) {
@@ -1583,10 +1587,12 @@ int _sasl_ipfromstring(const char *addr, struct sockaddr_in *out)
         
     for(;*addr;addr++)
 	if(!isdigit((int)(*addr))) return SASL_BADPARAM;
-    
-    memset(out, 0, sizeof(struct sockaddr_in));
-    out->sin_addr.s_addr = val;
-    out->sin_port = htons(port);
 
+    if(out) {
+	memset(out, 0, sizeof(struct sockaddr_in));
+	out->sin_addr.s_addr = val;
+	out->sin_port = htons(port);
+    }
+    
     return SASL_OK;
 }

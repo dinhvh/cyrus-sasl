@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: client.c,v 1.34.4.23 2001/07/10 14:48:29 rjs3 Exp $
+ * $Id: client.c,v 1.34.4.24 2001/07/11 15:41:05 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -295,18 +295,16 @@ int sasl_client_new(const char *service,
   utils->conn= *pconn;
   conn->cparams->utils = utils;
   conn->cparams->canon_user = &_sasl_canon_user;
-  
-  if((*pconn)->got_ip_local) {      
-      conn->cparams->iplocalport = (*pconn)->iplocalport;
-  } else {
-      conn->cparams->iplocalport = NULL;
-  }
 
-  if((*pconn)->got_ip_remote) {
+  if(conn->base.got_ip_local)
+      conn->cparams->iplocalport = (*pconn)->iplocalport;
+  else
+      conn->cparams->iplocalport = NULL;
+  
+  if(conn->base.got_ip_remote)
       conn->cparams->ipremoteport = (*pconn)->ipremoteport;
-  } else {
+  else
       conn->cparams->ipremoteport = NULL;
-  }
   
   result = _sasl_strdup(serverFQDN, &conn->serverFQDN, NULL);
   if(result == SASL_OK) return SASL_OK;
@@ -497,9 +495,12 @@ int sasl_client_start(sasl_conn_t *conn,
 				 &(conn->context));
 
 
-    /* do a step */
-    result = sasl_client_step(conn, NULL, 0, prompt_need,
-			      clientout, clientoutlen);
+    /* do a step -- but only if we can do a client-send-first */
+    if(clientout)
+        result = sasl_client_step(conn, NULL, 0, prompt_need,
+ 			          clientout, clientoutlen);
+    else
+	result = SASL_CONTINUE;
 
  done:
     return result;

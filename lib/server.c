@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: server.c,v 1.84.2.42 2001/07/10 22:13:23 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.43 2001/07/11 15:41:05 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -183,6 +183,8 @@ int sasl_setpass(sasl_conn_t *conn,
 	    _sasl_log(conn, SASL_LOG_NOTE,
 		      "setpass callback succeeded for %s", user);
 	}
+    } else {
+	result = SASL_OK;
     }
 
     /* copy info into sparams */

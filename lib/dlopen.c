@@ -1,7 +1,7 @@
 /* dlopen.c--Unix dlopen() dynamic loader interface
  * Rob Siemborski
  * Rob Earhart
- * $Id: dlopen.c,v 1.32.2.6 2001/07/10 14:48:29 rjs3 Exp $
+ * $Id: dlopen.c,v 1.32.2.7 2001/07/11 15:41:05 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -182,7 +182,7 @@ int _sasl_locate_entry(void *library, const char *entryname,
     *entry_point = NULL;
     *entry_point = dlsym(library, adj_entryname);
     if (*entry_point == NULL) {
-	_sasl_log(NULL, SASL_LOG_ERR,
+	_sasl_log(NULL, SASL_LOG_DEBUG,
 		  "unable to get entry point %s: %s", adj_entryname,
 		  dlerror());
 	return SASL_FAIL;
