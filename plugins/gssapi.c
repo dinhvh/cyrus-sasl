@@ -71,6 +71,12 @@
 #include <saslutil.h>
 #include <saslplug.h>
 
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
+#include <errno.h>
+
 #ifdef WIN32
 /* This must be after sasl.h */
 # include "saslgssapi.h"
@@ -888,7 +894,12 @@ static const sasl_server_plug_t plugins[] =
 };
 
 int 
-sasl_server_plug_init(sasl_utils_t *utils __attribute__((unused)), 
+sasl_server_plug_init(
+#ifndef HAVE_GSSKRB5_REGISTER_ACCEPTOR_IDENTITY
+		      sasl_utils_t *utils __attribute__((unused)),
+#else
+		      sasl_utils_t *utils,
+#endif 
 		      int maxversion,
 		      int *out_version,
 		      const sasl_server_plug_t **pluglist,
@@ -907,6 +918,8 @@ sasl_server_plug_init(sasl_utils_t *utils __attribute__((unused)),
     /* unfortunately, we don't check for readability of keytab if it's
        the standard one, since we don't know where it is */
 
+    /* FIXME: This code is broken */
+
     utils->getopt(utils->getopt_context, "GSSAPI", "keytab", &keytab, &rl);
     if (keytab != NULL) {
 	if (access(keytab, R_OK) != 0) {
@@ -914,7 +927,7 @@ sasl_server_plug_init(sasl_utils_t *utils __attribute__((unused)),
 		       "can't access keytab file %s: %m", keytab, errno);
 	    return SASL_FAIL;
 	}
-
+	
 	gsskrb5_register_acceptor_identity(keytab);
     }
 #endif
@@ -1086,35 +1099,6 @@ get_userid(sasl_client_params_t *params,
   }
 
   return result;
-}
-
-static void
-sasl_gss_disperr(context_t *context, char **outp, 
-		 OM_uint32 code, int type)
-{
-     OM_uint32 maj_stat, min_stat;
-     gss_buffer_desc msg;
-     OM_uint32 msg_ctx;
-     char *out = *outp;
-     
-     msg_ctx = 0;
-     while (1) {
-	  maj_stat = gss_display_status(&min_stat, code,
-				       type, GSS_C_NULL_OID,
-				       &msg_ctx, &msg);
-	  out = context->utils->realloc((void *) out,
-					strlen(out) + msg.length + 3);
-	  if (out != NULL) {
-	      strcat(out, (char *) msg.value);
-	      strcat(out, "; ");
-	  }
-	  gss_release_buffer(&min_stat, &msg);
-	  
-	  if (!msg_ctx)
-	       break;
-     }
-
-     *outp = out;
 }
 
 static int 
