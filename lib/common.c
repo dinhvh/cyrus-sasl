@@ -1,7 +1,7 @@
 /* common.c - Functions that are common to server and clinet
  * Rob Siemborski
  * Tim Martin
- * $Id: common.c,v 1.64.2.26 2001/06/27 20:12:10 rjs3 Exp $
+ * $Id: common.c,v 1.64.2.27 2001/06/29 05:52:57 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -228,10 +228,13 @@ int sasl_decode(sasl_conn_t *conn,
 
     if(conn->oparams.decode == NULL)
     {
-	result = _buf_alloc(&conn->decode_buf, &conn->decode_buf_len,
-			    inputlen + 1);
-	if(result != SASL_OK)
-	    return result;
+	/* Since we know how long the output is maximally, we can
+	 * just allocate it to begin with, and never need another
+         * allocation! */
+	if(!conn->decode_buf)
+	    conn->decode_buf = sasl_ALLOC(conn->oparams.maxoutbuf + 1);
+	if(!conn->decode_buf)
+	    return SASL_NOMEM;
 	
 	memcpy(conn->decode_buf, input, inputlen);
 	conn->decode_buf[inputlen] = '\0';
