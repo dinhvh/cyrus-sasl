@@ -1,7 +1,7 @@
 /* CRAM-MD5 SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: cram.c,v 1.55.2.16 2001/07/06 18:15:35 rjs3 Exp $
+ * $Id: cram.c,v 1.55.2.17 2001/07/12 14:10:13 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -778,16 +778,13 @@ static int c_continue_step (void *conn_context,
   text=conn_context;
 
   /* doesn't really matter how the server responds */
-
-  if (text->state==1)
+  if (text->state == 1)
   {     
     sasl_security_properties_t secprops;
     unsigned int external;
 
-    if (clientout) {
-	*clientout=NULL;
-	*clientoutlen=0;
-    }
+    *clientout=NULL;
+    *clientoutlen=0;
 
     /* check if sec layer strong enough */
     secprops=params->props;
@@ -799,7 +796,10 @@ static int c_continue_step (void *conn_context,
     }
 
     text->state=2;
-    return SASL_CONTINUE;
+
+    /* (server always goes first for CRAM) */
+    if(serverinlen == 0)
+	return SASL_CONTINUE;
   }
 
   if (text->state==2)

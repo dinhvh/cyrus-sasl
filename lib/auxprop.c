@@ -1,6 +1,6 @@
 /* auxprop.c - auxilliary property support
  * Rob Siemborski
- * $Id: auxprop.c,v 1.1.2.15 2001/07/06 21:06:15 rjs3 Exp $
+ * $Id: auxprop.c,v 1.1.2.16 2001/07/12 14:10:11 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -725,9 +725,12 @@ int prop_setvals(struct propctx *ctx, const char *name,
  */
 int sasl_auxprop_request(sasl_conn_t *conn, const char **propnames) 
 {
+    int result;
     sasl_server_conn_t *sconn;
 
-    if(!conn || conn->type != SASL_CONN_SERVER) return SASL_BADPARAM;
+    if(!conn) return SASL_BADPARAM;
+    if(conn->type != SASL_CONN_SERVER)
+	PARAMERROR(conn);
     
     sconn = (sasl_server_conn_t *)conn;
 
@@ -736,7 +739,8 @@ int sasl_auxprop_request(sasl_conn_t *conn, const char **propnames)
 	return SASL_OK;
     }
     
-    return prop_request(sconn->sparams->propctx, propnames);
+    result = prop_request(sconn->sparams->propctx, propnames);
+    RETURN(conn, result);
 }
 
 

@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: server.c,v 1.84.2.43 2001/07/11 15:41:05 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.44 2001/07/12 14:10:11 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -139,16 +139,14 @@ int sasl_setpass(sasl_conn_t *conn,
     void *context = NULL;
     mechanism_t *m;
      
-    if (!mechlist) return SASL_NOTINIT;
+    if (!_sasl_server_active || !mechlist) return SASL_NOTINIT;
 
     /* check params */
     if (!conn) return SASL_BADPARAM;
      
-    if (!(flags & SASL_SET_DISABLE) && passlen == 0)
-	return SASL_BADPARAM;
-
-    if ((flags & SASL_SET_CREATE) && (flags & SASL_SET_DISABLE))
-	return SASL_BADPARAM;
+    if ((!(flags & SASL_SET_DISABLE) && passlen == 0)
+        || ((flags & SASL_SET_CREATE) && (flags & SASL_SET_DISABLE)))
+	PARAMERROR(conn);
 
     /* set/create password for sasldb */
     tmpresult = _sasl_sasldb_set_pass(conn, user, pass, passlen, 
@@ -230,7 +228,7 @@ int sasl_setpass(sasl_conn_t *conn,
 	}
     }
 
-    return result;
+    RETURN(conn, result);
 }
 
 /* local mechanism which disposes of server */
@@ -702,13 +700,14 @@ _sasl_transition(sasl_conn_t * conn,
 {
     const char *dotrans = "n";
     sasl_getopt_t *getopt;
+    int result = SASL_OK;
     void *context;
 
     if (! conn)
 	return SASL_BADPARAM;
 
     if (! conn->oparams.authid)
-	return SASL_NOTDONE;
+	PARAMERROR(conn);
 
     /* check if this is enabled: default to false */
     if (_sasl_getcallback(conn, SASL_CB_GETOPT, &getopt, &context) == SASL_OK)
@@ -720,14 +719,14 @@ _sasl_transition(sasl_conn_t * conn,
     if (*dotrans == '1' || *dotrans == 'y' ||
 	(*dotrans == 'o' && dotrans[1] == 'n') || *dotrans == 't') {
 	/* ok, it's on! */
-	return sasl_setpass(conn,
-			    conn->oparams.authid,
-			    pass,
-			    passlen,
-			    NULL, 0, 0);
+	result = sasl_setpass(conn,
+			      conn->oparams.authid,
+			      pass,
+			      passlen,
+			      NULL, 0, 0);
     }
 
-    return SASL_OK;
+    RETURN(conn,result);
 }
 
 
@@ -775,7 +774,9 @@ int sasl_server_new(const char *service,
 			   &server_idle, serverFQDN,
 			   iplocalport, ipremoteport,
 			   callbacks, &global_callbacks);
-  if (result != SASL_OK) return result;
+  if (result != SASL_OK) {
+      goto done_error;
+  }
 
   serverconn = (sasl_server_conn_t *)*pconn;
 
@@ -788,19 +789,27 @@ int sasl_server_new(const char *service,
 
   /* make sparams */
   serverconn->sparams=sasl_ALLOC(sizeof(sasl_server_params_t));
-  if (serverconn->sparams==NULL) return SASL_NOMEM;
+  if (serverconn->sparams==NULL)
+      MEMERROR(*pconn);
+
   memset(serverconn->sparams, 0, sizeof(sasl_server_params_t));
 
   /* set util functions - need to do rest */
   utils=_sasl_alloc_utils(*pconn, &global_callbacks);
-  if (!utils)
-    return SASL_NOMEM;
+  if (!utils) {
+      result = SASL_NOMEM;
+      goto done_error;
+  }
+  
   utils->checkpass = &sasl_checkpass;
 
   /* Setup the propctx -> We'll assume the default size */
   serverconn->sparams->propctx=prop_new(0);
-  if(!serverconn->sparams->propctx) return SASL_NOMEM;
-
+  if(!serverconn->sparams->propctx) {
+      result = SASL_NOMEM;
+      goto done_error;
+  }
+  
   serverconn->sparams->utils = utils;
   serverconn->sparams->transition = &_sasl_transition;
   serverconn->sparams->canon_user = &_sasl_canon_user;
@@ -829,6 +838,7 @@ int sasl_server_new(const char *service,
 
   if(result == SASL_OK) return SASL_OK;
 
+ done_error:
   _sasl_conn_dispose(*pconn);
   sasl_FREE(*pconn);
   *pconn = NULL;
@@ -849,15 +859,22 @@ static int mech_permitted(sasl_conn_t *conn,
     int myflags;
     sasl_ssf_t minssf = 0;
 
+    if(!conn) return SASL_BADPARAM;
+    
     /* Can this plugin meet the application's security requirements? */
-    if (! plug || ! conn)
+    if (! plug ) {
+	PARAMERROR(conn);
 	return 0;
-
+    }
+    
     if (plug == &external_server_mech) {
 	/* Special case for the external mechanism */
 	if (conn->props.min_ssf > conn->external.ssf
-	    || ! conn->external.auth_id)
+	    || ! conn->external.auth_id) {
+	    sasl_seterror(conn, SASL_NOLOG,
+			  "External SSF not good enough");
 	    return 0;
+	}
     } else {
 	if (conn->props.min_ssf < conn->external.ssf) {
 	    minssf = 0;
@@ -866,23 +883,38 @@ static int mech_permitted(sasl_conn_t *conn,
 	}
 
 	/* Generic mechanism */
-	if (plug->max_ssf < minssf)
+	if (plug->max_ssf < minssf) {
+	    sasl_seterror(conn, SASL_NOLOG,
+			  "mech %s is too weak", plug->mech_name);
 	    return 0; /* too weak */
+	}
+	
     }
 
     /* FIXME: it's probabally not valid to call this more than once per
      * connection context */
     if(plug->mech_avail
        && plug->mech_avail(plug->glob_context,
-			   s_conn->sparams, (void **)&conn) != SASL_OK )
+			   s_conn->sparams, (void **)&conn) != SASL_OK ) {
+	sasl_seterror(conn, SASL_NOLOG,
+		      "mech %s not available",
+		      plug->mech_name);
 	return 0;
+    }
 
     /* Generic mechanism */
-    if (plug->max_ssf < minssf) return 0; /* too weak */
+    if (plug->max_ssf < minssf) {
+	sasl_seterror(conn, SASL_NOLOG,
+		      "too weak");
+	return 0; /* too weak */
+    }
 
     /* if there are no users in the secrets database we can't use this 
        mechanism */
-    if (mech->condition == SASL_NOUSER) return 0;
+    if (mech->condition == SASL_NOUSER) {
+	sasl_seterror(conn, 0, "no users in secrets db");
+	return 0;
+    }
     
     /* security properties---if there are any flags that differ and are
        in what the connection are requesting, then fail */
@@ -898,12 +930,17 @@ static int mech_permitted(sasl_conn_t *conn,
 
     /* do we want to special case SASL_SEC_PASS_CREDENTIALS? nah.. */
     if (((myflags ^ plug->security_flags) & myflags) != 0) {
+	sasl_seterror(conn, 0,
+		      "security flags do not match required");
 	return 0;
     }
 
     /* Check Features */
     if(plug->features & SASL_FEAT_GETSECRET) {
 	/* We no longer support sasl_server_{get,put}secret */
+	sasl_seterror(conn, 0,
+		      "mech %s requires unprovided secret facility",
+		      plug->mech_name);
 	return 0;
     }
 
@@ -926,7 +963,7 @@ static int do_authorization(sasl_server_conn_t *s_conn)
     /* check the proxy callback */
     if (_sasl_getcallback(&s_conn->base, SASL_CB_PROXY_POLICY,
 			  &authproc, &auth_context) != SASL_OK) {
-	return SASL_NOAUTHZ;
+	INTERROR(&s_conn->base, SASL_NOAUTHZ);
     }
 
     ret = authproc(&(s_conn->base), auth_context,
@@ -936,7 +973,7 @@ static int do_authorization(sasl_server_conn_t *s_conn)
 		   (s_conn->user_realm ? strlen(s_conn->user_realm) : 0),
 		   s_conn->sparams->propctx);
 
-    return ret;
+    RETURN(&s_conn->base, ret);
 }
 
 
@@ -969,9 +1006,10 @@ int sasl_server_start(sasl_conn_t *conn,
     m=mechlist->mech_list;
 
     /* check parameters */
-    if ((conn == NULL) || (mech==NULL)
-	|| ((clientin==NULL) && (clientinlen>0)))
-	return SASL_BADPARAM;
+    if(!conn) return SASL_BADPARAM;
+    
+    if (!mech || ((clientin==NULL) && (clientinlen>0)))
+	PARAMERROR(conn);
 
     while (m!=NULL)
     {
@@ -983,6 +1021,7 @@ int sasl_server_start(sasl_conn_t *conn,
     }
   
     if (m==NULL) {
+	sasl_seterror(conn, 0, "Couldn't find mech %s", mech);
 	result = SASL_NOMECH;
 	goto done;
     }
@@ -1044,7 +1083,7 @@ int sasl_server_start(sasl_conn_t *conn,
 
 	if (result != SASL_OK) {
 	    /* The library will eventually be freed, don't sweat it */
-	    return result;
+	    RETURN(conn, result);
 	}
     }
 
@@ -1071,7 +1110,7 @@ int sasl_server_start(sasl_conn_t *conn,
     }
 
  done:
-    return result;
+    RETURN(conn,result);
 }
 
 
@@ -1102,8 +1141,9 @@ int sasl_server_step(sasl_conn_t *conn,
     sasl_server_conn_t *s_conn = (sasl_server_conn_t *) conn;  /* cast */
 
     /* check parameters */
-    if (conn==NULL || ((clientin==NULL) && (clientinlen>0)))
-	return SASL_BADPARAM;
+    if (!conn) return SASL_BADPARAM;
+    if ((clientin==NULL) && (clientinlen>0))
+	PARAMERROR(conn);
 
     ret = s_conn->mech->plug->mech_step(conn->context,
 					s_conn->sparams,
@@ -1120,7 +1160,7 @@ int sasl_server_step(sasl_conn_t *conn,
 	conn->oparams.maxoutbuf = DEFAULT_MAXOUTBUF;
     }
 
-    return ret;
+    RETURN(conn, ret);
 }
 
 /* returns the length of all the mechanisms
@@ -1180,9 +1220,10 @@ int sasl_listmech(sasl_conn_t *conn,
 
   /* if there hasn't been a sasl_sever_init() fail */
   if (_sasl_server_active==0) return SASL_NOTINIT;
-
-  if (! conn || ! result)
-    return SASL_BADPARAM;
+  if (!conn) return SASL_BADPARAM;
+  
+  if (! result)
+      PARAMERROR(conn);
 
   if (plen != NULL)
       *plen = 0;
@@ -1195,19 +1236,17 @@ int sasl_listmech(sasl_conn_t *conn,
       mysep = " ";
   }
 
-  if (! mechlist)
-    return SASL_FAIL;
-
-  if (mechlist->mech_length <= 0)
-    return SASL_NOMECH;
+  if (! mechlist || mechlist->mech_length <= 0)
+      INTERROR(conn, SASL_NOMECH);
 
   resultlen = (prefix ? strlen(prefix) : 0)
             + (strlen(mysep) * (mechlist->mech_length - 1))
 	    + mech_names_len()
             + (suffix ? strlen(suffix) : 0)
 	    + 1;
-  ret = _buf_alloc(&s_conn->mechlist_buf, &s_conn->mechlist_buf_len, resultlen);
-  if(ret != SASL_OK) return ret;
+  ret = _buf_alloc(&s_conn->mechlist_buf,
+		   &s_conn->mechlist_buf_len, resultlen);
+  if(ret != SASL_OK) MEMERROR(conn);
 
   if (prefix)
     strcpy (s_conn->mechlist_buf,prefix);
@@ -1301,9 +1340,11 @@ static int _sasl_checkpass(sasl_conn_t *conn, const char *service,
 	_sasl_log(conn, SASL_LOG_ERR, "unkwnown password verifier %s", mech);
     }
 
-    return result;
-}
+    if (result != SASL_OK)
+	sasl_seterror(conn, SASL_NOLOG, "checkpass failed");
 
+    RETURN(conn, result);
+}
 
 /* check if a plaintext password is valid
  *   if user is NULL, check if plaintext passwords are enabled
@@ -1327,14 +1368,16 @@ int sasl_checkpass(sasl_conn_t *conn,
     int result;
 
     if (_sasl_server_active==0) return SASL_NOTINIT;
-
+    
     /* check if it's just a query if we are enabled */
     if (!user)
 	return SASL_OK;
+
+    if (!conn) return SASL_BADPARAM;
     
     /* check params */
-    if ((conn == NULL) || (pass == NULL))
-	return SASL_BADPARAM;
+    if (pass == NULL)
+	PARAMERROR(conn);
 
     result = _sasl_checkpass(conn, conn->service, user, pass);
 
@@ -1345,7 +1388,7 @@ int sasl_checkpass(sasl_conn_t *conn,
 	result = _sasl_transition(conn, pass, passlen);
     }
 
-    return result;
+    RETURN(conn,result);
 }
 
 /* check if a user exists on server
@@ -1371,8 +1414,10 @@ int sasl_user_exists(sasl_conn_t *conn,
 
     /* check params */
     if (_sasl_server_active==0) return SASL_NOTINIT;
-
-    if(!conn || !user) return SASL_BADPARAM;
+    if (!conn) return SASL_BADPARAM;
+    
+    if(!user) 
+	PARAMERROR(conn);
 
     if(!service) service = conn->service;
 
@@ -1390,11 +1435,11 @@ int sasl_user_exists(sasl_conn_t *conn,
     if (result == SASL_NOMECH) {
 	/* no mechanism available ?!? */
 	_sasl_log(conn, SASL_LOG_ERR, "no plaintext password verifier?");
+	sasl_seterror(conn, SASL_NOLOG, "no plaintext password verifier?");
     }
-    
-    return result;
-}
 
+    RETURN(conn, result);
+}
 
 /* check if an apop exchange is valid
  *  (note this is an optional part of the SASL API)
@@ -1432,15 +1477,17 @@ int sasl_checkapop(sasl_conn_t *conn,
     size_t user_len;
     int result;
 
-    if (_sasl_server_active==0) return SASL_NOTINIT;
+    if (_sasl_server_active==0)
+	return SASL_NOTINIT;
 
     /* check if it's just a query if we are enabled */
     if(!challenge)
 	return SASL_OK;
 
     /* check params */
-    if (!conn || !response)
-	return SASL_BADPARAM;
+    if (!conn) return SASL_BADPARAM;
+    if (!response)
+	PARAMERROR(conn);
 
     /* Parse out username and digest.
      *
@@ -1450,7 +1497,11 @@ int sasl_checkapop(sasl_conn_t *conn,
      */
     user_end = strrchr(response, ' ');
     if (!user_end || strspn(user_end + 1, "0123456789abcdef") != 32) 
-	return SASL_BADPROT;
+    {
+        sasl_seterror(conn, 0, "Bad Digest");
+        RETURN(conn,SASL_BADPROT);
+    }
+ 
     user_len = (size_t)(user_end - response);
     user = sasl_ALLOC(user_len + 1);
     memcpy(user, response, user_len);
@@ -1464,7 +1515,7 @@ int sasl_checkapop(sasl_conn_t *conn,
 
     sasl_FREE(user);
 
-    if(result != SASL_OK) return result;
+    if(result != SASL_OK) RETURN(conn, result);
 
     /* Do APOP verification */
     result = _sasl_sasldb_verify_apop(conn, conn->oparams.user,
@@ -1477,11 +1528,11 @@ int sasl_checkapop(sasl_conn_t *conn,
 	conn->oparams.authid = NULL;
     }
 
-    return result;
+    RETURN(conn, result);
 #else /* sasl_checkapop was disabled at compile time */
-    _sasl_log(conn, SASL_LOG_NOTE,
-	      "sasl_checkapop called, but was disabled at compile time");
-    return SASL_NOMECH;
+    sasl_seterror(conn, SASL_NOLOG,
+	"sasl_checkapop called, but was disabled at compile time");
+    RETURN(conn, SASL_NOMECH);
 #endif /* DO_SASL_CHECKAPOP */
 }
  

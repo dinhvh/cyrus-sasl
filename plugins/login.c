@@ -2,7 +2,7 @@
  * Rob Siemborski (SASLv2 Conversion)
  * contributed by Rainer Schoepf <schoepf@uni-mainz.de>
  * based on PLAIN, by Tim Martin <tmartin@andrew.cmu.edu>
- * $Id: login.c,v 1.6.2.12 2001/07/09 16:11:20 rjs3 Exp $
+ * $Id: login.c,v 1.6.2.13 2001/07/12 14:10:14 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -569,12 +569,6 @@ static int client_continue_step (void *conn_context,
 	return SASL_BADPARAM;
     }
 
-    /* Watch for initial client send */
-    if(clientout) {
-	*clientout = blank_out;
-	*clientoutlen = 0;
-    }
-    
     /* set oparams */
     oparams->mech_ssf=0;
     oparams->maxoutbuf=0;
@@ -584,7 +578,12 @@ static int client_continue_step (void *conn_context,
 
     text->state = 2;
 
-    return SASL_CONTINUE;
+    /* Watch for initial client send, which we do not support */
+    if(serverinlen == 0) {
+	*clientout = blank_out;
+	*clientoutlen = 0;
+        return SASL_CONTINUE;
+    }
   }
 
   if (text->state == 2) {

@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: client.c,v 1.34.4.24 2001/07/11 15:41:05 rjs3 Exp $
+ * $Id: client.c,v 1.34.4.25 2001/07/12 14:10:11 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -269,14 +269,18 @@ int sasl_client_new(const char *service,
     return SASL_BADPARAM;
 
   *pconn=sasl_ALLOC(sizeof(sasl_client_conn_t));
-  if (*pconn==NULL) return SASL_NOMEM;
+  if (*pconn==NULL) {
+      _sasl_log(NULL, SASL_LOG_ERR,
+		"Out of memory allocating connection context");
+      return SASL_NOMEM;
+  }
 
   (*pconn)->destroy_conn = &client_dispose;
   result = _sasl_conn_init(*pconn, service, secflags,
 			   &client_idle, serverFQDN,
 			   iplocalport, ipremoteport,
 			   prompt_supp, &global_callbacks);
-  if (result != SASL_OK) return result;
+  if (result != SASL_OK) RETURN(*pconn, result);
   
   conn = (sasl_client_conn_t *)*pconn;
 
@@ -285,13 +289,14 @@ int sasl_client_new(const char *service,
   conn->mech = NULL;
 
   conn->cparams=sasl_ALLOC(sizeof(sasl_client_params_t));
-  if (conn->cparams==NULL) return SASL_NOMEM;
+  if (conn->cparams==NULL) 
+      MEMERROR(*pconn);
   memset(conn->cparams,0,sizeof(sasl_client_params_t));
 
   utils=_sasl_alloc_utils(*pconn, &global_callbacks);
   if (utils==NULL)
-    return SASL_NOMEM;
-
+      MEMERROR(*pconn);
+  
   utils->conn= *pconn;
   conn->cparams->utils = utils;
   conn->cparams->canon_user = &_sasl_canon_user;
@@ -313,6 +318,7 @@ int sasl_client_new(const char *service,
   _sasl_conn_dispose(*pconn);
   sasl_FREE(*pconn);
   *pconn = NULL;
+  _sasl_log(NULL, SASL_LOG_ERR, "Out of memory in sasl_client_new");
   return result;
 }
 
@@ -381,9 +387,11 @@ int sasl_client_start(sasl_conn_t *conn,
     sasl_ssf_t bestssf = 0, minssf = 0;
     int result;
 
+    if (!conn) return SASL_BADPARAM;
+
     /* verify parameters */
     if (mechlist == NULL)
-	return SASL_BADPARAM;
+	PARAMERROR(conn);
 
     /* if prompt_need != NULL we've already been here
        and just need to do the continue step again */
@@ -393,7 +401,7 @@ int sasl_client_start(sasl_conn_t *conn,
     if (prompt_need && *prompt_need != NULL) {
 	result = sasl_client_step(conn, NULL, 0, prompt_need,
 				  clientout, clientoutlen);
-	return result;
+	RETURN(conn,result);
     }
 
     if(conn->props.min_ssf < conn->external.ssf) {
@@ -490,10 +498,10 @@ int sasl_client_start(sasl_conn_t *conn,
     c_conn->mech = bestm;
 
     /* init that plugin */
-    c_conn->mech->plug->mech_new(NULL,
-				 c_conn->cparams,
-				 &(conn->context));
-
+    result = c_conn->mech->plug->mech_new(NULL,
+					  c_conn->cparams,
+					  &(conn->context));
+    if(result != SASL_OK) goto done;
 
     /* do a step -- but only if we can do a client-send-first */
     if(clientout)
@@ -503,7 +511,7 @@ int sasl_client_start(sasl_conn_t *conn,
 	result = SASL_CONTINUE;
 
  done:
-    return result;
+    RETURN(conn, result);
 }
 
 /* do a single authentication step.
@@ -530,9 +538,11 @@ int sasl_client_step(sasl_conn_t *conn,
   sasl_client_conn_t *c_conn= (sasl_client_conn_t *) conn;
   int result;
 
+  if(!conn) return SASL_BADPARAM;
+
   /* check parameters */
   if ((serverin==NULL) && (serverinlen>0))
-    return SASL_BADPARAM;
+      PARAMERROR(conn);
 
   /* do a step */
   result = c_conn->mech->plug->mech_step(conn->context,
@@ -547,31 +557,7 @@ int sasl_client_step(sasl_conn_t *conn,
       conn->oparams.maxoutbuf = DEFAULT_MAXOUTBUF;
   }
 
-  return result;
+  RETURN(conn,result);
 }
 
-/* Set connection secret based on passphrase
- *  may be used in SASL_CB_PASS callback
- * input:
- *  user          -- username
- *  pass          -- plaintext passphrase with NUL sentinel
- *  passlen       -- 0 = strlen(pass)
- * out:
- *  prompts       -- if non-NULL, SASL_CB_PASS item filled in
- *  keepcopy      -- set to copy of secret if non-NULL
- * returns:
- *  SASL_OK       -- success
- *  SASL_NOMEM    -- failure
- */
-
-int sasl_client_auth(sasl_conn_t *conn __attribute__((unused)),
-		     const char *user __attribute__((unused)),
-		     const char *pass __attribute__((unused)), 
-		     unsigned passlen __attribute__((unused)),
-		     sasl_interact_t *prompts __attribute__((unused)),
-		     sasl_secret_t **keepcopy __attribute__((unused)))
-{
-  /* XXX needs to be filled in */
-  return SASL_FAIL;
-}
 

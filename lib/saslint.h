@@ -1,7 +1,7 @@
 /* saslint.h - internal SASL library definitions
  * Rob Siemborski
  * Tim Martin
- * $Id: saslint.h,v 1.33.2.33 2001/07/11 15:41:05 rjs3 Exp $
+ * $Id: saslint.h,v 1.33.2.34 2001/07/12 14:10:11 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -55,6 +55,33 @@
 /* #define'd constants */
 #define DEFAULT_MAXOUTBUF 8192
 #define CANON_BUF_SIZE 256
+
+/* Error Handling Foo */
+/* Helpful Hints:
+ *  -Error strings are set as soon as possible (first function in stack trace
+ *   with a pointer to the sasl_conn_t.
+ *  -Error codes are set as late as possible (only in the sasl api functions),
+ *   thoug "as often as possible" also comes to mind to ensure correctness
+ *  -Errors from calls to _buf_alloc, _sasl_strdup, etc are assumed to be
+ *   memory errors.
+ *  -Only errors (error codes < SASL_OK) should be remembered
+ */
+#define RETURN(conn, val) { if((val) < SASL_OK) \
+                               (conn)->error_code = (val); \
+                            return (val); }
+#define MEMERROR(conn) {\
+    sasl_seterror( (conn), 0, \
+                   "Out of Memory in " __FILE__ " near line %d", __LINE__ ); \
+    RETURN(conn, SASL_NOMEM) }
+#define PARAMERROR(conn) {\
+    sasl_seterror( (conn), SASL_NOLOG, \
+                  "Parameter error in " __FILE__ " near line %d", __LINE__ ); \
+    RETURN(conn, SASL_BADPARAM) }
+#define INTERROR(conn, val) {\
+    sasl_seterror( (conn), 0, \
+                   "Internal Error %d in " __FILE__ " near line %d", (val),\
+		   __LINE__ ); \
+    RETURN(conn, (val)) }
 
 #ifndef PATH_MAX
 # ifdef _POSIX_PATH_MAX
@@ -126,8 +153,9 @@ struct sasl_conn {
   /* Pointers to memory that we are responsible for */
   buffer_info_t *encode_buf;
 
-  char *error_buf;
-  unsigned error_buf_len;
+  int error_code;
+  char *error_buf, *errdetail_buf;
+  unsigned error_buf_len, errdetail_buf_len;
   char *decode_buf;
   unsigned decode_buf_len;
 

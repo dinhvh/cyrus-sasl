@@ -1,7 +1,7 @@
 /* GSSAPI SASL plugin
  * Leif Johansson
  * Rob Siemborski (SASL v2 Conversion)
- * $Id: gssapi.c,v 1.41.2.19 2001/07/09 19:06:46 rjs3 Exp $
+ * $Id: gssapi.c,v 1.41.2.20 2001/07/12 14:10:13 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -1142,11 +1142,6 @@ sasl_gss_client_step (void *conn_context,
   output_token->value = NULL;
   input_token->value = NULL; 
   input_token->length = 0;
-
-  if (!clientout && text->state == SASL_GSSAPI_STATE_AUTHNEG) {
-      /* initial client send not allowed */
-      return SASL_CONTINUE;
-  }
 
   *clientout = NULL;
   *clientoutlen = 0;

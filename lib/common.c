@@ -1,7 +1,7 @@
 /* common.c - Functions that are common to server and clinet
  * Rob Siemborski
  * Tim Martin
- * $Id: common.c,v 1.64.2.34 2001/07/11 15:41:05 rjs3 Exp $
+ * $Id: common.c,v 1.64.2.35 2001/07/12 14:10:11 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -159,11 +159,13 @@ int sasl_encode(sasl_conn_t *conn, const char *input,
 		unsigned inputlen,
 		const char **output, unsigned *outputlen)
 {
+    int result;
     struct iovec tmp;
 
-    if(!conn || !input || !inputlen || !output || !outputlen)
-	return SASL_BADPARAM;
-
+    if(!conn) return SASL_BADPARAM;
+    if(!input || !inputlen || !output || !outputlen)
+	PARAMERROR(conn);
+    
     /* maxoutbuf checking is done in sasl_encodev */
 
     /* Note: We are casting a const pointer here, but it's okay
@@ -172,7 +174,9 @@ int sasl_encode(sasl_conn_t *conn, const char *input,
     tmp.iov_base = (void *)input;
     tmp.iov_len = inputlen;
     
-    return sasl_encodev(conn, &tmp, 1, output, outputlen);
+    result = sasl_encodev(conn, &tmp, 1, output, outputlen);
+
+    RETURN(conn, result);
 }
 
 /* security-encode an iovec */
@@ -185,8 +189,9 @@ int sasl_encodev(sasl_conn_t *conn,
     unsigned i;
     size_t total_size = 0;
 
-    if (! conn || ! invec || ! output || ! outputlen || numiov < 1)
-	return SASL_BADPARAM;
+    if (!conn) return SASL_BADPARAM;
+    if (! invec || ! output || ! outputlen || numiov < 1)
+	PARAMERROR(conn);
 
     /* This might be better to check on a per-plugin basis, but I think
      * it's cleaner and more effective here.  It also encourages plugins
@@ -195,22 +200,22 @@ int sasl_encodev(sasl_conn_t *conn,
     for(i=0; i<numiov;i++) {
 	total_size += invec[i].iov_len;
     }    
-    if(total_size > conn->oparams.maxoutbuf) {
-	return SASL_BADPARAM;
-    }
+    if(total_size > conn->oparams.maxoutbuf)
+	PARAMERROR(conn);
 
     if(conn->oparams.encode == NULL)  {
 	result = _iovec_to_buf(invec, numiov, &conn->encode_buf);
-	if(result != SASL_OK) return result;
+	if(result != SASL_OK) INTERROR(conn, result);
        
 	*output = conn->encode_buf->data;
 	*outputlen = conn->encode_buf->curlen;
 
-        return SASL_OK;
     } else {
-	return conn->oparams.encode(conn->context, invec, numiov,
-				    output, outputlen);
+	result = conn->oparams.encode(conn->context, invec, numiov,
+				      output, outputlen);
     }
+
+    RETURN(conn, result);
 }
  
 /* output is only valid until next call to sasl_decode */
@@ -220,12 +225,14 @@ int sasl_decode(sasl_conn_t *conn,
 {
     int result;
 
-    if(!conn || !input || !output || !outputlen)
-	return SASL_BADPARAM;
+    if(!conn) return SASL_BADPARAM;
+    if(!input || !output || !outputlen)
+	PARAMERROR(conn);
 
     /* FIXME: do we verify maxoutbuf on incoming data as well? */
-    if(inputlen > conn->oparams.maxoutbuf) return SASL_BADPARAM;
-
+    if(inputlen > conn->oparams.maxoutbuf)
+	PARAMERROR(conn);
+    
     if(conn->oparams.decode == NULL)
     {
 	/* Since we know how long the output is maximally, we can
@@ -234,7 +241,7 @@ int sasl_decode(sasl_conn_t *conn,
 	if(!conn->decode_buf)
 	    conn->decode_buf = sasl_ALLOC(conn->oparams.maxoutbuf + 1);
 	if(!conn->decode_buf)
-	    return SASL_NOMEM;
+	    MEMERROR( conn );
 	
 	memcpy(conn->decode_buf, input, inputlen);
 	conn->decode_buf[inputlen] = '\0';
@@ -245,10 +252,10 @@ int sasl_decode(sasl_conn_t *conn,
     } else {
         result = conn->oparams.decode(conn->context, input, inputlen,
                                       output, outputlen);
-        return result;
+        RETURN(conn, result);
     }
 
-    return SASL_FAIL;
+    INTERROR(conn, SASL_FAIL);
 }
 
 
@@ -303,15 +310,21 @@ int _sasl_conn_init(sasl_conn_t *conn,
   conn->type = SASL_CONN_UNKNOWN;
 
   result = _sasl_strdup(service, &conn->service, NULL);
-  if (result != SASL_OK) return result;
+  if (result != SASL_OK) 
+      MEMERROR(conn);
 
   memset(&conn->oparams, 0, sizeof(sasl_out_params_t));
   memset(&conn->external, 0, sizeof(_sasl_external_properties_t));
 
   conn->secflags = secflags;
 
-  sasl_setprop(conn, SASL_IPLOCALPORT, iplocalport);
-  sasl_setprop(conn, SASL_IPREMOTEPORT, ipremoteport);
+  result = sasl_setprop(conn, SASL_IPLOCALPORT, iplocalport);
+  if(result != SASL_OK)
+      RETURN(conn, result);
+  
+  result = sasl_setprop(conn, SASL_IPREMOTEPORT, ipremoteport);
+  if(result != SASL_OK)
+      RETURN(conn, result);
   
   conn->encode_buf = NULL;
   conn->context = NULL;
@@ -323,13 +336,18 @@ int _sasl_conn_init(sasl_conn_t *conn,
   memset(&conn->props, 0, sizeof(conn->props));
 
   /* Start this buffer out as an empty string */
-  conn->error_buf = NULL;
-  conn->error_buf_len = 0;
-  result = _buf_alloc(&conn->error_buf, &conn->error_buf_len, 100);     
-  if(result != SASL_OK) return result;
+  conn->error_code = SASL_OK;
+  conn->errdetail_buf = conn->error_buf = NULL;
+  conn->errdetail_buf_len = conn->error_buf_len = 150;
 
+  result = _buf_alloc(&conn->error_buf, &conn->error_buf_len, 150);     
+  if(result != SASL_OK) MEMERROR(conn);
+  result = _buf_alloc(&conn->errdetail_buf, &conn->errdetail_buf_len, 150);
+  if(result != SASL_OK) MEMERROR(conn);
+  
   conn->error_buf[0] = '\0';
-
+  conn->errdetail_buf[0] = '\0';
+  
   conn->decode_buf = NULL;
   conn->decode_buf_len = 0;
 
@@ -344,7 +362,9 @@ int _sasl_conn_init(sasl_conn_t *conn,
     result = _sasl_strdup(serverFQDN, &conn->serverFQDN, NULL);
   }
 
-  return result;
+  if(result != SASL_OK) MEMERROR( conn );
+
+  RETURN(conn, SASL_OK);
 }
 
 /* It turns out to be conveinent to have a shared sasl_utils_t */
@@ -411,6 +431,9 @@ void _sasl_conn_dispose(sasl_conn_t *conn) {
   if(conn->error_buf)
       sasl_FREE(conn->error_buf);
   
+  if(conn->errdetail_buf)
+      sasl_FREE(conn->errdetail_buf);
+
   if(conn->decode_buf)
       sasl_FREE(conn->decode_buf);
 
@@ -436,8 +459,8 @@ int sasl_getprop(sasl_conn_t *conn, int propnum, const void **pvalue)
   sasl_getopt_t *getopt;
   void *context;
   
-  if (! conn) return SASL_FAIL;
-  if (! pvalue) return SASL_FAIL;
+  if (! conn) return SASL_BADPARAM;
+  if (! pvalue) PARAMERROR(conn);
 
   switch(propnum)
   {
@@ -449,7 +472,7 @@ int sasl_getprop(sasl_conn_t *conn, int propnum, const void **pvalue)
       break;
   case SASL_GETOPTCTX:
       result = _sasl_getcallback(conn, SASL_CB_GETOPT, &getopt, &context);
-      if(result != SASL_OK) return result;
+      if(result != SASL_OK) break;
       
       *(void **)pvalue = context;
       break;
@@ -520,7 +543,12 @@ int sasl_getprop(sasl_conn_t *conn, int propnum, const void **pvalue)
       result = SASL_BADPARAM;
   }
 
-  return result; 
+  if(result == SASL_BADPARAM) {
+      PARAMERROR(conn);
+  } else if(result != SASL_OK) {
+      INTERROR(conn, result);
+  } else
+      RETURN(conn, result); 
 }
 
 /* set property in SASL connection state
@@ -546,7 +574,7 @@ int sasl_setprop(sasl_conn_t *conn, int propnum, const void *value)
   case SASL_AUTH_EXTERNAL:
       if(value && strlen(value)) {
 	  result = _sasl_strdup(value, &str, NULL);
-	  if(result != SASL_OK) return result;
+	  if(result != SASL_OK) MEMERROR(conn);
       } else {
 	  str = NULL;
       }
@@ -571,7 +599,7 @@ int sasl_setprop(sasl_conn_t *conn, int propnum, const void *value)
       } else if (_sasl_ipfromstring(ipremoteport, NULL)
 		 != SASL_OK) {
 	  sasl_seterror(conn, 0, "Bad IPREMOTEPORT value");
-	  result = SASL_BADPARAM;
+	  RETURN(conn, SASL_BADPARAM);
       } else {
 	  strcpy(conn->ipremoteport, ipremoteport);
 	  conn->got_ip_remote = 1;
@@ -587,7 +615,7 @@ int sasl_setprop(sasl_conn_t *conn, int propnum, const void *value)
       } else if (_sasl_ipfromstring(iplocalport, NULL)
 		 != SASL_OK) {
 	  sasl_seterror(conn, 0, "Bad IPLOCALPORT value");
-	  result = SASL_BADPARAM;
+	  RETURN(conn, SASL_BADPARAM);
       } else {
 	  strcpy(conn->iplocalport, iplocalport);
 	  conn->got_ip_local = 1;
@@ -600,7 +628,7 @@ int sasl_setprop(sasl_conn_t *conn, int propnum, const void *value)
       result = SASL_BADPARAM;
   }
   
-  return result;
+  RETURN(conn, result);
 }
 
 /* this is apparently no longer a user function */
@@ -664,9 +692,20 @@ const char *sasl_errstring(int saslerr,
  * a connection */
 const char *sasl_errdetail(sasl_conn_t *conn) 
 {
-    /* FIXME: This should be different from getprop(SASL_PLUGERR) in
-     * that it takes the return code into effect */
-    return conn->error_buf;
+    unsigned need_len;
+    const char *errstr;
+    char leader[128];
+    
+    errstr = sasl_errstring(conn->error_code, NULL, NULL);
+    snprintf(leader,128,"SASL(%d): %s: ",
+	     sasl_usererr(conn->error_code), errstr);
+    
+    need_len = strlen(leader) + strlen(conn->error_buf) + 12;
+    _buf_alloc(&conn->errdetail_buf, &conn->errdetail_buf_len, need_len);
+
+    snprintf(conn->errdetail_buf, need_len, "%s%s", errstr, conn->error_buf);
+   
+    return conn->errdetail_buf;
 }
 
 
@@ -1026,7 +1065,8 @@ _sasl_proxy_policy(sasl_conn_t *conn,
 		   unsigned urlen __attribute__((unused)),
 		   struct propctx *propctx __attribute__((unused)))
 {
-    if (!conn) return SASL_BADPARAM;
+    if (!conn)
+	return SASL_BADPARAM;
 
     if (!requested_user || *requested_user == '\0')
 	return SASL_OK;
@@ -1035,28 +1075,29 @@ _sasl_proxy_policy(sasl_conn_t *conn,
 	(memcmp(auth_identity, requested_user, rlen) != 0)) {
 	sasl_seterror(conn, 0,
 		      "Requested identity not authenticated identity");
-	return SASL_BADAUTH;
+	RETURN(conn, SASL_BADAUTH);
     }
 
     return SASL_OK;
 }
 
-int
-_sasl_getcallback(sasl_conn_t * conn,
-		  unsigned long callbackid,
-		  int (**pproc)(),
-		  void **pcontext)
+int _sasl_getcallback(sasl_conn_t * conn,
+		      unsigned long callbackid,
+		      int (**pproc)(),
+		      void **pcontext)
 {
   const sasl_callback_t *callback;
 
+  if (!conn) return SASL_BADPARAM;
   if (! pproc || ! pcontext)
-    return SASL_BADPARAM;
+    PARAMERROR(conn);
 
   /* Some callbacks are always provided by the library */
   switch (callbackid) {
   case SASL_CB_LIST_END:
     /* Nothing ever gets to provide this */
-    return SASL_FAIL;
+      sasl_seterror(conn, 0, "Someone attempted lookup of SASL_CB_LIST_END");
+      RETURN(conn, SASL_FAIL);
   case SASL_CB_GETOPT:
       if (conn) {
 	  *pproc = &_sasl_conn_getopt;
@@ -1132,7 +1173,8 @@ _sasl_getcallback(sasl_conn_t * conn,
   /* Unable to find a callback... */
   *pproc = NULL;
   *pcontext = NULL;
-  return SASL_FAIL;
+  sasl_seterror(conn, SASL_NOLOG, "Unable to find a callback");
+  RETURN(conn,SASL_FAIL);
 }
 
 
@@ -1151,7 +1193,7 @@ _sasl_log (sasl_conn_t *conn,
 	   const char *fmt,
 	   ...)
 {
-  char *out=(char *) sasl_ALLOC(100);
+  char *out=(char *) sasl_ALLOC(250);
   int alloclen=100; /* current allocated length */
   int outlen=0; /* current length of output buffer */
   int pos=0; /* current position in format string */
@@ -1280,7 +1322,6 @@ _sasl_log (sasl_conn_t *conn,
 
     }
   }
-
 
   out[outlen]=0; /* put 0 at end */
 

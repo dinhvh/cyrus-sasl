@@ -1,3 +1,10 @@
+2000-07-10  Rob Siemborski <rjs3+@andrew.cmu.edu>
+	* added client-send-first logic in glue code
+	* removed some client-send-first logic in mechanisms
+	* removed IPv4 specifics from sasl_conn_t
+	* Much gluecode error revamping (store the error code
+	  in sasl_conn_t)
+
 2000-07-09  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Removed dependency on "name" in canonuser plugin structure
 	* Update configure.in from a new configure.scan

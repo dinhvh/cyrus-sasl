@@ -2,7 +2,7 @@
  * Rob Siemborski
  * Tim Martin
  * Alexey Melnikov 
- * $Id: digestmd5.c,v 1.97.2.17 2001/07/09 16:11:19 rjs3 Exp $
+ * $Id: digestmd5.c,v 1.97.2.18 2001/07/12 14:10:13 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -3192,12 +3192,6 @@ c_continue_step(void *conn_context,
   context_t      *text;
   text = conn_context;
 
-  if (!clientout && text->state == 1) {
-      /* initial client challenge not allowed */
-      text->state++;
-      return SASL_CONTINUE;
-  }
-
   *clientout = NULL;
   *clientoutlen = 0;
 
@@ -3828,7 +3822,7 @@ FreeAllocatedMem:
 
 	if (strcmp(text->response_value, value) != 0) {
 	    params->utils->seterror(params->utils->conn, 0,
-	       "This server wants us to believe that he knows shared secret");
+	       "DIGEST-MD5: This server wants us to believe that he knows shared secret");
 	    params->utils->free(in_start);
 	    return SASL_FAIL;
 	} else {

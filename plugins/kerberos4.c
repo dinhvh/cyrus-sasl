@@ -1,7 +1,7 @@
 /* Kerberos4 SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: kerberos4.c,v 1.65.2.26 2001/07/06 18:15:36 rjs3 Exp $
+ * $Id: kerberos4.c,v 1.65.2.27 2001/07/12 14:10:14 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -891,16 +891,17 @@ static int client_continue_step (void *conn_context,
 
     authent.length = MAX_KTXT_LEN;
   
-    if (text->state==0)
+    if (text->state == 0 && serverinlen == 0)
     {
-	if (clientout) {
-	    *clientout = NULL;
-	    *clientoutlen = 0;
-	}
+	/* KERBEROS_V4 can't do client-first */
 
+	*clientout = NULL;
+	*clientoutlen = 0;
 	text->state=1;
 
 	return SASL_CONTINUE;
+    } else if(text->state == 0) {
+	text->state = 1;
     }
 
     else if (text->state==1) {

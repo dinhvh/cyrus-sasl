@@ -1,7 +1,7 @@
 /* Plain SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: plain.c,v 1.43.2.12 2001/07/09 16:11:20 rjs3 Exp $
+ * $Id: plain.c,v 1.43.2.13 2001/07/12 14:10:14 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -565,7 +565,7 @@ static int make_prompts(sasl_client_params_t *params,
 static int client_continue_step (void *conn_context,
 				 sasl_client_params_t *params,
 				 const char *serverin __attribute__((unused)),
-				 unsigned serverinlen,
+				 unsigned serverinlen __attribute__((unused)),
 				 sasl_interact_t **prompt_need,
 				 const char **clientout,
 				 unsigned *clientoutlen,
@@ -577,16 +577,12 @@ static int client_continue_step (void *conn_context,
   context_t *text;
   text=conn_context;
 
-  if (!clientout && text->state == 1) {
-      text->state = 2;
-      return SASL_CONTINUE;
-  }
   *clientout = NULL;
   *clientoutlen = 0;
 
   /* doesn't really matter how the server responds */
 
-  if (text->state==1 || (text->state == 2 && serverinlen == 0)) {
+  if (text->state==1) {
     int user_result=SASL_OK;
     int auth_result=SASL_OK;
     int pass_result=SASL_OK;
@@ -684,12 +680,12 @@ static int client_continue_step (void *conn_context,
 
     oparams->param_version = 0;
 
-    text->state = 3;
+    text->state = 2;
 
     return SASL_CONTINUE;
   }
 
-  if (text->state == 3)
+  if (text->state == 2)
   {
       *clientout = NULL;
       *clientoutlen = 0;
