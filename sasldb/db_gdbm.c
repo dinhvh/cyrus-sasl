@@ -1,7 +1,7 @@
 /* db_gdbm.c--SASL gdbm interface
  * Rob Siemborski
  * Rob Earhart
- * $Id: db_gdbm.c,v 1.1.2.5 2001/07/27 23:18:46 rjs3 Exp $
+ * $Id: db_gdbm.c,v 1.1.2.6 2001/07/30 16:14:28 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -68,15 +68,26 @@ int _sasldb_getdata(const sasl_utils_t *utils,
   sasl_getopt_t *getopt;
   const char *path = SASL_DB_PATH;
 
-  if (!authid || !propName || !realm || !out || !max_out)
+  if (!utils) return SASL_BADPARAM;
+  if (!authid || !propName || !realm || !out || !max_out) {
+      utils->seterror(conn, 0,
+		      "Bad parameter in db_gdbm.c: _sasldb_getdata");
       return SASL_BADPARAM;
-  if (!db_ok)
+  }
+
+  if (!db_ok) {
+      utils->seterror(conn, 0,
+		      "Database not checked");
       return SASL_FAIL;
+  }
 
   result = _sasldb_alloc_key(utils, authid, realm, propName,
 			     &key, &key_len);
-  if (result != SASL_OK)
-    return result;
+  if (result != SASL_OK) {
+      utils->seterror(conn, 0,
+		      "Could not allocate key in _sasldb_getdata");
+      return result;
+  }
 
   if (utils->getcallback(conn, SASL_CB_GETOPT,
                         &getopt, &cntxt) == SASL_OK) {
@@ -88,20 +99,24 @@ int _sasldb_getdata(const sasl_utils_t *utils,
   }
   db = gdbm_open((char *)path, 0, GDBM_READER, S_IRUSR | S_IWUSR, NULL);
   if (! db) {
-    result = SASL_FAIL;
-    goto cleanup;
+      utils->seterror(cntxt, 0, "Could not open db");
+      result = SASL_FAIL;
+      goto cleanup;
   }
   gkey.dptr = key;
   gkey.dsize = key_len;
   gvalue = gdbm_fetch(db, gkey);
   gdbm_close(db);
   if (! gvalue.dptr) {
-    result = SASL_NOUSER;
-    goto cleanup;
+      utils->seterror(cntxt, 0, "no user in db");
+      result = SASL_NOUSER;
+      goto cleanup;
   }
 
-  if((size_t)gvalue.dsize > max_out + 1)
+  if((size_t)gvalue.dsize > max_out + 1) {
+      utils->seterror(cntxt, 0, "buffer overflow");
       return SASL_BUFOVER;
+  }
   
   if(out_len) *out_len = gvalue.dsize;
   memcpy(out, gvalue.dptr, gvalue.dsize);
@@ -133,13 +148,21 @@ int _sasldb_putdata(const sasl_utils_t *utils,
   sasl_getopt_t *getopt;
   const char *path = SASL_DB_PATH;
 
-  if (!authid || !realm || !propName)
+  if (!utils) return SASL_BADPARAM;
+
+  if (!authid || !realm || !propName) {
+      utils->seterror(cntxt, 0,
+		      "Bad parameter in db_gdbm.c: _sasldb_putdata");
       return SASL_BADPARAM;
+  }
 
   result = _sasldb_alloc_key(utils, authid, realm, propName,
 			     &key, &key_len);
-  if (result != SASL_OK)
-    return result;
+  if (result != SASL_OK) {
+      utils->seterror(cntxt, 0,
+		      "Could not allocate key in _sasldb_putdata"); 
+      return result;
+  }
 
   if (utils->getcallback(conn, SASL_CB_GETOPT,
 			 &getopt, &cntxt) == SASL_OK) {
@@ -151,11 +174,12 @@ int _sasldb_putdata(const sasl_utils_t *utils,
   }
   db = gdbm_open((char *)path, 0, GDBM_WRCREAT, S_IRUSR | S_IWUSR, NULL);
   if (! db) {
-      utils->log(NULL, SASL_LOG_ERR,
+      utils->log(cntxt, SASL_LOG_ERR,
 		 "SASL error opening password file. "
 		 "Do you have write permissions?\n");
-    result = SASL_FAIL;
-    goto cleanup;
+      utils->seterror(cntxt, 0, "Could not open db for write");
+      result = SASL_FAIL;
+      goto cleanup;
   }
   gkey.dptr = key;
   gkey.dsize = key_len;
@@ -164,11 +188,17 @@ int _sasldb_putdata(const sasl_utils_t *utils,
     gvalue.dptr = (char *)data;
     if(!data_len) data_len = strlen(data);
     gvalue.dsize = data_len;
-    if (gdbm_store(db, gkey, gvalue, GDBM_REPLACE))
-      result = SASL_FAIL;
+    if (gdbm_store(db, gkey, gvalue, GDBM_REPLACE)) {
+	utils->seterror(cntxt, 0,
+			"Couldn't update db");
+	result = SASL_FAIL;
+    }
   } else {
-    if (gdbm_delete(db, gkey))
-      result = SASL_NOUSER;
+      if (gdbm_delete(db, gkey)) {
+	  utils->seterror(cntxt, 0,
+			  "Couldn't update db");	  
+	  result = SASL_NOUSER;
+      }
   }
   gdbm_close(db);
 
@@ -200,10 +230,13 @@ int _sasl_check_db(const sasl_utils_t *utils,
 
     ret = utils->getcallback(NULL, SASL_CB_VERIFYFILE,
 			     &vf, &cntxt);
-    if(ret != SASL_OK) return ret;
+    if(ret != SASL_OK) {
+	utils->seterror(conn, 0,
+			"No verifyfile callback");
+	return ret;
+    }
 
     ret = vf(cntxt, path, SASL_VRFY_PASSWD);
-
     if (ret == SASL_OK) {
 	db_ok = 1;
     }
@@ -211,6 +244,8 @@ int _sasl_check_db(const sasl_utils_t *utils,
     if (ret == SASL_OK || ret == SASL_CONTINUE) {
 	return SASL_OK;
     } else {
+	utils->seterror(conn, 0,
+			"Verifyfile failed");
 	return ret;
     }
 }
@@ -233,6 +268,11 @@ sasldb_handle _sasldb_getkeyhandle(const sasl_utils_t *utils,
     
     if(!utils || !conn) return NULL;
 
+    if(!db_ok) {
+	utils->seterror(conn, 0, "Database not OK in _sasldb_getkeyhandle");
+	return NULL;
+    }
+
     if (utils->getcallback(conn, SASL_CB_GETOPT,
 			   &getopt, &cntxt) == SASL_OK) {
 	const char *p;
@@ -244,11 +284,14 @@ sasldb_handle _sasldb_getkeyhandle(const sasl_utils_t *utils,
 
     db = gdbm_open((char *)path, 0, GDBM_READER, S_IRUSR | S_IWUSR, NULL);
 
-    if(!db)
+    if(!db) {
+	utils->seterror(conn, 0, "Could not open db");
 	return NULL;
+    }
 
     handle = utils->malloc(sizeof(handle_t));
     if(!handle) {
+	utils->seterror(conn, 0, "no memory in _sasldb_getkeyhandle");
 	gdbm_close(db);
 	return NULL;
     }

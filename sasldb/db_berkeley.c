@@ -1,7 +1,7 @@
 /* db_berkeley.c--SASL berkeley db interface
  * Rob Siemborski
  * Tim Martin
- * $Id: db_berkeley.c,v 1.1.2.6 2001/07/27 23:18:46 rjs3 Exp $
+ * $Id: db_berkeley.c,v 1.1.2.7 2001/07/30 16:14:28 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -58,7 +58,6 @@
 
 static int db_ok = 0;
 
-
 /*
  * Open the database
  */
@@ -100,9 +99,10 @@ static int berkeleydb_open(const sasl_utils_t *utils,
 #endif /* DB_VERSION_MAJOR < 3 */
 
     if (ret != 0) {
-	utils->log(NULL, SASL_LOG_ERR,
+	utils->log(conn, SASL_LOG_ERR,
 		   "unable to open Berkeley db %s: %s",
 		   path, strerror(ret));
+	utils->seterror(conn, SASL_NOLOG, "Unable to open DB");
 	return SASL_FAIL;
     }
 
@@ -111,9 +111,7 @@ static int berkeleydb_open(const sasl_utils_t *utils,
 
 /*
  * Close the database
- *
  */
-
 static void berkeleydb_close(const sasl_utils_t *utils, DB *mbdb)
 {
     int ret;
@@ -147,18 +145,29 @@ int _sasldb_getdata(const sasl_utils_t *utils,
   DBT dbkey, data;
   DB *mbdb = NULL;
 
-  /* check parameters */
-  if (!auth_identity || !realm || !propName || !out || !max_out)
-      return SASL_BADPARAM;
+  if(!utils) return SASL_BADPARAM;
 
-  if (!db_ok)
+  /* check parameters */
+  if (!auth_identity || !realm || !propName || !out || !max_out) {
+      utils->seterror(context, 0,
+		      "Bad parameter in db_berkeley.c: _sasldb_getdata");
+      return SASL_BADPARAM;
+  }
+
+  if (!db_ok) {
+      utils->seterror(context, 0,
+		      "Database not checked");
       return SASL_FAIL;
+  }
 
   /* allocate a key */
   result = _sasldb_alloc_key(utils, auth_identity, realm, propName,
 			     &key, &key_len);
-  if (result != SASL_OK)
-    return result;
+  if (result != SASL_OK) {
+      utils->seterror(context, 0,
+		      "Could not allocate key in _sasldb_getdata");
+      return result;
+  }
 
   /* open the db */
   result = berkeleydb_open(utils, context, 0, &mbdb);
@@ -180,14 +189,14 @@ int _sasldb_getdata(const sasl_utils_t *utils,
 
   case DB_NOTFOUND:
     result = SASL_NOUSER;
-    utils->log(NULL, SASL_LOG_ERR,
-	       "user not found in sasldb");
+    utils->seterror(context, 0,
+		    "user not found in sasldb");
     goto cleanup;
     break;
   default:
-    utils->log(NULL, SASL_LOG_ERR,
-	       "error fetching from sasldb: %s",
-	       strerror(result));
+    utils->seterror(context, 0,
+		    "error fetching from sasldb: %s",
+		    strerror(result));
     result = SASL_FAIL;
     goto cleanup;
     break;
@@ -227,16 +236,27 @@ int _sasldb_putdata(const sasl_utils_t *utils,
   DBT dbkey;
   DB *mbdb = NULL;
 
-  if (!authid || !realm || !propName)
+  if (!utils) return SASL_BADPARAM;
+
+  if (!authid || !realm || !propName) {
+      utils->seterror(context, 0,
+		      "Bad parameter in db_berkeley.c: _sasldb_putdata");
       return SASL_BADPARAM;
+  }
   
-  if (!db_ok)
+  if (!db_ok) {
+      utils->seterror(context, 0,
+		      "Database not checked");   
       return SASL_FAIL;
+  }
 
   result = _sasldb_alloc_key(utils, authid, realm, propName,
 			     &key, &key_len);
-  if (result != SASL_OK)
-    return result;
+  if (result != SASL_OK) {
+       utils->seterror(context, 0,
+		      "Could not allocate key in _sasldb_putdata");     
+       return result;
+  }
 
   /* open the db */
   result=berkeleydb_open(utils, context, 1, &mbdb);
@@ -262,6 +282,8 @@ int _sasldb_putdata(const sasl_utils_t *utils,
     {
       utils->log(NULL, SASL_LOG_ERR,
 		 "error updating sasldb: %s", strerror(result));
+      utils->seterror(context, SASL_NOLOG,
+		      "Couldn't update db");
       result = SASL_FAIL;
       goto cleanup;
     }
@@ -272,6 +294,8 @@ int _sasldb_putdata(const sasl_utils_t *utils,
     {
       utils->log(NULL, SASL_LOG_ERR,
 		 "error deleting entry from sasldb: %s", strerror(result));
+      utils->seterror(context, SASL_NOLOG,
+		      "Couldn't update db");
       if (result == DB_NOTFOUND)
 	  result = SASL_NOUSER;
       else	  
@@ -309,9 +333,12 @@ int _sasl_check_db(const sasl_utils_t *utils,
 	}
     }
 
-    ret = utils->getcallback(NULL, SASL_CB_VERIFYFILE,
+    ret = utils->getcallback(conn, SASL_CB_VERIFYFILE,
 			     &vf, &cntxt);
-    if(ret != SASL_OK) return ret;
+    if(ret != SASL_OK) {
+	utils->seterror(conn, 0, "verifyfile failed");
+	return ret;
+    }
 
     ret = vf(cntxt, path, SASL_VRFY_PASSWD);
 
@@ -341,6 +368,11 @@ sasldb_handle _sasldb_getkeyhandle(const sasl_utils_t *utils,
     
     if(!utils || !conn) return NULL;
 
+    if(!db_ok) {
+	utils->seterror(conn, 0, "Database not OK in _sasldb_getkeyhandle");
+	return SASL_FAIL;
+    }
+
     ret = berkeleydb_open(utils, conn, 0, &mbdb);
 
     if (ret != SASL_OK) {
@@ -350,6 +382,7 @@ sasldb_handle _sasldb_getkeyhandle(const sasl_utils_t *utils,
     handle = utils->malloc(sizeof(handle_t));
     if(!handle) {
 	(void)mbdb->close(mbdb, 0);
+	utils->seterror(conn, 0, "Memory error in _sasldb_gethandle");
 	return NULL;
     }
     

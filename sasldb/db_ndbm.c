@@ -1,7 +1,7 @@
 /* db_ndbm.c--SASL ndbm interface
  * Rob Siemborski
  * Rob Earhart
- * $Id: db_ndbm.c,v 1.1.2.5 2001/07/27 23:18:46 rjs3 Exp $
+ * $Id: db_ndbm.c,v 1.1.2.6 2001/07/30 16:14:29 rjs3 Exp $
  */
 /*
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -72,15 +72,24 @@ int _sasldb_getdata(const sasl_utils_t *utils,
   sasl_getopt_t *getopt;
   const char *path = SASL_DB_PATH;
 
-  if (!authid || !propName || !realm || !out || !max_out)
+  if (!utils) return SASL_BADPARAM;
+  if (!authid || !propName || !realm || !out || !max_out) {
+      utils->seterror(conn, 0,
+		      "Bad parameter in db_ndbm.c: _sasldb_getdata");    
       return SASL_BADPARAM;
-  if (!db_ok)
+  }
+  if (!db_ok) {
+      utils->seterror(conn, 0, "Database not checked");
       return SASL_FAIL;
+  }
 
   result = _sasldb_alloc_key(utils, authid, realm, propName,
 			     &key, &key_len);
-  if (result != SASL_OK)
-    return result;
+  if (result != SASL_OK) {
+      utils->seterror(conn, 0,
+		      "Could not allocate key in _sasldb_getdata");
+      return result;
+  }
 
   if (utils->getcallback(conn, SASL_CB_GETOPT,
                         &getopt, &cntxt) == SASL_OK) {
@@ -92,26 +101,30 @@ int _sasldb_getdata(const sasl_utils_t *utils,
   }
   db = dbm_open(path, O_RDONLY, S_IRUSR | S_IWUSR);
   if (! db) {
-    return SASL_FAIL;
+      utils->seterror(cntxt, 0, "Could not open db");
+      return SASL_FAIL;
   }
   dkey.dptr = key;
   dkey.dsize = key_len;
   dvalue = dbm_fetch(db, dkey);
   if (! dvalue.dptr) {
-    result = SASL_NOUSER;
-    goto cleanup;
+      utils->seterror(cntxt, 0, "no user in db");
+      result = SASL_NOUSER;
+      goto cleanup;
   }
 
-  if((size_t)dvalue.dsize > max_out + 1)
+  if((size_t)dvalue.dsize > max_out + 1) {
+      utils->seterror(cntxt, 0, "buffer overflow");
       return SASL_BUFOVER;
+  }
 
   if(out_len) *out_len = dvalue.dsize;
   memcpy(out, dvalue.dptr, dvalue.dsize); 
   out[dvalue.dsize] = '\0';
 
+#if NDBM_FREE
   /* Note: not sasl_FREE!  This is memory allocated by ndbm,
    * which is using libc malloc/free. */
-#if NDBM_FREE
   free(dvalue.dptr);
 #endif
 
@@ -138,13 +151,21 @@ int _sasldb_putdata(const sasl_utils_t *utils,
   sasl_getopt_t *getopt;
   const char *path = SASL_DB_PATH;
 
-  if (!authid || !realm || !propName)
-    return SASL_FAIL;
+  if (!utils) return SASL_BADPARAM;
+
+  if (!authid || !realm || !propName) {
+      utils->seterror(cntxt, 0,
+		      "Bad parameter in db_ndbm.c: _sasldb_putdata");
+      return SASL_BADPARAM;
+  }
 
   result = _sasldb_alloc_key(utils, authid, realm, propName,
 			     &key, &key_len);
-  if (result != SASL_OK)
-    return result;
+  if (result != SASL_OK) {
+      utils->seterror(cntxt, 0,
+		      "Could not allocate key in _sasldb_putdata"); 
+      return result;
+  }
 
   if (utils->getcallback(conn, SASL_CB_GETOPT,
 			 &getopt, &cntxt) == SASL_OK) {
@@ -156,11 +177,14 @@ int _sasldb_putdata(const sasl_utils_t *utils,
   }
 
   db = dbm_open(path,
-		O_RDWR | O_CREAT /* TODO: what should this be? */,
+		O_RDWR | O_CREAT,
 		S_IRUSR | S_IWUSR);
   if (! db) {
-    result = SASL_FAIL;
-    goto cleanup;
+      utils->log(cntxt, SASL_LOG_ERR,
+		 "SASL error opening password file. "
+		 "Do you have write permissions?\n");
+      utils->seterror(cntxt, 0, "Could not open db for write");
+      goto cleanup;
   }
   dkey.dptr = key;
   dkey.dsize = key_len;
@@ -169,11 +193,18 @@ int _sasldb_putdata(const sasl_utils_t *utils,
     dvalue.dptr = (void *)data;
     if(!data_len) data_len = strlen(data);
     dvalue.dsize = data_len;
-    if (dbm_store(db, dkey, dvalue, DBM_REPLACE))
-      result = SASL_FAIL;
-  } else
-    if (dbm_delete(db, dkey))
-      result = SASL_NOUSER;
+    if (dbm_store(db, dkey, dvalue, DBM_REPLACE)) {
+	utils->seterror(cntxt, 0,
+			"Couldn't update db");
+	result = SASL_FAIL;
+    }
+  } else {
+      if (dbm_delete(db, dkey)) {
+	  utils->seterror(cntxt, 0,
+			  "Couldn't update db");
+	  result = SASL_NOUSER;
+      }
+  }
   dbm_close(db);
 
  cleanup:
@@ -217,7 +248,11 @@ int _sasl_check_db(const sasl_utils_t *utils,
 
     ret = utils->getcallback(NULL, SASL_CB_VERIFYFILE,
 			     &vf, &cntxt);
-    if(ret != SASL_OK) return ret;
+    if(ret != SASL_OK) {
+	utils->seterror(conn, 0,
+			"No verifyfile callback");
+	return ret;
+    }
 
 #ifdef DBM_SUFFIX
     if (ret == SASL_OK) {
@@ -244,6 +279,8 @@ int _sasl_check_db(const sasl_utils_t *utils,
     if (ret == SASL_OK || ret == SASL_CONTINUE) {
 	return SASL_OK;
     } else {
+	utils->seterror(conn, 0,
+			"Verifyfile failed");
 	return ret;
     }
 }
@@ -266,6 +303,11 @@ sasldb_handle _sasldb_getkeyhandle(const sasl_utils_t *utils,
     
     if(!utils || !conn) return NULL;
 
+    if(!db_ok) {
+	utils->seterror(conn, 0, "Database not OK in _sasldb_getkeyhandle");
+	return NULL;
+    }
+
     if (utils->getcallback(conn, SASL_CB_GETOPT,
 			   &getopt, &cntxt) == SASL_OK) {
 	const char *p;
@@ -277,11 +319,14 @@ sasldb_handle _sasldb_getkeyhandle(const sasl_utils_t *utils,
 
     db = dbm_open(path, O_RDONLY, S_IRUSR | S_IWUSR);
 
-    if(!db)
+    if(!db) {
+	utils->seterror(conn, 0, "Could not open db");
 	return NULL;
+    }
 
     handle = utils->malloc(sizeof(handle_t));
     if(!handle) {
+	utils->seterror(conn, 0, "no memory in _sasldb_getkeyhandle");
 	dbm_close(db);
 	return NULL;
     }
