@@ -1,27 +1,46 @@
 2001-07-25  Rob Siemborski <rjs3+@andrew.cmu.edu>
-	* changed "sasldb" verifier to "auxprop"
+	* lib/saslint.h: changed "sasldb" verifier to "auxprop"
+	* lib/server.c: changed "sasldb" verifier to "auxprop"
+	* lib/checkpw.c: changed "sasldb" verifier to "auxprop"
+	* utils/testsuite.c: changed "sasldb" verifier to "auxprop"
+	* doc/options.html: changed "sasldb" verifier to "auxprop"
 
 2001-07-24  Rob Siemborski <rjs3+@andrew.cmu.edu>
-	* Cleaned up some direct calls into the glue code in sasldb.c
-	* Cleaned up java test utilities and gave them a build system
-	* Minor GSSAPI configure changes
-	* Clarfied -d option for saslpasswd
-	* Added plugin programmer's guide
-        * corrected FreeBSD-related configure checking of Berkeley DB
-          as well as treatment of libcom_err
+	* plugins/sasldb.c: Cleaned up calls into the glue code
+
+	* java/Test/*: Cleaned up java test utilities
+	
+	* configure.in: Minor GSSAPI configure changes
+
+	* utils/saslpasswd.c: Clarfied -d option for saslpasswd
+	* utils/saslpasswd.8: Clarfied -d option for saslpasswd
+	
+	* doc/plugprog.html: Added plugin programmer's guide
+	* doc/index.html: linked to plugin programmer's guide
+	
+        * configure.in: corrected configure checking of Berkeley DB
           (from Scot W. Hetzel <scot@genroco.com>)
 
-2001-07-23  Rob Siemborski <rjs3+@andrew.cmu.edu>
-	* Added check for db3/db.h
-	* Added check for ip address information in mech_avail for
-	  KERBEROS_V4
-	* Fixed setting of serverFQDN in _sasl_conn_init
-	* Fully Implemented mech_avail calls in glue code
-	* Stabalized allocation/destruction of sasl_conn_t's
-	  (initialized to zero and cleared up some ordering of
-	   what got allocated/destroyed when)
-	* Added options.html to doc directory
+	* configure.in: corrected checking for libcom_err
+	  (from Scot W. Hetzel <scot@genroco.com>)
 
+2001-07-23  Rob Siemborski <rjs3+@andrew.cmu.edu>
+	* configure.in: Added check for db3/db.h
+
+	* plugins/kerberos4.c Added mech_avail (checks for IP info)
+	
+	* lib/common.c: Fixed setting of serverFQDN in _sasl_conn_init
+	
+	* lib/server.c: Fully Implemented mech_avail calls in glue code
+	
+	* lib/server.c: Fixed allocation/destruction of sasl_conn_t's
+	* lib/client.c: Fixed allocation/destruction of sasl_conn_t's
+	* lib/common.c: Rely on earlier initialization in server.c and client.c
+
+	* doc/options.html: added
+
+	* ChangeLog: back to standard format
+	
 2001-07-20  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Can now deal with variable client-first mechs such as
 	  DIGEST-MD5, though this interface is subject to change
