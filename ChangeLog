@@ -1,4 +1,10 @@
 2001-08-13  Rob Siemborski <rjs3+@andrew.cmu.edu>
+	* plugins/digestmd5.c (init_des, init_3des, enc_des, dec_des,
+	  enc_3des, dec_3des): fixed interoperability problems,
+	  3des was not decrypting with correct key and des was not
+	  setting up the initial vector.
+
+2001-08-13  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* utils/testsuite.c (giveokpath): fix memory leak
 
 	* lib/common.c (sasl_ipfromstring): add call to freeaddrinfo()

@@ -2,7 +2,7 @@
  * Rob Siemborski
  * Tim Martin
  * Alexey Melnikov 
- * $Id: digestmd5.c,v 1.97.2.27 2001/08/09 15:45:30 rjs3 Exp $
+ * $Id: digestmd5.c,v 1.97.2.28 2001/08/14 15:58:41 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -55,9 +55,6 @@
 #endif
 #include <fcntl.h>
 #include <ctype.h>
-
-/* DES currently disabled until we figure out what's wrong */
-#undef WITH_DES
 
 /* DES support */
 #ifdef WITH_DES
@@ -910,41 +907,15 @@ static int dec_3des(void *v,
 			 inputlen,
 			 text->keysched_dec,
 			 text->keysched_dec2,
-			 &text->ivec_enc,
+			 &text->ivec_dec,
 			 DES_DECRYPT);
-
-#if 0
-    unsigned int lup;
-
-    for (lup=0;lup<inputlen;lup+=8)
-    {
-	/* decrypt with 1st key */
-	des_ecb_encrypt((des_cblock *) (input+lup),
-			(des_cblock *) ((output)+lup),
-			text->keysched_dec,
-			DES_DECRYPT);
-
-	/* encrypt with 2nd key */
-	des_ecb_encrypt((des_cblock *) ((output)+lup),
-			(des_cblock *) ((output)+lup),
-			text->keysched_dec2,
-			DES_ENCRYPT);
-	
-	/* decrypt with 1st key */
-	des_ecb_encrypt((des_cblock *) ((output)+lup),
-			(des_cblock *) ((output)+lup),
-			text->keysched_dec,
-			DES_DECRYPT);
-	
-    }
-#endif
     
     /* now chop off the padding */
     *outputlen=inputlen - (output)[inputlen-11]-10;
-    
+
     /* copy in the HMAC to digest */
     memcpy(digest, (output)+inputlen-10, 10);
-  
+    
     return SASL_OK;
 }
 
@@ -968,7 +939,7 @@ int enc_3des(void *v,
     memcpy(output+inputlen+paddinglen, digest, 10); /* hmac */
     
     len=inputlen+paddinglen+10;
-    
+
     des_ede2_cbc_encrypt((des_cblock *) output,
 			 (des_cblock *) output,
 			 len,
@@ -976,34 +947,10 @@ int enc_3des(void *v,
 			 text->keysched_enc2,
 			 &text->ivec_enc,
 			 DES_ENCRYPT);
+
+    *outputlen=len;
     
-#if 0
-    int lup;
-
-  for (lup=0;lup<len;lup+=8)
-  {
-      /* encrpyt with 1st key */
-      des_ecb_encrypt((des_cblock *)(output+lup),
-		      (des_cblock *)(output+lup),
-		      text->keysched_enc,
-		      DES_ENCRYPT);    
-    /* decrpyt with 2nd key */
-    des_ecb_encrypt((des_cblock *) ((output)+lup),
-		    (des_cblock *) ((output)+lup),
-		    text->keysched_enc2,
-		    DES_DECRYPT);
-    /* encrpyt with 1st key */
-    des_ecb_encrypt((des_cblock *) ((output)+lup),
-		    (des_cblock *) ((output)+lup),
-		    text->keysched_enc,
-		    DES_ENCRYPT);
-
-  }
-#endif
-
-  *outputlen=len;
-
-  return SASL_OK;
+    return SASL_OK;
 }
 
 static int init_3des(void *v, 
@@ -1015,11 +962,15 @@ static int init_3des(void *v,
 {
     context_t *text = (context_t *) v;
 
-    des_key_sched((des_cblock *) enckey, text->keysched_enc);
-    des_key_sched((des_cblock *) deckey, text->keysched_dec);
+    if(des_key_sched((des_cblock *) enckey, text->keysched_enc) < 0)
+	return SASL_FAIL;
+    if(des_key_sched((des_cblock *) deckey, text->keysched_dec) < 0)
+	return SASL_FAIL;
     
-    des_key_sched((des_cblock *) (enckey+7), text->keysched_enc2);
-    des_key_sched((des_cblock *) (deckey+7), text->keysched_dec2);
+    if(des_key_sched((des_cblock *) (enckey+7), text->keysched_enc2) < 0)
+	return SASL_FAIL;
+    if(des_key_sched((des_cblock *) (deckey+7), text->keysched_dec2) < 0)
+	return SASL_FAIL;
 
     memcpy(text->ivec_enc, ((char *) enckey) + 8, 8);
     memcpy(text->ivec_dec, ((char *) deckey) + 8, 8);
@@ -1049,24 +1000,12 @@ static int dec_des(void *v,
 		  text->keysched_dec,
 		  &text->ivec_dec,
 		  DES_DECRYPT);
-#if 0
-  unsigned int lup;
-
-  for (lup=0;lup<inputlen;lup+=8)
-  {
-      /* decrypt with 1st key */
-      des_ecb_encrypt((des_cblock *)(input+lup),
-		      (des_cblock *) ((output)+lup),
-		      text->keysched_dec,
-		      DES_DECRYPT);
-  }
-#endif
 
   /* now chop off the padding */
   *outputlen=inputlen- (output)[inputlen-11]-10;
 
   /* copy in the HMAC to digest */
-  memcpy(digest, (output)+inputlen-10, 10);
+  memcpy(digest, output+inputlen-10, 10);
   
   return SASL_OK;
 }
@@ -1081,7 +1020,8 @@ static int enc_des(void *v,
   context_t *text = (context_t *) v;
   int len;
   int paddinglen;
-
+  char foo[10000];
+  
   /* determine padding length */
   paddinglen=8- ((inputlen+10)%8);
 
@@ -1093,24 +1033,13 @@ static int enc_des(void *v,
   len=inputlen+paddinglen+10;
 
   des_cbc_encrypt((des_cblock *) output,
-		  (des_cblock *) output,
+		  (des_cblock *) foo,
 		  len,
 		  text->keysched_enc,
 		  &text->ivec_enc,
 		  DES_ENCRYPT);
 
-#if 0
-  int lup;
-
-  for (lup=0;lup<len;lup+=8)
-  {
-      /* encrpyt with 1st key */
-      des_ecb_encrypt((des_cblock *)(output+lup),
-		      (des_cblock *)(output+lup),
-		      text->keysched_enc,
-		      DES_ENCRYPT);    
-  }
-#endif
+  memcpy(output, foo, len);
 
   *outputlen=len;
 
@@ -1127,6 +1056,9 @@ static int init_des(void *v,
     memcpy(text->ivec_enc, ((char *) enckey) + 8, 8);
 
     des_key_sched((des_cblock *) deckey, text->keysched_dec);
+    memcpy(text->ivec_dec, ((char *) deckey) + 8, 8);
+
+    memcpy(text->ivec_enc, ((char *) enckey) + 8, 8);
     memcpy(text->ivec_dec, ((char *) deckey) + 8, 8);
 
     return SASL_OK;
@@ -1603,7 +1535,8 @@ digestmd5_privacy_decode_once(context_t *text,
       for (lup=0;lup<10;lup++)
 	if (checkdigest[lup]!=digest[lup])
 	{
-	    text->utils->seterror(text->utils->conn, 0, "CMAC doesn't match!");
+	    text->utils->seterror(text->utils->conn, 0,
+				  "CMAC doesn't match at byte %d!", lup);
 	    return SASL_FAIL;
 	} 
 
@@ -1764,10 +1697,6 @@ create_MAC(context_t * text,
 
   tmpnum = htonl(seqnum);
   memcpy(MAC + 12, &tmpnum, 4);	/* 4 bytes = sequence number */
-
-  /*
-   * for (lup=0;lup<16;lup++) printf("%i. MAC=%i\n",lup,MAC[lup]);
-   */
 
   return SASL_OK;
 }
@@ -2578,7 +2507,10 @@ digestmd5_server_mech_step(void *conn_context,
       
       /* initialize cipher if need be */
       if (text->cipher_init)
-	text->cipher_init(text, enckey, deckey);
+	  if (text->cipher_init(text, enckey, deckey) != SASL_OK) {
+	      sparams->utils->seterror(sparams->utils->conn, 0,
+				       "couldn't init cipher");
+	  }
     }
 
     /*
