@@ -13,6 +13,9 @@
 
 	* plugins/gssapi.c: conform with draft-ietf-cat-sasl-gssapi-05.txt
 
+	* doc/draft-ietf-cat-sasl-gssapi-05.txt: added
+	* doc/Makefile.am (EXTRA_DIST): added above to EXTRA_DIST
+
 2001-08-06  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* utils/dbconverter-2.c (listusers_cb): handle PLAIN-APOP
 
