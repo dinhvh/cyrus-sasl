@@ -38,24 +38,41 @@
 .\" AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\" 
-.TH SASL "10 July 2001" SASL "SASL man pages"
+.TH sasl_user_exists "10 July 2001" SASL "SASL man pages"
 .SH NAME
-SASL \- SASL authentication library
+sasl_user_exists \- Check if a user exists on server
+
+.SH SYNOPSIS
+.nf
+.B #include <sasl/sasl.h>
+
+.sp
+.BI "int sasl_idle( sasl_conn_t " *conn ","
+.BI "               const char " *service ", const char " *user_realm ","
+.BI "               const char " *user ")"
+
+.fi
 .SH DESCRIPTION
-The CMU Cyrus SASL library is a general purpose authentication library for sever and client applications.
 
-.B System Administrators:
+.B sasl_user_exists
+will check if a user exists on the server.
 
-For information on setting up/configuring the SASL library see the 
-.I System Administrators Guide
-in the doc/ directory of the SASL distribution.
+.I conn
+a connection context
 
-.B Programmers:
+.I service
+Service name or NULL (for service name of connection context)
 
-See man pages for individual sasl functions or the
-.I Programmers Guide
-in the doc/ directory of the SASL distribution.
+.I user_realm
+Realm to check in or NULL (for default realm)
+
+.I user
+User name to check for existance of.
+
+.SH "RETURN VALUE"
+Returns SASL_OK on success. SASL error code on failure.
+
 .SH "CONFORMING TO"
 RFC 2222
 .SH "SEE ALSO"
-sasl_authorize_t(3), sasl_auxprop(3), sasl_auxprop_getctx(3), sasl_auxprop_request(3), sasl_callbacks(3), sasl_chalprompt_t(3), sasl_checkapop(3), sasl_checkpass(3), sasl_client_init(3), sasl_client_new(3), sasl_client_start(3), sasl_client_step(3), sasl_decode(3), sasl_dispose(3), sasl_done(3), sasl_encode(3), sasl_encodev(3), sasl_errdetail(3), sasl_errors(3), sasl_errstring(3), sasl_errors(3), sasl_getopt_t(3), sasl_getpath_t(3), sasl_getprop(3), sasl_getrealm_t(3), sasl_getsecret_t(3), sasl_getsimple_t(3), sasl_idle(3), sasl_listmech(3), sasl_log_t(3), sasl_server_init(3), sasl_server_new(3), sasl_server_start(3), sasl_server_step(3), sasl_setprop(3), sasl_user_exists(3), sasl_verifyfile_t(3)
+sasl(3), sasl_errors(3)
