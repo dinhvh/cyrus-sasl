@@ -51,168 +51,7 @@
 #include <saslutil.h>
 #include "saslint.h"
 
-static int
-external_client_new(void *glob_context __attribute__((unused)),
-		    sasl_client_params_t *params __attribute__((unused)),
-		    void **conn_context)
-{
-  if (!params
-      || !params->utils
-      || !params->utils->conn
-      || !conn_context)
-    return SASL_BADPARAM;
-  if (!params->utils->conn->external.auth_id)
-    return SASL_NOMECH;
-  *conn_context = NULL;
-  return SASL_OK;
-}
-
-static int
-external_client_step(void *conn_context __attribute__((unused)),
-		     sasl_client_params_t *params,
-		     const char *serverin __attribute__((unused)),
-		     int serverinlen,
-		     sasl_interact_t **prompt_need,
-		     char **clientout,
-		     int *clientoutlen,
-		     sasl_out_params_t *oparams)
-{
-  int result;
-  sasl_getsimple_t *getuser_cb;
-  void *getuser_context;
-  const char *user;
-  unsigned len;
-
-  if (!params
-      || !params->utils
-      || !params->utils->conn
-      || !params->utils->getcallback
-      || !clientout
-      || !clientoutlen
-      || !oparams)
-    return SASL_BADPARAM;
-
-  if (!params->utils->conn->external.auth_id)
-    return SASL_BADPROT;
-
-  if (serverinlen != 0)
-    return SASL_BADPROT;
-
-  if (prompt_need && *prompt_need) {
-    /* Second time through; we used a SASL_INTERACT to get the user. */
-    if (! (*prompt_need)[0].result)
-      return SASL_BADPARAM;
-    user = (*prompt_need)[0].result;
-    *clientoutlen = strlen(user);
-    params->utils->free(*prompt_need);
-    *prompt_need = NULL;
-  } else {
-    /* We need to get the user. */
-    result = params->utils->getcallback(params->utils->conn,
-					SASL_CB_USER,
-					&getuser_cb,
-					&getuser_context);
-    switch (result) {
-    case SASL_INTERACT:
-      /* Set up the interaction... */
-      if (prompt_need) {
-	*prompt_need = params->utils->malloc(sizeof(sasl_interact_t) * 2);
-	if (! *prompt_need)
-	  return SASL_FAIL;
-	memset(*prompt_need, 0, sizeof(sasl_interact_t) * 2);
-	(*prompt_need)[0].id = SASL_CB_USER;
-	(*prompt_need)[0].prompt = "Authorization Identity";
-	(*prompt_need)[0].defresult = "";
-	(*prompt_need)[1].id = SASL_CB_LIST_END;
-      }
-      return SASL_INTERACT;
-    case SASL_OK:
-      if (getuser_cb &&
-	  (getuser_cb(getuser_context,
-		      SASL_CB_USER,
-		      &user,
-		      &len)
-	   == SASL_OK)) {
-	*clientoutlen = strlen(user);
-	break;
-      }
-      /* Otherwise, drop through into the default we-lose case. */
-    default:
-      /* Assume userid == authid. */
-      user = NULL;
-      *clientoutlen = 0;
-    }
-  }
-
-  *clientout = params->utils->malloc(*clientoutlen + 1);
-  if (! clientout)
-    return SASL_FAIL;
-  if (user)
-    memcpy(*clientout, user, *clientoutlen);
-  (*clientout)[*clientoutlen] = '\0';
-  
-  if (prompt_need)
-    *prompt_need = NULL;
-
-  result = _sasl_strdup(params->utils->conn->external.auth_id,
-			&oparams->authid,
-			NULL);
-  if (result == SASL_OK)
-  {
-    oparams->doneflag = 1;
-    oparams->mech_ssf = 0;
-    oparams->maxoutbuf = 0;
-    oparams->encode_context = NULL;
-    oparams->encode = NULL;
-    oparams->getmic = NULL;
-    oparams->decode_context = NULL;
-    oparams->decode = NULL;
-    oparams->verifymic = NULL;
-    oparams->user = NULL;
-    oparams->realm = NULL;
-    oparams->param_version = 0;
-
-    return SASL_OK;
-
-  }  /* otherwise */
-
-  sasl_FREE(*clientout);
-  *clientout = NULL;
-
-  return result;
-}
-
-static const sasl_client_plug_t external_client_mech = {
-  "EXTERNAL",			/* mech_name */
-  0,				/* max_ssf */
-  SASL_SEC_NOPLAINTEXT
-  | SASL_SEC_NODICTIONARY,	/* security_flags */
-  NULL,				/* required_prompts */
-  NULL,				/* glob_context */
-  &external_client_new,		/* mech_new */
-  &external_client_step,	/* mech_step */
-  NULL,				/* mech_dispose */
-  NULL,				/* mech_free */
-  NULL,				/* auth_create */
-  NULL				/* idle */
-};
-
-static int
-external_client_init(sasl_utils_t *utils,
-		     int max_version,
-		     int *out_version,
-		     const sasl_client_plug_t **pluglist,
-		     int *plugcount)
-{
-  if (!utils || !out_version || !pluglist || !plugcount)
-    return SASL_BADPARAM;
-  if (max_version != SASL_CLIENT_PLUG_VERSION)
-    return SASL_BADVERS;
-  *out_version = SASL_CLIENT_PLUG_VERSION;
-  *pluglist = &external_client_mech;
-  *plugcount = 1;
-  return SASL_OK;
-}
+/* FIXME/TODO: External Plugin */
 
 typedef struct cmechanism
 {
@@ -234,14 +73,13 @@ typedef struct sasl_client_conn {
 } sasl_client_conn_t;
 
 typedef struct cmech_list {
-  sasl_utils_t *utils; 
+  const sasl_utils_t *utils; 
 
   void *mutex;            /* mutex for this data */ 
   cmechanism_t *mech_list; /* list of mechanisms */
   int mech_length;       /* number of mechanisms */
 
 } cmech_list_t;
-
 
 static cmech_list_t *cmechlist; /* global var which holds the list */
 
@@ -270,7 +108,7 @@ static void client_done(void) {
       _sasl_done_with_plugin(cprevm->library);
     sasl_FREE(cprevm);    
   }
-  sasl_MUTEX_DISPOSE(cmechlist->mutex);
+  sasl_MUTEX_FREE(cmechlist->mutex);
   _sasl_free_utils(&cmechlist->utils);
   sasl_FREE(cmechlist);
 }
@@ -283,6 +121,8 @@ static int add_plugin(void *p, void *library) {
   int result;
   int version;
   int lupe;
+
+  if(!p || !library) return SASL_BADPARAM;
 
   entry_point = (sasl_client_plug_init_t *)p;
 
@@ -351,6 +191,8 @@ int sasl_client_init(const sasl_callback_t *callbacks)
 {
   int ret;
 
+  printf("in sasl_client_init\n");
+
   _sasl_client_cleanup_hook = &client_done;
   _sasl_client_idle_hook = &client_idle;
 
@@ -361,7 +203,7 @@ int sasl_client_init(const sasl_callback_t *callbacks)
   if (cmechlist==NULL) return SASL_NOMEM;
 
   /* create mutex*/
-  cmechlist->mutex=sasl_MUTEX_NEW();
+  cmechlist->mutex=sasl_MUTEX_ALLOC();
 
   /* load plugins */
   ret=init_mechlist();  
@@ -371,7 +213,8 @@ int sasl_client_init(const sasl_callback_t *callbacks)
   cmechlist->mech_list=NULL;
   cmechlist->mech_length=0;
 
-  add_plugin((void *) &external_client_init, NULL);
+/* FIXME: External Plugin */
+/*  add_plugin((void *) &external_client_init, NULL); */
 
   ret = _sasl_common_init();
 
@@ -389,10 +232,10 @@ static void client_dispose(sasl_conn_t *pconn)
   sasl_client_conn_t *c_conn=(sasl_client_conn_t *) pconn;
 
   if (c_conn->mech && c_conn->mech->plug->mech_dispose)
-    c_conn->mech->plug->mech_dispose(c_conn->base.context,
+    c_conn->mech->plug->mech_dispose(&c_conn->base.context,
 				     c_conn->cparams->utils);
 
-  _sasl_free_utils(&c_conn->cparams->utils);
+  _sasl_free_utils(&(c_conn->cparams->utils));
 
   if (c_conn->serverFQDN!=NULL)
     sasl_FREE(c_conn->serverFQDN);
@@ -405,6 +248,10 @@ static void client_dispose(sasl_conn_t *pconn)
 /* initialize a client exchange based on the specified mechanism
  *  service       -- registered name of the service using SASL (e.g. "imap")
  *  serverFQDN    -- the fully qualified domain name of the server
+ *  iplocalport   -- client IPv4/IPv6 domain literal string with port
+ *                    (if NULL, then mechanisms requiring IPaddr are disabled)
+ *  ipremoteport  -- server IPv4/IPv6 domain literal string with port
+ *                    (if NULL, then mechanisms requiring IPaddr are disabled)
  *  prompt_supp   -- list of client interactions supported
  *                   may also include sasl_getopt_t context & call
  *                   NULL prompt_supp = user/pass via SASL_INTERACT only
@@ -423,12 +270,18 @@ static void client_dispose(sasl_conn_t *pconn)
 
 int sasl_client_new(const char *service,
 		    const char *serverFQDN,
+		    const char *iplocalport,
+		    const char *ipremoteport,
 		    const sasl_callback_t *prompt_supp,
-		    int secflags,
+		    unsigned secflags,
 		    sasl_conn_t **pconn)
 {
   int result;
   sasl_client_conn_t *conn;
+  sasl_utils_t *utils;
+  
+  /* Remember, iplocalport and ipremoteport can be NULL and be valid! */
+  /* FIXME: where do we use them then?!?!? */
   if (!pconn || !service || !serverFQDN)
     return SASL_BADPARAM;
 
@@ -448,12 +301,16 @@ int sasl_client_new(const char *service,
   conn->cparams=sasl_ALLOC(sizeof(sasl_client_params_t));
   if (conn->cparams==NULL) return SASL_NOMEM;
 
-  conn->cparams->utils=_sasl_alloc_utils(*pconn, &global_callbacks);
-  if (conn->cparams->utils==NULL)
+  utils=_sasl_alloc_utils(*pconn, &global_callbacks);
+  if (utils==NULL)
     return SASL_NOMEM;
 
-  conn->cparams->utils->conn= *pconn;
+  utils->conn= *pconn;
+  conn->cparams->utils = utils;
 
+  /* canon_user FIXME this needs to support plugins! */
+  conn->cparams->canon_user = &_sasl_canon_user;
+  
   result = _sasl_strdup(serverFQDN, &conn->serverFQDN, NULL);
 
   if (result == SASL_OK) return SASL_OK;
@@ -518,10 +375,9 @@ static int have_prompts(sasl_conn_t *conn,
  */
 
 int sasl_client_start(sasl_conn_t *conn,
-		      const char *list,
-		      sasl_secret_t *secret,
+		      const char *mechlist,
 		      sasl_interact_t **prompt_need,
-		      char **clientout,
+		      const char **clientout,
 		      unsigned *clientoutlen,
 		      const char **mech)
 {
@@ -534,7 +390,7 @@ int sasl_client_start(sasl_conn_t *conn,
     int result;
 
     /* verify parameters */
-    if (list == NULL)
+    if (mechlist == NULL)
     {
 	return SASL_BADPARAM;
     }
@@ -545,6 +401,8 @@ int sasl_client_start(sasl_conn_t *conn,
        and just need to do the continue step again */
 
     /* do a step */
+    /* FIXME: this is not smart, if prompt_need was a pointer that
+     * was not initialized to null this can in fact be very bad. */
     if (prompt_need && *prompt_need != NULL) {
 	result = c_conn->mech->plug->mech_step(conn->context,
 					       c_conn->cparams,
@@ -557,33 +415,26 @@ int sasl_client_start(sasl_conn_t *conn,
 	return result;
     }
 
-    /* set secret */
-    conn->secret=secret;
-
-    /* Get app's desired sec props */
-    if (conn->props.min_ssf < conn->external.ssf) {
-	minssf = 0;
-    } else {
-	minssf = conn->props.min_ssf - conn->external.ssf;
-    }
-
     /* parse mechlist */
-    VL(("mech list from server is %s\n", list));
-    list_len = strlen(list);
+    VL(("mech list from server is %s\n", mechlist));
+    list_len = strlen(mechlist);
+
+    fprintf(stderr, "mech list is (%s) [%d]\n", mechlist, list_len);
+
     while (pos<list_len)
     {
 	place=0;
-	while ((pos<list_len) && (isalnum((unsigned char)list[pos])
-				  || list[pos] == '_'
-				  || list[pos] == '-')) {
-	    name[place]=list[pos];
+	while ((pos<list_len) && (isalnum((unsigned char)mechlist[pos])
+				  || mechlist[pos] == '_'
+				  || mechlist[pos] == '-')) {
+	    name[place]=mechlist[pos];
 	    pos++;
 	    place++;
 	    if (SASL_MECHNAMEMAX <= place) {
 		place--;
-		while(pos<list_len && (isalnum((unsigned char)list[pos])
-				       || list[pos] == '_'
-				       || list[pos] == '-'))
+		while(pos<list_len && (isalnum((unsigned char)mechlist[pos])
+				       || mechlist[pos] == '_'
+				       || mechlist[pos] == '-'))
 		    pos++;
 	    }
 	}
@@ -647,7 +498,6 @@ int sasl_client_start(sasl_conn_t *conn,
     /* make cparams */
     c_conn->cparams->serverFQDN = c_conn->serverFQDN; 
     c_conn->cparams->service = conn->service;
-    c_conn->cparams->external_ssf = conn->external.ssf;
     c_conn->cparams->props = conn->props;
     c_conn->mech = bestm;
 
@@ -686,7 +536,7 @@ int sasl_client_step(sasl_conn_t *conn,
 		     const char *serverin,
 		     unsigned serverinlen,
 		     sasl_interact_t **prompt_need,
-		     char **clientout,
+		     const char **clientout,
 		     unsigned *clientoutlen)
 {
   sasl_client_conn_t *c_conn= (sasl_client_conn_t *) conn;

@@ -174,7 +174,7 @@ int _sasl_get_plugin(const char *file,
     flag = 0;
 #endif
     if (!(library = dlopen(file, flag))) {
-	_sasl_log(NULL, SASL_LOG_ERR, NULL, 0, 0,
+	_sasl_log(NULL, SASL_LOG_ERR,
 		  "unable to dlopen %s: %s", file, dlerror());
 	return SASL_FAIL;
     }
@@ -186,7 +186,7 @@ int _sasl_get_plugin(const char *file,
     entry_point = NULL;
     entry_point = dlsym(library, adj_entryname);
     if (entry_point == NULL) {
-	_sasl_log(NULL, SASL_LOG_ERR, NULL, 0, 0,
+	_sasl_log(NULL, SASL_LOG_ERR,
 		  "unable to get entry point %s in %s: %s", adj_entryname,
 		  file, dlerror());
 	return SASL_FAIL;
@@ -278,8 +278,8 @@ int _sasl_get_mech_list(const char *entryname,
 		if (result == SASL_OK) {
 		    result = (*add_plugin)(entry_point, library);
 		    if (result != SASL_OK) {
-			_sasl_log(NULL, SASL_LOG_ERR, NULL, result, 0,
-				  "add_plugin(%s) failed: %z", tmp);
+			_sasl_log(NULL, SASL_LOG_ERR,
+				  "add_plugin(%s) failed: %z", tmp, result);
 			dlclose(library);
 			continue;
 		    }

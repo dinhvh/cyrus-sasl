@@ -46,6 +46,7 @@
 #include <time.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <ctype.h>
 #ifdef HAVE_GETTIMEOFDAY
 #include <sys/time.h>
 #endif
@@ -154,14 +155,18 @@ int sasl_encode64(const char *_in, unsigned inlen,
  *  in     -- input data
  *  inlen  -- length of input data
  *  out    -- output data (may be same as in, must have enough space)
+ *  outmax  -- max size of output buffer
  * result:
  *  outlen -- actual output length
  *
- * returns SASL_BADPROT on bad base64, SASL_OK on success
+ * returns:
+ * SASL_BADPROT on bad base64,
+ * SASL_BUFOVER if result won't fit,
+ * SASL_OK on success
  */
 
 int sasl_decode64(const char *in, unsigned inlen,
-		  char *out, unsigned *outlen)
+		  char *out, unsigned outmax, unsigned *outlen)
 {
     unsigned len = 0,lup;
     int c1, c2, c3, c4;
@@ -176,22 +181,22 @@ int sasl_decode64(const char *in, unsigned inlen,
     for (lup=0;lup<inlen/4;lup++)
     {
         c1 = in[0];
-        if (CHAR64(c1) == -1) return SASL_FAIL;
+        if (CHAR64(c1) == -1) return SASL_BADPROT;
         c2 = in[1];
-        if (CHAR64(c2) == -1) return SASL_FAIL;
+        if (CHAR64(c2) == -1) return SASL_BADPROT;
         c3 = in[2];
-        if (c3 != '=' && CHAR64(c3) == -1) return SASL_FAIL; 
+        if (c3 != '=' && CHAR64(c3) == -1) return SASL_BADPROT; 
         c4 = in[3];
-        if (c4 != '=' && CHAR64(c4) == -1) return SASL_FAIL;
+        if (c4 != '=' && CHAR64(c4) == -1) return SASL_BADPROT;
         in += 4;
         *out++ = (CHAR64(c1) << 2) | (CHAR64(c2) >> 4);
-        ++len;
+        if(++len >= outmax) return SASL_BUFOVER;
         if (c3 != '=') {
             *out++ = ((CHAR64(c2) << 4) & 0xf0) | (CHAR64(c3) >> 2);
-            ++len;
+            if(++len >= outmax) return SASL_BUFOVER;
             if (c4 != '=') {
                 *out++ = ((CHAR64(c3) << 6) & 0xc0) | CHAR64(c4);
-                ++len;
+                if(++len >= outmax) return SASL_BUFOVER;
             }
         }
     }
@@ -215,7 +220,7 @@ int sasl_decode64(const char *in, unsigned inlen,
 int sasl_mkchal(sasl_conn_t *conn,
 		char *buf,
 		unsigned maxlen,
-		int hostflag)
+		unsigned hostflag)
 {
   sasl_rand_t *pool = NULL;
   unsigned long randnum;
@@ -393,6 +398,145 @@ void sasl_churn (sasl_rand_t *rpool, const char *data, unsigned len)
     
     for (lup=0; lup<len; lup++)
 	rpool->pool[lup % 3] ^= data[lup];
+}
+
+/* FIXME: This has some nasty signed/unsignedness with it, but... */
+void sasl_erasebuffer(char *buf, unsigned len) {
+    bzero((void *)buf, len);
+}
+
+/* FIXME: This only parses IPV4 addresses */
+int _sasl_iptostring(const struct sockaddr_in *addr,
+		     char *out, unsigned outlen) {
+    unsigned char a[4];
+    int i;
+    
+    /* FIXME: Weak bounds check, are we less than the largest possible size? */
+    /* (21 = 4*3 for address + 3 periods + 1 semicolon + 5 port digits */
+    if(outlen <= 21) return SASL_BUFOVER;
+    if(!addr || !out) return SASL_BADPARAM;
+
+    bzero(out,outlen);
+
+    for(i=3; i>=0; i--) {
+	a[i] = (addr->sin_addr.s_addr & (0xFF << (8*i))) >> (i*8);
+	printf("%d:%d\n",i,(int)a[i]);
+    }
+    
+    snprintf(out,outlen,"%d.%d.%d.%d;%d",(int)a[3],(int)a[2],
+	                                 (int)a[1],(int)a[0],
+	                                 (int)addr->sin_port);
+
+    return SASL_OK;
+}
+
+
+/* FIXME: This only parses IPV4 addresses */
+int _sasl_ipfromstring(const char *addr, struct sockaddr_in *out) 
+{
+    int i;
+    unsigned int val = 0;
+    unsigned int port;
+    
+    if(!addr || !out) return SASL_BADPARAM;
+
+    /* Parse the address */
+    for(i=0; i<4 && *addr && *addr != ';'; i++) {
+	int inval;
+	
+	inval = atoi(addr);
+	if(inval < 0 || inval > 255) return SASL_BADPARAM;
+
+	val = val << 8;
+	val |= inval;
+	
+        for(;*addr && *addr != '.' && *addr != ';'; addr++)
+	    if(!isdigit(*addr)) return SASL_BADPARAM;
+
+	/* skip the separator */
+	addr++;
+    }
+    
+    /* We have a bad ip address if we have less than 4 octets, or
+     * if we didn't just skip a semicolon */
+    if(i!=4 || *(addr-1) != ';') return SASL_BADPARAM;
+    
+    port = atoi(addr);
+
+    /* Ports can only be 16 bits in IPV4 */
+    if((port & 0xFFFF) != port) return SASL_BADPARAM;
+        
+    for(;*addr;addr++)
+	if(!isdigit(*addr)) return SASL_BADPARAM;
+    
+    bzero(out, sizeof(struct sockaddr_in));
+    out->sin_addr.s_addr = val;
+    out->sin_port = port;
+
+    return SASL_OK;
+}
+
+/* default behavior: eliminate leading & trailing whitespace,
+ * null-terminate, and get into the outparams */
+/* a zero ulen or alen indicates that it is strlen(value) */
+/* FIXME: Plugin Support */
+int _sasl_canon_user(sasl_conn_t *conn,
+                     const char *user, unsigned ulen,
+                     const char *authid, unsigned alen,
+                     unsigned flags __attribute__((unused)),
+                     sasl_out_params_t *oparams)
+{
+    const char *begin_u, *begin_a;
+    unsigned i;
+
+    if(!conn || !user || !authid || !oparams) return SASL_BADPARAM;
+
+    if(!ulen) ulen = strlen(user);
+    if(!alen) alen = strlen(authid);
+
+    /* Strip User ID */
+    for(i=0;isspace(user[i]) && i<ulen;i++);
+    begin_u = &(user[i]);
+    if(i>0) ulen -= i;
+
+    for(;isspace(begin_u[ulen-1]) && ulen > 0; ulen--);
+    if(begin_u == &(user[ulen])) return SASL_FAIL;
+
+    /* Strip Auth ID */
+    for(i=0;isspace(authid[i]) && i<alen;i++);
+    begin_a = &(authid[i]);
+    if(i>0) alen -= i;
+
+    for(;isspace(begin_a[alen-1]) && alen > 0; alen--);
+    if(begin_a == &(user[alen])) return SASL_FAIL;
+    
+    /* Now allocate the memory */
+    if(!conn->user_buf) conn->user_buf = sasl_ALLOC(ulen + 1);
+    else conn->user_buf = sasl_REALLOC(conn->user_buf, ulen + 1);
+    
+    if(!conn->user_buf) return SASL_NOMEM;
+    
+    if(!conn->authid_buf) conn->authid_buf = sasl_ALLOC(alen + 1);
+    else conn->authid_buf = sasl_REALLOC(conn->authid_buf, alen + 1);
+
+    if(!conn->authid_buf) {
+	sasl_FREE(conn->user_buf);
+	return SASL_NOMEM;
+    }
+
+    /* Now copy! */
+    memcpy(conn->user_buf, begin_u, ulen);
+    conn->user_buf[ulen] = '\0';
+    
+    memcpy(conn->authid_buf, begin_a, alen);
+    conn->authid_buf[alen] = '\0';
+
+    oparams->user = conn->user_buf;
+    oparams->ulen = ulen;
+    oparams->authid = conn->authid_buf;
+    oparams->alen = alen;
+    
+    return SASL_OK;
 }
 
 #ifdef WIN32

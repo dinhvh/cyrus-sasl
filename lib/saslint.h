@@ -75,9 +75,6 @@ extern void (*_sasl_server_cleanup_hook)(void);
 extern int (*_sasl_client_idle_hook)(sasl_conn_t *conn);
 extern int (*_sasl_server_idle_hook)(sasl_conn_t *conn);
 
-extern sasl_server_getsecret_t *_sasl_server_getsecret_hook;
-extern sasl_server_putsecret_t *_sasl_server_putsecret_hook;
-
 extern int _sasl_strdup(const char *in, char **out, int *outlen);
 
 typedef struct {
@@ -93,7 +90,6 @@ struct sasl_conn {
   int secflags;  /* security layer flags passed to sasl_*_new */
   int got_ip_local, got_ip_remote;
   struct sockaddr_in ip_local, ip_remote;
-  sasl_external_properties_t external;
 
   void *context;
   sasl_out_params_t oparams;
@@ -108,6 +104,11 @@ struct sasl_conn {
 						    * for this
 						    * connection */
   char *serverFQDN;
+
+  /* Pointers to memory that we are responsible for */
+  char *encode_buf, *decode_buf;
+  unsigned encode_buf_len, decode_buf_len;
+  char *user_buf, *authid_buf;
 };
 
 extern int _sasl_conn_init(sasl_conn_t *conn,
@@ -141,19 +142,19 @@ extern sasl_allocation_utils_t _sasl_allocation_utils;
 #define sasl_FREE(__ptr__) (_sasl_allocation_utils.free((__ptr__)))
 
 typedef struct sasl_mutex_utils {
-  sasl_mutex_new_t *new;
+  sasl_mutex_alloc_t *alloc;
   sasl_mutex_lock_t *lock;
   sasl_mutex_unlock_t *unlock;
-  sasl_mutex_dispose_t *dispose;
+  sasl_mutex_free_t *free;
 } sasl_mutex_utils_t;
 
 extern sasl_mutex_utils_t _sasl_mutex_utils;
 
-#define sasl_MUTEX_NEW() (_sasl_mutex_utils.new())
+#define sasl_MUTEX_ALLOC() (_sasl_mutex_utils.alloc())
 #define sasl_MUTEX_LOCK(__mutex__) (_sasl_mutex_utils.lock((__mutex__)))
 #define sasl_MUTEX_UNLOCK(__mutex__) (_sasl_mutex_utils.unlock((__mutex__)))
-#define sasl_MUTEX_DISPOSE(__mutex__) \
-	(_sasl_mutex_utils.dispose((__mutex__)))
+#define sasl_MUTEX_FREE(__mutex__) \
+	(_sasl_mutex_utils.free((__mutex__)))
 
 extern sasl_utils_t *
 _sasl_alloc_utils(sasl_conn_t *conn,
@@ -161,10 +162,6 @@ _sasl_alloc_utils(sasl_conn_t *conn,
 
 extern int
 _sasl_free_utils(sasl_utils_t ** utils);
-
-extern sasl_server_getsecret_t *_sasl_db_getsecret;
-
-extern sasl_server_putsecret_t *_sasl_db_putsecret;
 
 extern int
 _sasl_server_check_db(const sasl_callback_t *verifyfile_cb);
@@ -175,13 +172,10 @@ _sasl_getcallback(sasl_conn_t * conn,
 		  int (**pproc)(),
 		  void **pcontext);
 
-extern int
+extern void
 _sasl_log(sasl_conn_t *conn,
-	  int priority,
-	  const char *plugin_name,
-	  int sasl_error,	/* %z */
-	  int error_value, /* %m */
-	  const char *format,
+	  int level,
+	  const char *fmt,
 	  ...);
 
 /* config file declarations (config.c) */
@@ -211,5 +205,28 @@ extern int _sasl_sasldb_set_pass(sasl_conn_t *conn,
 				 const char *user_realm,
 				 int flags,
 				 const char **errstr);
+
+
+/* The following is defined in common.c */
+/* Basically a conditional call to realloc(), if we need more */
+int _buf_alloc(char **rwbuf, unsigned *curlen, unsigned newlen);
+
+/* convert an iovec to a single buffer */
+int _iovec_to_buf(const struct iovec *vec, unsigned numiov,
+		  char **output, unsigned *outputlen);
+
+
+/* The following are defined in saslutil.c */
+/* FIXME: Should they be in common.c instead? */
+int _sasl_iptostring(const struct sockaddr_in *addr,
+		     char *out, unsigned outlen);
+int _sasl_ipfromstring(const char *addr, struct sockaddr_in *out);
+
+extern int _sasl_canon_user(sasl_conn_t *conn,
+			    const char *user, unsigned ulen,
+			    const char *authid, unsigned alen,
+			    unsigned flags,
+			    sasl_out_params_t *oparams);
+
 
 #endif /* SASLINT_H */
