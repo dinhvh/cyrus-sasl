@@ -1,6 +1,6 @@
 dnl configure.in for the SASL library
 dnl Rob Earhart
-dnl $Id: configure.in,v 1.106.2.20 2001/07/23 15:53:02 rjs3 Exp $
+dnl $Id: configure.in,v 1.106.2.21 2001/07/24 16:27:31 rjs3 Exp $
 dnl
 dnl Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
 dnl
@@ -912,6 +912,7 @@ doc/Makefile
 sample/Makefile
 java/Makefile
 java/CyrusSasl/Makefile
+java/Test/Makefile
 java/javax/Makefile
 java/javax/security/Makefile
 java/javax/security/auth/Makefile

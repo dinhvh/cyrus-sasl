@@ -1,5 +1,6 @@
 2001-07-24  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Cleaned up some direct calls into the glue code in sasldb.c
+	* Cleaned up java test utilities and gave them a build system
 
 2001-07-23  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Added check for db3/db.h

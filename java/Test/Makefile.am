@@ -23,5 +23,5 @@
 #PERFORMANCE OF THIS SOFTWARE.
 ################################################################
 
-SUBDIRS = CyrusSasl javax Test
-EXTRA_DIST = doc
+EXTRA_DIST = ServerHandler.java Handler.java jimtest.java testserver.java \
+	     jimtest-compile.sh jimtest.sh
