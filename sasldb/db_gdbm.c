@@ -1,7 +1,7 @@
 /* db_gdbm.c--SASL gdbm interface
  * Rob Siemborski
  * Rob Earhart
- * $Id: db_gdbm.c,v 1.1.2.2 2001/07/18 18:47:54 rjs3 Exp $
+ * $Id: db_gdbm.c,v 1.1.2.3 2001/07/25 17:37:42 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -54,36 +54,6 @@ static int db_ok = 0;
 
 /* This provides a version of _sasl_db_getsecret and
  * _sasl_db_putsecret which work with gdbm. */
-
-static int alloc_key(const sasl_utils_t *utils,
-		     const char *auth_identity,
-		     const char *realm,
-		     char **key,
-		     size_t *key_len)
-{
-  size_t auth_id_len, realm_len;
-
-  /* this is here for future expansion */
-  const char propName[] = SASL_AUX_PASSWORD;
-  const int propLen = sizeof(propName);
-  
-  assert(utils && auth_identity && realm && key && key_len);
-
-  auth_id_len = strlen(auth_identity);
-  realm_len = strlen(realm);
-  *key_len = auth_id_len + realm_len + propLen + 2;
-  *key = utils->malloc(*key_len);
-  if (! *key)
-    return SASL_NOMEM;
-  memcpy(*key, auth_identity, auth_id_len);
-  (*key)[auth_id_len] = '\0';
-  memcpy(*key + auth_id_len + 1, realm, realm_len);
-  (*key)[auth_id_len + realm_len + 1] = '\0';
-  memcpy(*key + auth_id_len + realm_len + 2, propName, propLen);
-
-  return SASL_OK;
-}
-
 static int
 getsecret(const sasl_utils_t *utils,
 	  sasl_conn_t *conn,
@@ -103,7 +73,8 @@ getsecret(const sasl_utils_t *utils,
   if (!auth_identity || !secret || !realm || !db_ok)
     return SASL_FAIL;
 
-  result = alloc_key(utils, auth_identity, realm, &key, &key_len);
+  result = _sasldb_alloc_key(utils, auth_identity, realm, SASL_AUX_PASSWORD,
+			     &key, &key_len);
   if (result != SASL_OK)
     return result;
 
@@ -168,7 +139,8 @@ putsecret(const sasl_utils_t *utils,
   if (!auth_identity || !realm)
       return SASL_FAIL;
 
-  result = alloc_key(utils, auth_identity, realm, &key, &key_len);
+  result = _sasldb_alloc_key(utils, auth_identity, realm, SASL_AUX_PASSWORD,
+			     &key, &key_len);
   if (result != SASL_OK)
     return result;
 

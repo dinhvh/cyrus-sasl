@@ -1,7 +1,7 @@
-/* saslint.h - internal SASL library definitions
+/* db_berkeley.c--SASL berkeley db interface
  * Rob Siemborski
  * Tim Martin
- * $Id: sasldb.h,v 1.1.2.3 2001/07/25 17:37:42 rjs3 Exp $
+ * $Id: allockey.c,v 1.1.2.1 2001/07/25 17:37:42 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -43,39 +43,41 @@
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef SASLDB_H
-#define SASLDB_H
+#include <config.h>
 
-#include "sasl.h"
-#include "saslplug.h"
+#include <sys/stat.h>
+#include <stdlib.h>
+#include <assert.h>
+#include "sasldb.h"
 
-/* Get a secret from sasldb for the given authid/realm */
-typedef int sasl_server_getsecret_t(const sasl_utils_t *utils,
-				    sasl_conn_t *context,
-				    const char *auth_identity,
-				    const char *realm,
-				    sasl_secret_t ** secret);
-
-/* Put a secret into sasldb for the given authid/realm */
-/* A NULL secret here means to delete the key */
-typedef int sasl_server_putsecret_t(const sasl_utils_t *utils,
-				    sasl_conn_t *context,
-				    const char *auth_identity,
-				    const char *realm,
-				    const sasl_secret_t * secret);
-
-extern sasl_server_getsecret_t *_sasl_db_getsecret;
-extern sasl_server_putsecret_t *_sasl_db_putsecret;
-
-int _sasl_check_db(const sasl_utils_t *utils);
-
-/* This function is internal, but might be useful to have around */
+/*
+ * Construct a key
+ *
+ */
 int _sasldb_alloc_key(const sasl_utils_t *utils,
 		      const char *auth_identity,
 		      const char *realm,
 		      const char *propName,
 		      char **key,
-		      size_t *key_len);
+		      size_t *key_len)
+{
+  size_t auth_id_len, realm_len, prop_len;
+  
+  assert(utils && auth_identity && realm && propName && key && key_len);
 
+  auth_id_len = strlen(auth_identity);
+  realm_len = strlen(realm);
+  prop_len = strlen(propName);
 
-#endif /* SASLDB_H */
+  *key_len = auth_id_len + realm_len + prop_len + 2;
+  *key = utils->malloc(*key_len);
+  if (! *key)
+    return SASL_NOMEM;
+  memcpy(*key, auth_identity, auth_id_len);
+  (*key)[auth_id_len] = '\0';
+  memcpy(*key + auth_id_len + 1, realm, realm_len);
+  (*key)[auth_id_len + realm_len + 1] = '\0';
+  memcpy(*key + auth_id_len + realm_len + 2, propName, prop_len);
+
+  return SASL_OK;
+}
