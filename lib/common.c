@@ -1410,16 +1410,18 @@ int _buf_alloc(char **rwbuf, unsigned *curlen, unsigned newlen)
 	}
 	*curlen = newlen;
     } else if(*rwbuf && *curlen < newlen) {
-	if(newlen < 2*(*curlen))
-	    newlen = 2*(*curlen);
-	
-	*rwbuf = sasl_REALLOC(*rwbuf, newlen);
+	size_t needed = 2*(*curlen);
+
+	while(needed < newlen)
+	    needed *= 2;
+
+	*rwbuf = sasl_REALLOC(*rwbuf, needed);
 	
 	if (*rwbuf == NULL) {
 	    *curlen = 0;
 	    return SASL_NOMEM;
 	}
-	*curlen = newlen;
+	*curlen = needed;
     } 
 
     return SASL_OK;
