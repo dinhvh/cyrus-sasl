@@ -1,7 +1,7 @@
 /* saslutil.c
  * Rob Siemborski
  * Tim Martin
- * $Id: saslutil.c,v 1.30.2.9 2001/06/30 00:53:56 rjs3 Exp $
+ * $Id: saslutil.c,v 1.30.2.10 2001/08/13 19:01:23 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -354,7 +354,7 @@ void sasl_randseed (sasl_rand_t *rpool, const char *seed, unsigned len)
     rpool->initialized = 1;
     if (len > 6) len = 6;
     for (lup = 0; lup < len; lup += 2)
-	rpool->pool[lup] = (seed[lup] << 8) + seed[lup + 1];
+	rpool->pool[lup/2] = (seed[lup] << 8) + seed[lup + 1];
 }
 
 static void randinit(sasl_rand_t *rpool)

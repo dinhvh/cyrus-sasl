@@ -1,6 +1,6 @@
 /* Generic SASL plugin utility functions
  * Rob Siemborski
- * $Id: plugin_common.c,v 1.1.2.16 2001/07/26 23:11:34 rjs3 Exp $
+ * $Id: plugin_common.c,v 1.1.2.17 2001/08/13 19:01:24 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -113,7 +113,7 @@ int _plug_ipfromstring(const sasl_utils_t *utils, const char *addr,
     int i, j;
     socklen_t len;
     struct sockaddr_storage ss;
-    struct addrinfo hints, *ai;
+    struct addrinfo hints, *ai = NULL;
     char hbuf[NI_MAXHOST];
     
     if(!utils || !addr || !out) {

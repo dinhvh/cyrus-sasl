@@ -1,7 +1,7 @@
 /* common.c - Functions that are common to server and clinet
  * Rob Siemborski
  * Tim Martin
- * $Id: common.c,v 1.64.2.53 2001/08/10 18:52:51 rjs3 Exp $
+ * $Id: common.c,v 1.64.2.54 2001/08/13 19:01:23 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -1657,7 +1657,7 @@ int _sasl_ipfromstring(const char *addr,
 		       struct sockaddr *out, socklen_t outlen) 
 {
     int i, j;
-    struct addrinfo hints, *ai;
+    struct addrinfo hints, *ai = NULL;
     char hbuf[NI_MAXHOST];
     
     /* A NULL out pointer just implies we don't do a copy, just verify it */
@@ -1687,8 +1687,10 @@ int _sasl_ipfromstring(const char *addr,
 	return SASL_BADPARAM;
 
     if (out) {
-	if (outlen < (unsigned)ai->ai_addrlen)
+	if (outlen < (unsigned)ai->ai_addrlen) {
+	    freeaddrinfo(ai);
 	    return SASL_BUFOVER;
+	}
 	memcpy(out, ai->ai_addr, ai->ai_addrlen);
     }
 
