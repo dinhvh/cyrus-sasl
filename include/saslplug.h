@@ -89,7 +89,6 @@ typedef struct sasl_utils {
     /* This allows recursive calls to the sasl_checkpass() routine from
      * within a SASL plug-in.  This MUST NOT be used in the PLAIN mechanism
      * as sasl_checkpass MAY be a front-end for the PLAIN mechanism.
-     * (FIXME: the above "MAY" is an "is" for chris newman)
      * This is intended for use by the non-standard LOGIN mechanism and
      * potentially by a future mechanism which uses public-key technology to
      * set up a lightweight encryption layer just for sending a password.
@@ -212,8 +211,7 @@ typedef struct sasl_client_params {
     const char *service;	/* service name */
     const char *serverFQDN;	/* server fully qualified domain name */
     const char *clientFQDN;	/* client's fully qualified domain name */
-    const sasl_utils_t *utils;	/* SASL API utility routines */
-				/* FIXME: (different from chris's API)
+    const sasl_utils_t *utils;	/* SASL API utility routines --
 				 * for a particular sasl_conn_t,
 				 * MUST remain valid until mech_free is
 				 * called */
@@ -426,8 +424,7 @@ typedef struct sasl_server_params {
      */
     int log_level;
 
-    const sasl_utils_t *utils;	/* SASL API utility routines */
-				/* FIXME: (different from chris's API)
+    const sasl_utils_t *utils;	/* SASL API utility routines --
 				 * for a particular sasl_conn_t,
 				 * MUST remain valid until mech_free is
 				 * called */

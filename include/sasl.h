@@ -531,7 +531,6 @@ typedef int sasl_getrealm_t(void *context, int id,
  * returns SASL_OK on success,
  *         SASL_NOAUTHZ or other SASL response on failure
  */
-/* FIXME: The unsigned's are int's to chris newman */
 typedef int sasl_authorize_t(sasl_conn_t *conn,
 			     void *context,
 			     const char *requested_user, unsigned rlen,
@@ -595,7 +594,6 @@ typedef int sasl_server_userdb_setpass_t(sasl_conn_t *conn,
  *  SASL_OK         on success
  *  SASL_BADPROT    username contains invalid character
  */
-/* FIXME in chris newman's API this is sasl_server_canon_user_t */
 typedef int sasl_canon_user_t(sasl_conn_t *conn,
 			      void *context,
 			      const char *user, unsigned ulen,
@@ -994,7 +992,6 @@ LIBSASL_API int sasl_checkpass(sasl_conn_t *conn,
 
 /* check if a user exists on server
  *  conn          -- connection context
- * FIXME: chris newman allows conn to be NULL
  *  service       -- registered name of the service using SASL (e.g. "imap")
  *  user_realm    -- permits multiple user realms on server, NULL = default
  *  user          -- NUL terminated user name
@@ -1046,10 +1043,8 @@ LIBSASL_API int sasl_setpass(sasl_conn_t *conn,
 
 #define SASL_AUX_END      NULL	/* last auxiliary property */
 
-/* FIXME: Not in Chris's API */
-#define SASL_AUX_PASSWORD "userPassword" /* User Password */
-
 /* traditional Posix items (should be implemented on Posix systems) */
+#define SASL_AUX_PASSWORD "userPassword" /* User Password */
 #define SASL_AUX_UIDNUM   "uidNumber"	/* UID number for the user */
 #define SASL_AUX_GIDNUM   "gidNumber"	/* GID for the user */
 #define SASL_AUX_FULLNAME "gecos"	/* full name of the user, unix-style */
