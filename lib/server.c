@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: server.c,v 1.84.2.54 2001/08/06 18:05:37 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.55 2001/08/07 16:33:04 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -939,7 +939,7 @@ static int mech_permitted(sasl_conn_t *conn,
 
     /* do we want to special case SASL_SEC_PASS_CREDENTIALS? nah.. */
     if (((myflags ^ plug->security_flags) & myflags) != 0) {
-	sasl_seterror(conn, 0,
+	sasl_seterror(conn, SASL_NOLOG,
 		      "security flags do not match required");
 	return 0;
     }
@@ -1229,7 +1229,7 @@ int sasl_server_step(sasl_conn_t *conn,
 	    ret = SASL_CONTINUE;
 	}
 	if(!conn->oparams.maxoutbuf) {
-	    conn->oparams.maxoutbuf = DEFAULT_MAXOUTBUF;
+	    conn->oparams.maxoutbuf = conn->props.maxbufsize;
 	}
     }
     

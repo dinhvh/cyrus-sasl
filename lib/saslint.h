@@ -1,7 +1,7 @@
 /* saslint.h - internal SASL library definitions
  * Rob Siemborski
  * Tim Martin
- * $Id: saslint.h,v 1.33.2.42 2001/08/06 18:05:37 rjs3 Exp $
+ * $Id: saslint.h,v 1.33.2.43 2001/08/07 16:33:04 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -53,7 +53,6 @@
 #include "prop.h"
 
 /* #define'd constants */
-#define DEFAULT_MAXOUTBUF 8192
 #define CANON_BUF_SIZE 256
 
 /* Error Handling Foo */

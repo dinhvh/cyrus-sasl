@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: client.c,v 1.34.4.31 2001/08/06 18:05:36 rjs3 Exp $
+ * $Id: client.c,v 1.34.4.32 2001/08/07 16:33:03 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -570,7 +570,7 @@ int sasl_client_step(sasl_conn_t *conn,
       }
       
       if(!conn->oparams.maxoutbuf) {
-	  conn->oparams.maxoutbuf = DEFAULT_MAXOUTBUF;
+	  conn->oparams.maxoutbuf = conn->props.maxbufsize;
       }
   }
   
