@@ -47,8 +47,12 @@ man_MANS = saslpasswd.8 sasldblistusers.8
 saslpasswd_LDADD = ../lib/libsasl2.la
 sasldblistusers_LDADD = $(SASL_DB_LIB)
 
-EXTRA_PROGRAMS = testsuite
+EXTRA_PROGRAMS = testsuite testsuitestatic
 testsuite_LDADD = ../lib/libsasl2.la $(SASL_DB_LIB) $(LIB_SOCKET)
+
+testsuitestatic_SOURCES = testsuite.c
+testsuitestatic_LDADD = ../lib/libsasl2.a $(SASL_DB_LIB) $(LIB_SOCKET) $(GSSAPIBASE_LIBS) $(GSSAPI_LIBS) $(SASL_KRB_LIB) $(LIB_DES) $(PLAIN_LIBS) $(SRP_LIBS)
+testsuitestatic_DEPENDENCIES = ../lib/libsasl2.a
 
 include_HEADERS = @SASL_UTIL_HEADERS_EXTRA@
 EXTRA_HEADERS = sfsasl.h
