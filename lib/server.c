@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: server.c,v 1.84.2.46 2001/07/19 16:34:19 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.47 2001/07/19 22:49:54 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -733,7 +733,7 @@ int sasl_server_new(const char *service,
 		    const char *iplocalport,
 		    const char *ipremoteport,
 		    const sasl_callback_t *callbacks,
-		    unsigned secflags,
+		    unsigned flags,
 		    sasl_conn_t **pconn)
 {
   int result;
@@ -747,13 +747,12 @@ int sasl_server_new(const char *service,
   if (*pconn==NULL) return SASL_NOMEM;
 
   (*pconn)->destroy_conn = &server_dispose;
-  result = _sasl_conn_init(*pconn, service, secflags,
+  result = _sasl_conn_init(*pconn, service, flags,
 			   &server_idle, serverFQDN,
 			   iplocalport, ipremoteport,
 			   callbacks, &global_callbacks);
-  if (result != SASL_OK) {
+  if (result != SASL_OK)
       goto done_error;
-  }
 
   serverconn = (sasl_server_conn_t *)*pconn;
 
@@ -761,6 +760,8 @@ int sasl_server_new(const char *service,
 
   serverconn->mechlist_buf = NULL;
   serverconn->mechlist_buf_len = 0;
+
+  serverconn->sent_last = 0;
 
   serverconn->mech = NULL;
 
@@ -1081,9 +1082,27 @@ int sasl_server_start(sasl_conn_t *conn,
 					  &(conn->context));
 
     if (result == SASL_OK) {
-	result = sasl_server_step(conn,
-				  clientin, clientinlen,
-				  serverout, serveroutlen);
+	if(clientin && clientinlen > 0) {
+	    /* protocol & mech did client-send-first */
+	    /* so we assume the mech is expecting this */
+	    result = sasl_server_step(conn,
+				      clientin, clientinlen,
+				      serverout, serveroutlen);
+	} else {
+	    /* protocol CAN do client-send-first, but no data arrived */
+	    /* OR protocol can't do client-send-first */
+	    if(!(s_conn->mech->plug->features & SASL_FEAT_WANT_CLIENT_FIRST)) {
+		/* Mech wants server-first, so let them have it */
+		result = sasl_server_step(conn,
+					  clientin, clientinlen,
+					  serverout, serveroutlen);
+	    } else {
+		/* Mech wants client first anyway, so we should do that */
+		*serverout = "";
+		*serveroutlen = 0;
+		result = SASL_CONTINUE;
+	    }
+	}	 
     }
 
  done:
@@ -1122,6 +1141,11 @@ int sasl_server_step(sasl_conn_t *conn,
     if ((clientin==NULL) && (clientinlen>0))
 	PARAMERROR(conn);
 
+    /* If we've already done the last send, return! */
+    if(s_conn->sent_last == 1) {
+	return SASL_OK;
+    }
+
     ret = s_conn->mech->plug->mech_step(conn->context,
 					s_conn->sparams,
 					clientin,
@@ -1133,9 +1157,24 @@ int sasl_server_step(sasl_conn_t *conn,
     if (ret == SASL_OK) {
 	ret = do_authorization(s_conn);
     }
-    if (ret == SASL_OK && !conn->oparams.maxoutbuf) {
-	conn->oparams.maxoutbuf = DEFAULT_MAXOUTBUF;
+
+    if (ret == SASL_OK) {
+	/* if we're done, we need to watch out for the following:
+	 * 1. the mech does server-send-last
+	 * 2. the protocol does not
+	 *
+	 * in this case, return SASL_CONTINUE and remember we are done.
+	 */
+	if(!(conn->flags & SASL_SUCCESS_DATA)
+	   && (s_conn->mech->plug->features & SASL_FEAT_WANT_SERVER_LAST)) {
+	    s_conn->sent_last = 1;
+	    ret = SASL_CONTINUE;
+	}
+	if(!conn->oparams.maxoutbuf) {
+	    conn->oparams.maxoutbuf = DEFAULT_MAXOUTBUF;
+	}
     }
+    
 
     RETURN(conn, ret);
 }

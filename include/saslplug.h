@@ -280,6 +280,10 @@ typedef struct sasl_client_params {
     int param_version;
 } sasl_client_params_t;
 
+/* features shared between client and server */
+#define SASL_FEAT_WANT_CLIENT_FIRST 0x0002
+#define SASL_FEAT_WANT_SERVER_LAST 0x0004
+
 /* client plug-in features */
 #define SASL_FEAT_NEEDSERVERFQDN 0x0001
 

@@ -1,7 +1,7 @@
 /* Plain SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: plain.c,v 1.43.2.13 2001/07/12 14:10:14 rjs3 Exp $
+ * $Id: plain.c,v 1.43.2.14 2001/07/19 22:50:01 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -272,7 +272,7 @@ static sasl_server_plug_t plugins[] =
     "PLAIN",
     0,
     SASL_SEC_NOANONYMOUS,
-    0,
+    SASL_FEAT_WANT_CLIENT_FIRST,
     NULL,
     &start,
     &server_continue_step,
@@ -702,7 +702,7 @@ static sasl_client_plug_t client_plugins[] =
     "PLAIN",
     0,
     SASL_SEC_NOANONYMOUS,
-    0,
+    SASL_FEAT_WANT_CLIENT_FIRST,
     NULL,
     NULL,
     &c_start,

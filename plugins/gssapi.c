@@ -1,7 +1,7 @@
 /* GSSAPI SASL plugin
  * Leif Johansson
  * Rob Siemborski (SASL v2 Conversion)
- * $Id: gssapi.c,v 1.41.2.22 2001/07/19 16:34:20 rjs3 Exp $
+ * $Id: gssapi.c,v 1.41.2.23 2001/07/19 22:50:01 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -534,16 +534,6 @@ sasl_gss_server_step (void *conn_context,
   switch (text->state)
     {
     case SASL_GSSAPI_STATE_AUTHNEG:
-      
-      if (clientinlen == 0)
-	{
-	  /* Just don't free it, but this is faster ;) */
-	  *serverout = "";
-	  *serveroutlen = 0;
-	  
-	  return SASL_CONTINUE;
-	}
-
       if (text->server_name == GSS_C_NO_NAME) /* only once */
 	{
 	  name_token.length = strlen(params->service) + 1 + strlen(params->serverFQDN);
@@ -911,11 +901,6 @@ sasl_gss_server_step (void *conn_context,
 	return SASL_OK;
 	break;
       }
-    case SASL_GSSAPI_STATE_AUTHENTICATED:
-	*serverout = NULL;
-	*serveroutlen = 0;
-      return SASL_OK;
-      break;
 
     default:
 	SETERROR(text->utils, "GSSAPI Failure");
@@ -934,7 +919,7 @@ static sasl_server_plug_t plugins[] =
     "GSSAPI",
     56, /* max ssf */
     SASL_SEC_NOPLAINTEXT | SASL_SEC_NOACTIVE | SASL_SEC_NOANONYMOUS,
-    0,
+    SASL_FEAT_WANT_CLIENT_FIRST,
     NULL,
     &sasl_gss_server_start,
     &sasl_gss_server_step,
@@ -1465,9 +1450,6 @@ sasl_gss_client_step (void *conn_context,
 
 	return SASL_OK;
       }
-    case SASL_GSSAPI_STATE_AUTHENTICATED:
-      return SASL_OK;
-      break;
 
     default:
 	SETERROR(text->utils, "GSSAPI Failure");
@@ -1491,7 +1473,7 @@ static sasl_client_plug_t client_plugins[] =
     "GSSAPI",
     56, /* max ssf */
     SASL_SEC_NOPLAINTEXT | SASL_SEC_NOACTIVE | SASL_SEC_NOANONYMOUS,
-    0,
+    SASL_FEAT_WANT_CLIENT_FIRST,
     client_required_prompts,
     NULL,
     &sasl_gss_client_start,

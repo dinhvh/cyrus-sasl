@@ -1,7 +1,7 @@
 /* saslint.h - internal SASL library definitions
  * Rob Siemborski
  * Tim Martin
- * $Id: saslint.h,v 1.33.2.37 2001/07/18 21:27:31 rjs3 Exp $
+ * $Id: saslint.h,v 1.33.2.38 2001/07/19 22:49:53 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -129,7 +129,7 @@ struct sasl_conn {
 
   char *service;
 
-  int secflags;  /* security layer flags passed to sasl_*_new */
+  int flags;  /* flags passed to sasl_*_new */
 
   /* IP information.  A buffer of size 52 is adequate for this in its
      longest format (see sasl.h) */
@@ -190,6 +190,7 @@ typedef struct sasl_server_conn {
     unsigned mechlist_buf_len;
 
     char *user_realm; /* domain the user authenticating is in */
+    int sent_last; /* Have we already done the last send? */
     int authenticated;
     mechanism_t *mech; /* mechanism trying to use */
     sasl_server_params_t *sparams;

@@ -1,6 +1,6 @@
 /* sample-client.c -- sample SASL client
  * Rob Earhart
- * $Id: sample-client.c,v 1.23.4.4 2001/07/19 16:34:22 rjs3 Exp $
+ * $Id: sample-client.c,v 1.23.4.5 2001/07/19 22:50:03 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -420,7 +420,9 @@ main(int argc, char *argv[])
   char *options, *value;
   const char *data;
   const char *chosenmech;
+  int serverlast = 0;
   unsigned len;
+  int clientfirst = 1;
   sasl_callback_t callbacks[N_CALLBACKS], *callback;
   char *realm = NULL;
   char *mech = NULL,
@@ -445,7 +447,7 @@ main(int argc, char *argv[])
   secprops.max_ssf = UINT_MAX;
 
   verbose = 0;
-  while ((c = getopt(argc, argv, "vhb:e:m:f:i:p:r:s:n:u:a:?")) != EOF)
+  while ((c = getopt(argc, argv, "vhldb:e:m:f:i:p:r:s:n:u:a:?")) != EOF)
     switch (c) {
     case 'v':
 	verbose = 1;
@@ -471,6 +473,14 @@ main(int argc, char *argv[])
 	  break;	  
 	  }
       break;
+
+    case 'l':
+	serverlast = SASL_SUCCESS_DATA;
+	break;
+	
+    case 'd':
+	clientfirst = 0;
+	break;
 
     case 'e':
       options = optarg;
@@ -611,7 +621,9 @@ main(int argc, char *argv[])
 	    "\t-s NAME\tservice name pass to mechanisms\n"
 	    "\t-n FQDN\tserver fully-qualified domain name\n"
 	    "\t-u ID\tuser (authorization) id to request\n"
-	    "\t-a ID\tid to authenticate as\n",
+	    "\t-a ID\tid to authenticate as\n"
+	    "\t-d\tDisable client-send-first\n"
+	    "\t-l\tEnable server-send-last\n",
 	    progname, progname);
     exit(EXIT_FAILURE);
   }
@@ -691,7 +703,7 @@ main(int argc, char *argv[])
   result = sasl_client_new(service,
 			   fqdn,
 			   iplocal,ipremote,
-			   NULL,0,
+			   NULL,serverlast,
 			   &conn);
   if (result != SASL_OK)
     saslfail(result, "Allocating sasl connection state", NULL);
@@ -731,16 +743,30 @@ main(int argc, char *argv[])
   }
 
   printf("Choosing best mechanism from: %s\n", buf);
-  
-  result = sasl_client_start(conn,
-			     buf,
-			     NULL,
-			     &data,
-			     &len,
-			     &chosenmech);
 
-  if (result != SASL_OK && result != SASL_CONTINUE)
-    saslfail(result, "Starting SASL negotiation", NULL);
+  if(clientfirst) {
+      result = sasl_client_start(conn,
+				 buf,
+				 NULL,
+				 &data,
+				 &len,
+				 &chosenmech);
+  } else {
+      data = "";
+      len = 0;
+      result = sasl_client_start(conn,
+				 buf,
+				 NULL,
+				 NULL,
+				 0,
+				 &chosenmech);
+  }
+  
+  
+  if (result != SASL_OK && result != SASL_CONTINUE) {
+      printf("error was %s\n", sasl_errdetail(conn));
+      saslfail(result, "Starting SASL negotiation", NULL);
+  }
 
   printf("Using mechanism %s\n", chosenmech);
   strcpy(buf, chosenmech);
@@ -764,13 +790,14 @@ main(int argc, char *argv[])
     result = sasl_client_step(conn, buf, len, NULL,
 			      &data, &len);
     if (result != SASL_OK && result != SASL_CONTINUE)
-      saslfail(result, "Performing SASL negotiation", NULL);
-    if (data) {
-      puts("Sending response...");
-      samp_send(data, len);
-    } else {
-      samp_send("",0);
+	saslfail(result, "Performing SASL negotiation", NULL);
+    if (data && len) {
+	puts("Sending response...");
+	samp_send(data, len);
+    } else if (result != SASL_OK || !serverlast) {
+	samp_send("",0);
     }
+    
   }
   puts("Negotiation complete");
 

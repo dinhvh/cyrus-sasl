@@ -1,7 +1,7 @@
 /* CRAM-MD5 SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: cram.c,v 1.55.2.17 2001/07/12 14:10:13 rjs3 Exp $
+ * $Id: cram.c,v 1.55.2.18 2001/07/19 22:50:00 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -889,23 +889,13 @@ static int c_continue_step (void *conn_context,
 
     text->state++; /* fail if called again */
 
-    return SASL_CONTINUE;
-  }
+    oparams->mech_ssf=0;
+    oparams->maxoutbuf=0;
+    oparams->encode=NULL;
+    oparams->decode=NULL;
+    oparams->param_version=0;
 
-  if (text->state == 3)
-  {
-      *clientout = NULL;
-      *clientoutlen = 0;
-
-      text->state++;
-
-      oparams->mech_ssf=0;
-      oparams->maxoutbuf=0;
-      oparams->encode=NULL;
-      oparams->decode=NULL;
-      oparams->param_version=0;
-
-      return SASL_OK;      
+    return SASL_OK;
   }
 
   SETERROR(params->utils, "CRAM-MD5 says: \"WERT\"");

@@ -2,7 +2,7 @@
  * Rob Siemborski
  * Tim Martin
  * Alexey Melnikov 
- * $Id: digestmd5.c,v 1.97.2.18 2001/07/12 14:10:13 rjs3 Exp $
+ * $Id: digestmd5.c,v 1.97.2.19 2001/07/19 22:50:01 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -2659,9 +2659,7 @@ server_continue_step(void *conn_context,
       result = SASL_FAIL;
       goto FreeAllMem;
     }
-    result = SASL_CONTINUE; /* xxx this should be SASL_OK but would cause
-			       applications to fail
-			       will fix for 2.0 */
+    result = SASL_OK;
 
   FreeAllMem:
     /* free everything */
@@ -2694,26 +2692,9 @@ server_continue_step(void *conn_context,
     if (sec)
 	_plug_free_secret(sparams->utils, &sec);
 
-    if (result == SASL_CONTINUE)
-      text->state = 3;
+    text->state = 3;
 
     return result;
-  }
-
-  if (text->state == 3) {
-    /*
-     * Send additional information for reauthentication
-     */
-    if (clientinlen != 0) {
-	SETERROR(sparams->utils, "no more data expected from client");
-	return SASL_FAIL;
-    }
-    *serverout = NULL;
-    *serveroutlen = 0;
-
-    text->state = 1;
-
-    return SASL_OK;
   }
 
   return SASL_FAIL;		/* should never get here */
@@ -2731,7 +2712,7 @@ static sasl_server_plug_t plugins[] =
     0,
 #endif
     SASL_SEC_NOPLAINTEXT | SASL_SEC_NOANONYMOUS,
-    0,
+    SASL_FEAT_WANT_SERVER_LAST,
     NULL,
     &server_start,
     &server_continue_step,
@@ -3197,6 +3178,7 @@ c_continue_step(void *conn_context,
 
   if(serverinlen > 2048) return SASL_BADPROT;
 
+#if 0
   if (text->state == 1) {
     /* here's where we'd attempt fast reauth if possible */
     /* if we can, then goto text->state=3!!! */
@@ -3207,6 +3189,9 @@ c_continue_step(void *conn_context,
     text->state = 2;
     return SASL_CONTINUE;
   }
+#else
+  if(text->state == 1) text->state = 2;
+#endif
 
   if (text->state == 2) {
     sasl_ssf_t limit, musthave = 0;
@@ -3833,7 +3818,7 @@ FreeAllocatedMem:
 	    *clientoutlen = 0;
 	    
 	    text->state = 4;
-	    return SASL_CONTINUE;
+	    return SASL_OK;
 	}
       } else {
 	  params->utils->log(params->utils->conn, SASL_LOG_DEBUG,
@@ -3846,16 +3831,6 @@ FreeAllocatedMem:
 
     return SASL_FAIL;
   }
-
-  /* xxx note: this state is for compatability reasons. will be elimated in sasl 2.0 */
-  if (text->state == 4)
-  {
-      *clientout = NULL;
-      *clientoutlen = 0;
-      text->state++;
-      return SASL_OK;      
-  }
-
 
   return SASL_FAIL;		/* should never get here */
 }
@@ -3880,7 +3855,7 @@ static sasl_client_plug_t client_plugins[] =
     0,
 #endif
     SASL_SEC_NOPLAINTEXT | SASL_SEC_NOANONYMOUS,
-    0,
+    SASL_FEAT_WANT_SERVER_LAST,
     client_required_prompts,
     NULL,
     &c_start,

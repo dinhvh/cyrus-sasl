@@ -5,6 +5,8 @@
 	* Try to dlopen using information in .la file if available
 	  (based on patch from
 	   Stoned Elipot <Stoned.Elipot@script.jussieu.fr>)
+	* Resolution of most of the server-send-first and client-send-last
+	  issues (using mechanism feature flags)
 
 2001-07-18  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Updated config.guess and config.sub

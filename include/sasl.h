@@ -764,7 +764,7 @@ LIBSASL_API int sasl_client_new(const char *service,
 				const char *iplocalport,
 				const char *ipremoteport,
 				const sasl_callback_t *prompt_supp,
-				unsigned secflags,
+				unsigned flags,
 				sasl_conn_t **pconn);
 
 /* select a mechanism for a connection
@@ -869,7 +869,7 @@ LIBSASL_API int sasl_server_new(const char *service,
 				const char *iplocalport,
 				const char *ipremoteport,
 				const sasl_callback_t *callbacks,
-				unsigned secflags,
+				unsigned flags,
 				sasl_conn_t **pconn);
 
 /* This returns a list of mechanisms in a NUL-terminated string

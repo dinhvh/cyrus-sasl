@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: client.c,v 1.34.4.25 2001/07/12 14:10:11 rjs3 Exp $
+ * $Id: client.c,v 1.34.4.26 2001/07/19 22:49:53 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -257,7 +257,7 @@ int sasl_client_new(const char *service,
 		    const char *iplocalport,
 		    const char *ipremoteport,
 		    const sasl_callback_t *prompt_supp,
-		    unsigned secflags,
+		    unsigned flags,
 		    sasl_conn_t **pconn)
 {
   int result;
@@ -276,7 +276,7 @@ int sasl_client_new(const char *service,
   }
 
   (*pconn)->destroy_conn = &client_dispose;
-  result = _sasl_conn_init(*pconn, service, secflags,
+  result = _sasl_conn_init(*pconn, service, flags,
 			   &client_idle, serverFQDN,
 			   iplocalport, ipremoteport,
 			   prompt_supp, &global_callbacks);
@@ -399,9 +399,7 @@ int sasl_client_start(sasl_conn_t *conn,
     /* do a step */
     /* FIXME: Hopefully they only give us our own prompt_need back */
     if (prompt_need && *prompt_need != NULL) {
-	result = sasl_client_step(conn, NULL, 0, prompt_need,
-				  clientout, clientoutlen);
-	RETURN(conn,result);
+	goto dostep;
     }
 
     if(conn->props.min_ssf < conn->external.ssf) {
@@ -504,9 +502,17 @@ int sasl_client_start(sasl_conn_t *conn,
     if(result != SASL_OK) goto done;
 
     /* do a step -- but only if we can do a client-send-first */
-    if(clientout)
-        result = sasl_client_step(conn, NULL, 0, prompt_need,
- 			          clientout, clientoutlen);
+ dostep:
+    if(clientout) {
+	if(c_conn->mech->plug->features & SASL_FEAT_WANT_CLIENT_FIRST) {
+	    result = sasl_client_step(conn, NULL, 0, prompt_need,
+				      clientout, clientoutlen);
+	} else {
+	    *clientout = "";
+	    *clientoutlen = 0;
+	    result = SASL_CONTINUE;
+	}
+    }
     else
 	result = SASL_CONTINUE;
 
@@ -553,9 +559,22 @@ int sasl_client_step(sasl_conn_t *conn,
 					 clientout, (int *)clientoutlen,
 					 &conn->oparams);
 
-  if (result == SASL_OK && !conn->oparams.maxoutbuf) {
-      conn->oparams.maxoutbuf = DEFAULT_MAXOUTBUF;
+  if (result == SASL_OK) {
+      /* So we're done on this end, but if both
+       * 1. the mech does server-send-last
+       * 2. the protocol does not
+       * we need to return no data */
+      if(!(conn->flags & SASL_SUCCESS_DATA)
+	 && (c_conn->mech->plug->features & SASL_FEAT_WANT_SERVER_LAST)) {
+	  *clientout = "";
+	  *clientoutlen = 0;
+      }
+      
+      if(!conn->oparams.maxoutbuf) {
+	  conn->oparams.maxoutbuf = DEFAULT_MAXOUTBUF;
+      }
   }
+  
 
   RETURN(conn,result);
 }

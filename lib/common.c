@@ -1,7 +1,7 @@
 /* common.c - Functions that are common to server and clinet
  * Rob Siemborski
  * Tim Martin
- * $Id: common.c,v 1.64.2.41 2001/07/19 16:34:18 rjs3 Exp $
+ * $Id: common.c,v 1.64.2.42 2001/07/19 22:49:53 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -298,7 +298,7 @@ void sasl_done(void)
 /* fills in the base sasl_conn_t info */
 int _sasl_conn_init(sasl_conn_t *conn,
 		    const char *service,
-		    int secflags,
+		    int flags,
 		    int (*idle_hook)(sasl_conn_t *conn),
 		    const char *serverFQDN,
 		    const char *iplocalport,
@@ -316,7 +316,7 @@ int _sasl_conn_init(sasl_conn_t *conn,
   memset(&conn->oparams, 0, sizeof(sasl_out_params_t));
   memset(&conn->external, 0, sizeof(_sasl_external_properties_t));
 
-  conn->secflags = secflags;
+  conn->flags = flags;
 
   result = sasl_setprop(conn, SASL_IPLOCALPORT, iplocalport);
   if(result != SASL_OK)
@@ -702,8 +702,6 @@ const char *sasl_errdetail(sasl_conn_t *conn)
 
     snprintf(conn->errdetail_buf, need_len, "%s%s", leader, conn->error_buf);
    
-	printf("I HAVE %s\n", conn->errdetail_buf);
-
     return conn->errdetail_buf;
 }
 

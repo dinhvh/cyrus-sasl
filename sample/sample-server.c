@@ -1,6 +1,6 @@
 /* sample-server.c -- sample SASL server
  * Rob Earhart
- * $Id: sample-server.c,v 1.23.4.4 2001/07/19 16:34:22 rjs3 Exp $
+ * $Id: sample-server.c,v 1.23.4.5 2001/07/19 22:50:03 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -280,6 +280,7 @@ main(int argc, char *argv[])
   char *options, *value;
   unsigned len, count;
   const char *data;
+  int serverlast = 0;
   sasl_ssf_t *ssf;
 
   progname = strrchr(argv[0], '/');
@@ -294,7 +295,7 @@ main(int argc, char *argv[])
   secprops.max_ssf = UINT_MAX;
 
   verbose = 0;
-  while ((c = getopt(argc, argv, "vhb:e:m:f:i:p:s:l:u:?")) != EOF)
+  while ((c = getopt(argc, argv, "vlhb:e:m:f:i:p:s:d:u:?")) != EOF)
     switch (c) {
     case 'v':
 	verbose = 1;
@@ -377,6 +378,10 @@ main(int argc, char *argv[])
 	}
       break;
 
+    case 'l':
+	serverlast = SASL_SUCCESS_DATA;
+	break;
+
     case 'i':
       options = optarg;
       while (*options != '\0')
@@ -407,7 +412,7 @@ main(int argc, char *argv[])
       service = optarg;
       break;
 
-    case 'l':
+    case 'd':
       localdomain = optarg;
       break;
 
@@ -426,7 +431,7 @@ main(int argc, char *argv[])
   }
 
   if (errflag) {
-    fprintf(stderr, "%s: Usage: %s [-b min=N,max=N] [-e ssf=N,id=ID] [-m MECH] [-f FLAGS] [-i local=IP,remote=IP] [-p PATH] [-l DOM] [-u DOM] [-s NAME]\n"
+    fprintf(stderr, "%s: Usage: %s [-b min=N,max=N] [-e ssf=N,id=ID] [-m MECH] [-f FLAGS] [-i local=IP,remote=IP] [-p PATH] [-d DOM] [-u DOM] [-s NAME]\n"
 	    "\t-b ...\t#bits to use for encryption\n"
 	    "\t\tmin=N\tminumum #bits to use (1 => integrity)\n"
 	    "\t\tmax=N\tmaximum #bits to use\n"
@@ -446,8 +451,9 @@ main(int argc, char *argv[])
 	    "\t\tremote=IP;PORT\tset remote address to IP, port PORT\n"
 	    "\t-p PATH\tcolon-seperated search path for mechanisms\n"
 	    "\t-s NAME\tservice name to pass to mechanisms\n"
-	    "\t-l DOM\tlocal server domain\n"
-	    "\t-u DOM\tuser domain\n",
+	    "\t-d DOM\tlocal server domain\n"
+	    "\t-u DOM\tuser domain\n"
+	    "\t-l\tenable server-send-last\n",
 	    progname, progname);
     exit(EXIT_FAILURE);
   }
@@ -464,7 +470,7 @@ main(int argc, char *argv[])
 			   iplocal,
 			   ipremote,
 			   NULL,
-			   0,
+			   serverlast,
 			   &conn);
   if (result != SASL_OK)
     saslfail(result, "Allocating sasl connection state", NULL);
@@ -560,6 +566,11 @@ main(int argc, char *argv[])
       saslfail(result, "Performing SASL negotiation", sasl_errstring(result,NULL,NULL));
   }
   puts("Negotiation complete");
+
+  if(serverlast&&data) {
+      printf("might need additional send:\n");
+      samp_send(data,len);
+  }
 
   result = sasl_getprop(conn, SASL_USERNAME, (const void **)&data);
   if (result != SASL_OK)

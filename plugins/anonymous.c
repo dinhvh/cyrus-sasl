@@ -1,7 +1,7 @@
 /* Anonymous SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: anonymous.c,v 1.34.2.19 2001/07/12 14:01:31 rjs3 Exp $
+ * $Id: anonymous.c,v 1.34.2.20 2001/07/19 22:50:00 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -169,7 +169,7 @@ static sasl_server_plug_t plugins[] =
     "ANONYMOUS",		/* mech_name */
     0,				/* max_ssf */
     SASL_SEC_NOPLAINTEXT,	/* security_flags */
-    0,                          /* features */
+    SASL_FEAT_WANT_CLIENT_FIRST,/* features */
     NULL,			/* glob_context */
     &server_start,		/* mech_new */
     &server_continue_step,	/* mech_step */
@@ -264,13 +264,6 @@ client_continue_step(void *conn_context,
   const char *user = NULL;
   context_t *text;
   text=conn_context;
-
-  if (text->state == 2) {
-      *clientout = NULL;
-      *clientoutlen = 0;
-      text->state++;
-      return SASL_OK;      
-  }
 
   if (text->state != 1) {
       SETERROR( cparams->utils, "Invalid state in ANONYMOUS continue_step" );
@@ -381,7 +374,7 @@ client_continue_step(void *conn_context,
 
   text->state = 2;
 
-  return SASL_CONTINUE;
+  return SASL_OK;
 }
 
 static const long client_required_prompts[] = {
@@ -395,7 +388,7 @@ static sasl_client_plug_t client_plugins[] =
     "ANONYMOUS",		/* mech_name */
     0,				/* max_ssf */
     SASL_SEC_NOPLAINTEXT,	/* security_flags */
-    0,                          /* features */
+    SASL_FEAT_WANT_CLIENT_FIRST,/* features */
     client_required_prompts,	/* required_prompts */
     NULL,			/* glob_context */
     &client_start,		/* mech_new */
