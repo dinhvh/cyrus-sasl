@@ -181,3 +181,10 @@ int _sasl_canon_user(sasl_conn_t *conn,
 
     return SASL_OK;
 }
+
+int sasl_canonuser_add_plugin(const char *plugname __attribute__((unused)),
+			      sasl_canonuser_init_t *canonuserfunc __attribute__((unused))) 
+{
+    
+    return SASL_FAIL;
+}

@@ -757,8 +757,6 @@ struct propctx *sasl_auxprop_getctx(sasl_conn_t *conn)
     return sconn->sparams->propctx;
 }
 
-static const sasl_utils_t *global_utils = NULL;
-
 /* add an auxiliary property plugin */
 int sasl_auxprop_add_plugin(const char *plugname,
 			    sasl_auxprop_init_t *auxpropfunc)
@@ -766,11 +764,6 @@ int sasl_auxprop_add_plugin(const char *plugname,
     int result, out_version;
     auxprop_plug_list_t *new_item;
     const sasl_auxprop_plug_t *plug;
-
-    if(!global_utils) {
-	global_utils = _sasl_alloc_utils(NULL, NULL);
-	if(global_utils == NULL) return SASL_NOMEM;
-    }
     
     result = auxpropfunc(global_utils, SASL_AUXPROP_PLUG_VERSION,
 			 &out_version, &plug, plugname);
@@ -806,8 +799,6 @@ void _sasl_auxprop_free()
     }
 
     auxprop_head = NULL;
-
-    _sasl_free_utils(&global_utils);
 }
 
 

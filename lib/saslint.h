@@ -50,6 +50,9 @@
 
 #define DEFAULT_MAXOUTBUF 8192
 
+
+extern const sasl_utils_t *global_utils;
+
 extern int _sasl_common_init(void);
 extern int _is_sasl_server_active(void);
 
