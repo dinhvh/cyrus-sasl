@@ -1,7 +1,7 @@
 /* Plain SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: plain.c,v 1.43.2.16 2001/07/27 20:48:02 rjs3 Exp $
+ * $Id: plain.c,v 1.43.2.17 2001/08/09 15:45:32 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -586,17 +586,6 @@ static int plain_client_mech_step(void *conn_context,
 	return SASL_TOOWEAK;
     }
 
-    /* try to get the userid */
-    if (oparams->user==NULL)
-    {
-      user_result=get_userid(params,
-			     &user,
-			     prompt_need);
-
-      if ((user_result!=SASL_OK) && (user_result!=SASL_INTERACT))
-	return user_result;
-    }
-
     /* try to get the authid */    
     if (oparams->authid==NULL)
     {
@@ -607,6 +596,19 @@ static int plain_client_mech_step(void *conn_context,
       if ((auth_result!=SASL_OK) && (auth_result!=SASL_INTERACT))
 	return auth_result;
     }			
+
+    /* try to get the userid */
+    if (oparams->user==NULL)
+    {
+      user_result=get_userid(params,
+			     &user,
+			     prompt_need);
+
+      /* Fallback to authid */
+      if ((user_result!=SASL_OK) && (user_result!=SASL_INTERACT)) {
+	  user = authid;
+      }
+    }
 
     /* try to get the password */
     if (text->password==NULL)
@@ -639,7 +641,7 @@ static int plain_client_mech_step(void *conn_context,
     
     params->canon_user(params->utils->conn, user, 0, authid, 0, 0, oparams);
 
-    if (!oparams->authid || !text->password) {
+    if (!text->password) {
 	PARAMERROR(params->utils);
 	return SASL_BADPARAM;
     }

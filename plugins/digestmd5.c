@@ -2,7 +2,7 @@
  * Rob Siemborski
  * Tim Martin
  * Alexey Melnikov 
- * $Id: digestmd5.c,v 1.97.2.26 2001/08/07 19:13:25 rjs3 Exp $
+ * $Id: digestmd5.c,v 1.97.2.27 2001/08/09 15:45:30 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -3378,19 +3378,6 @@ digestmd5_client_mech_step(void *conn_context,
 
     /* make callbacks */
 
-    /* try to get the userid */
-    if (text->userid == NULL) {
-      user_result = get_userid(params,
-			       (char **) &text->userid,
-			       prompt_need);
-
-      if ((user_result != SASL_OK) && (user_result != SASL_INTERACT))
-      {
-	result = user_result;
-	goto FreeAllocatedMem;
-      }
-    }
-
     /* try to get the authid */
     if (text->authid == NULL) {
       auth_result = get_authid(params,
@@ -3402,8 +3389,23 @@ digestmd5_client_mech_step(void *conn_context,
 	result = auth_result;
 	goto FreeAllocatedMem;
       }
-
     }
+
+    /* try to get the userid */
+    if (text->userid == NULL) {
+      user_result = get_userid(params,
+			       (char **) &text->userid,
+			       prompt_need);
+
+      /* Steal it from the authid */
+      if ((user_result != SASL_OK) && (user_result != SASL_INTERACT)
+	  && text->authid)
+      {
+	  result = _plug_strdup(params->utils, text->authid,
+				(char **) &text->userid, NULL);
+      }
+    }
+
     /* try to get the password */
     if (text->password == NULL) {
       pass_result = get_password(params,

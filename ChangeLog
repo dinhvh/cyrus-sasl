@@ -1,3 +1,11 @@
+2001-08-09  Rob Siemborski <rjs3+@andrew.cmu.edu>
+	* plugins/digestmd5.c (digestmd5_client_mech_step): handle
+	  missing authorization name
+	* plugins/plain.c (plain_client_mech_step): handle
+	  missing authorization name
+
+	* include/sasl.h: better documentation of SASL_CB_CANON_USER
+
 2001-08-08  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* saslauthd/saslauthd.mdoc: updated re: pam
 	* saslauthd/saslauthd.8: regenerated
