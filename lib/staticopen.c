@@ -1,7 +1,7 @@
 /* dlopen.c--Unix dlopen() dynamic loader interface
  * Rob Siemborski
  * Rob Earhart
- * $Id: staticopen.c,v 1.1.2.4 2001/07/17 21:48:45 rjs3 Exp $
+ * $Id: staticopen.c,v 1.1.2.5 2001/07/30 22:37:33 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -93,7 +93,6 @@ int _sasl_load_plugins(const add_plugin_list_t *entrypoints,
 	    result = (*add_plugin)("ANONYMOUS",
 				   SPECIFIC_CLIENT_PLUG_INIT( anonymous ));
 	}
-	if(result != SASL_OK) return result;
 #endif
 
 #ifdef STATIC_CRAMMD5
@@ -104,7 +103,6 @@ int _sasl_load_plugins(const add_plugin_list_t *entrypoints,
 	    result = (*add_plugin)("CRAM-MD5",
 				   SPECIFIC_CLIENT_PLUG_INIT( crammd5 ));
 	}
-	if(result != SASL_OK) return result;
 #endif
 
 #ifdef STATIC_DIGESTMD5
@@ -115,7 +113,6 @@ int _sasl_load_plugins(const add_plugin_list_t *entrypoints,
 	    result = (*add_plugin)("DIGEST-MD5",
 				   SPECIFIC_CLIENT_PLUG_INIT( digestmd5 ));
 	}
-	if(result != SASL_OK) return result;
 #endif
 
 #ifdef STATIC_GSSAPIV2
@@ -126,7 +123,6 @@ int _sasl_load_plugins(const add_plugin_list_t *entrypoints,
 	    result = (*add_plugin)("GSSAPI",
 				   SPECIFIC_CLIENT_PLUG_INIT( gssapiv2 ));
 	}
-	if(result != SASL_OK) return result;
 #endif
 
 #ifdef STATIC_KERBEROS4
@@ -137,7 +133,6 @@ int _sasl_load_plugins(const add_plugin_list_t *entrypoints,
 	    result = (*add_plugin)("KERBEROS_V4",
 				   SPECIFIC_CLIENT_PLUG_INIT( kerberos4 ));
 	}
-	if(result != SASL_OK) return result;
 #endif
 
 #ifdef STATIC_LOGIN
@@ -148,7 +143,6 @@ int _sasl_load_plugins(const add_plugin_list_t *entrypoints,
 	    result = (*add_plugin)("LOGIN",
 				   SPECIFIC_CLIENT_PLUG_INIT( login ));
 	}
-	if(result != SASL_OK) return result;
 #endif
 
 #ifdef STATIC_PLAIN
@@ -159,7 +153,6 @@ int _sasl_load_plugins(const add_plugin_list_t *entrypoints,
 	    result = (*add_plugin)("PLAIN",
 				   SPECIFIC_CLIENT_PLUG_INIT( plain ));
 	}
-	if(result != SASL_OK) return result;
 #endif
 
 #ifdef STATIC_SRP
@@ -168,16 +161,13 @@ int _sasl_load_plugins(const add_plugin_list_t *entrypoints,
 	} else if (type == CLIENT) {
 	    result = (*add_plugin)("SRP", SPECIFIC_CLIENT_PLUG_INIT( srp ));
 	}
-	if(result != SASL_OK) return result;
 #endif
 
-/* Note that this guy can fail and life can go on, but it's not currently
- * written that way. */
 #ifdef STATIC_SASLDB
 	if(type == AUXPROP) {
-	    result = (*add_plugin)("SASLDB", SPECIFIC_AUXPROP_PLUG_INIT( sasldb ));
+	    result = (*add_plugin)("SASLDB",
+				   SPECIFIC_AUXPROP_PLUG_INIT( sasldb ));
 	}
-	if(result != SASL_OK) return result;
 #endif
 
     }

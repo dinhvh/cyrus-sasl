@@ -1,7 +1,7 @@
 /* Kerberos4 SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: kerberos4.c,v 1.65.2.36 2001/07/27 20:48:01 rjs3 Exp $
+ * $Id: kerberos4.c,v 1.65.2.37 2001/07/30 22:37:34 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -926,7 +926,10 @@ int kerberos4_server_plug_init(const sasl_utils_t *utils,
     if (access(srvtab, R_OK) != 0) {
 	utils->log(NULL, SASL_LOG_ERR,
 		   "can't access srvtab file %s: %m", srvtab, errno);
-	utils->free(srvtab);
+	if(!(--refcount)) {
+	    utils->free(srvtab);
+	    srvtab=NULL;
+	}
 	return SASL_FAIL;
     }
 
