@@ -1,6 +1,6 @@
 /* Generic SASL plugin utility functions
  * Rob Siemborski
- * $Id: plugin_common.c,v 1.1.2.4 2001/06/08 17:04:57 rjs3 Exp $
+ * $Id: plugin_common.c,v 1.1.2.5 2001/06/18 18:43:36 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
@@ -162,15 +162,17 @@ int _plug_buf_alloc(const sasl_utils_t *utils, char **rwbuf,
 	}
 	*curlen = newlen;
     } else if(*rwbuf && *curlen < newlen) {
-	if(newlen < 2*(*curlen))
-	    newlen = 2*(*curlen);
+	size_t needed = 2*(*curlen);
 
-	*rwbuf = utils->realloc(*rwbuf, newlen);
+	while(needed < newlen)
+	    needed *= 2;
+
+	*rwbuf = utils->realloc(*rwbuf, needed);
 	if (*rwbuf == NULL) {
 	    *curlen = 0;
 	    return SASL_NOMEM;
 	}
-	*curlen = newlen;
+	*curlen = needed;
     } 
 
     return SASL_OK;
