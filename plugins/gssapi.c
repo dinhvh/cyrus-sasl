@@ -370,12 +370,6 @@ static context_t *gss_new_context(const sasl_utils_t *utils)
     memset(ret,0,sizeof(context_t));
     ret->utils = utils;
 
-/* FIXME: these are almost certainly unnecessary at this point.
-    ret->buffer = NULL;
-    ret->bufsize = 0;
-    ret->cursize = 0;
-    ret->size = 0;
-*/
     ret->needsize = 4;
 
     return ret;
@@ -409,12 +403,12 @@ static void
 sasl_gss_free_context_contents(context_t *text)
 {
   OM_uint32 maj_stat, min_stat;
-  
+
   if (text->gss_ctx != GSS_C_NO_CONTEXT) {
     maj_stat = gss_delete_sec_context (&min_stat,&text->gss_ctx,GSS_C_NO_BUFFER);
     text->gss_ctx = GSS_C_NO_CONTEXT;
   }
-  
+
   if (text->client_name != GSS_C_NO_NAME) {
     maj_stat = gss_release_name(&min_stat,&text->client_name);
     text->client_name = GSS_C_NO_NAME;
@@ -460,8 +454,8 @@ sasl_gss_free_context_contents(context_t *text)
 static void 
 sasl_gss_dispose(void **conn_context, const sasl_utils_t *utils)
 {
-  sasl_gss_free_context_contents((context_t *)conn_context);
-  utils->free(conn_context);
+  sasl_gss_free_context_contents((context_t *)(*conn_context));
+  utils->free(*conn_context);
   *conn_context = NULL;
 }
 
@@ -963,13 +957,12 @@ sasl_gss_client_start(void *glob_context __attribute__((unused)),
 
 static void 
 free_prompts(sasl_client_params_t *params,
-	     sasl_interact_t *prompts)
+	     sasl_interact_t **prompts)
 {
-  sasl_interact_t *ptr=prompts;
-  if (ptr==NULL) return;
-  
-  params->utils->free(prompts);
-  prompts=NULL;
+    if(!params || !prompts || !*prompts) return;
+
+    params->utils->free(*prompts);
+    *prompts=NULL;
 }
 
 static int
@@ -1137,7 +1130,7 @@ sasl_gss_client_step (void *conn_context,
     case SASL_GSSAPI_STATE_AUTHNEG:
       {
 	  VL(("sasl_gss_client_step: AUTHNEG\n"));
-      
+
 	  /* try to get the userid */
 	  if (text->u.user ==NULL)
 	  {
@@ -1160,7 +1153,7 @@ sasl_gss_client_step (void *conn_context,
 
 	    /* free prompts we got */
 	    if (prompt_need)
-	      free_prompts(params,*prompt_need);
+	      free_prompts(params,prompt_need);
 
 	    /* if there are prompts not filled in */
 	    if (  (auth_result==SASL_INTERACT))
@@ -1174,7 +1167,7 @@ sasl_gss_client_step (void *conn_context,
 	      }
 
 	    
-	    /* FIXME: This *can't* be right */
+	    /* FIXME: This *can't* be right, (note: authid!) */
 	    ret = params->canon_user(params->utils->conn,
 				     text->u.user, 0,
 				     text->u.user, 0,
@@ -1414,7 +1407,7 @@ sasl_gss_client_step (void *conn_context,
         }
 	
 	text->state = SASL_GSSAPI_STATE_AUTHENTICATED;
-	
+
 	return SASL_OK;
       }
     case SASL_GSSAPI_STATE_AUTHENTICATED:
