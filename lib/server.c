@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: server.c,v 1.84.2.28 2001/06/26 15:30:43 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.29 2001/06/26 19:02:47 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -1334,6 +1334,7 @@ int sasl_user_exists(sasl_conn_t *conn,
 
 /* check if an APOP exchange is valid
  *  (note this is an optional part of the SASL API)
+ *  if challenge is NULL, just check if APOP is installed
  * inputs:
  *  challenge     -- challenge which was sent to client
  *  challen       -- length of challenge, 0 = strlen(challenge)
@@ -1357,10 +1358,15 @@ int sasl_checkapop(sasl_conn_t *conn,
     size_t user_len;
     int ret;
     int result = SASL_FAIL;
- 
-    /* check params */
+
     if (_sasl_server_active==0) return SASL_NOTINIT;
-    if (!conn || !response || !challenge)
+
+    /* check if it's just a query if we are installed */
+    if(!challenge)
+	return SASL_OK;
+
+    /* check other params */
+    if (!conn || !response)
 	return SASL_BADPARAM;
 
     /* Parse out username */
