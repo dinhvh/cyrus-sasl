@@ -229,9 +229,6 @@ void prop_dispose(struct propctx **ctx)
  *  names     -- list of property names; must persist until context freed
  *               or requests cleared
  *
- * FIXME: What happens if this context is dup'd?  Then that invariant applies
- *        to the new context as well!
- *
  * NOTE: may clear values from context as side-effect
  * returns -1 on error
  */
@@ -339,7 +336,6 @@ const struct propval *prop_get(struct propctx *ctx)
  *  if a name requested here was never requested by a prop_request, then
  *  the name field of the associated vals entry will be set to NULL
  */
-/* FIXME?: We rely on the fact that the vals array is long enough! */
 int prop_getnames(struct propctx *ctx, const char **names,
 		  struct propval *vals) 
 {
