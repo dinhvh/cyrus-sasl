@@ -78,7 +78,7 @@ INCLUDES=-I$(top_srcdir)/include
 EXTRA_DIST = saslpasswd.8 sasldblistusers.8 sfsasl.h testsuite.c
 
 sfsasl.lo: sfsasl.c
-	$(LIBTOOL) --mode=compile $(COMPILE) @SFIO_INC_FLAGS@ -c sfsasl.c
+	$(LIBTOOL) --mode=compile $(COMPILE) @SFIO_INC_FLAGS@ -c $(srcdir)/sfsasl.c
 
 smtptest.lo: smtptest.c
-	$(LIBTOOL) --mode=compile $(COMPILE) @SFIO_INC_FLAGS@ -c smtptest.c
+	$(LIBTOOL) --mode=compile $(COMPILE) @SFIO_INC_FLAGS@ -c $(srcdir)/smtptest.c
