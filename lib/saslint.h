@@ -1,7 +1,7 @@
 /* saslint.h - internal SASL library definitions
  * Rob Siemborski
  * Tim Martin
- * $Id: saslint.h,v 1.33.2.21 2001/06/25 18:44:38 rjs3 Exp $
+ * $Id: saslint.h,v 1.33.2.22 2001/06/26 19:07:02 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -366,6 +366,14 @@ int sasldb_auxprop_plug_init(const sasl_utils_t *utils,
 			     int *out_version,
 			     const sasl_auxprop_plug_t **plug,
 			     const char *plugname);
+
+/* canonuser.c */
+void _sasl_canonuser_free();
+int internal_canonuser_init(const sasl_utils_t *utils,
+			    int max_version,
+			    int *out_version,
+			    const sasl_canonuser_plug_t **plug,
+			    const char *plugname);
 
 /* The following is defined in common.c */
 /* Basically a conditional call to realloc(), if we need more */

@@ -747,19 +747,30 @@ typedef struct sasl_canonuser {
      *  SASL_OK         on success
      *  SASL_BADPROT    username contains invalid character
      */
-    int (*canon_user)(void *glob_context,
-		      sasl_server_params_t *sparams,
-		      const char *user, unsigned ulen,
-		      const char *authid, unsigned alen,
-		      unsigned flags,
-		      char *out_user, unsigned out_umax, unsigned *out_ulen,
-		      char *out_authid, unsigned out_amax, unsigned *out_alen);
+    int (*canon_user_server)(void *glob_context,
+			     sasl_server_params_t *sparams,
+			     const char *user, unsigned ulen,
+			     const char *authid, unsigned alen,
+			     unsigned flags,
+			     char *out_user,
+			     unsigned out_umax, unsigned *out_ulen,
+			     char *out_authid,
+			     unsigned out_amax, unsigned *out_alen);
+
+    int (*canon_user_client)(void *glob_context,
+			     sasl_client_params_t *cparams,
+			     const char *user, unsigned ulen,
+			     const char *authid, unsigned alen,
+			     unsigned flags,
+			     char *out_user,
+			     unsigned out_umax, unsigned *out_ulen,
+			     char *out_authid,
+			     unsigned out_amax, unsigned *out_alen);
 
     /* for additions which don't require a version upgrade; set to 0 */
     int (*spare_fptr1)();
     int (*spare_fptr2)();
     int (*spare_fptr3)();
-    int (*spare_fptr4)();
 } sasl_canonuser_plug_t;
 
 #define SASL_CANONUSER_PLUG_VERSION 4
@@ -771,7 +782,8 @@ typedef struct sasl_canonuser {
 typedef int sasl_canonuser_init_t(const sasl_utils_t *utils,
 				  int max_version,
 				  int *out_version,
-				  sasl_canonuser_plug_t **plug,
+	/* the following is not const for chris newman */
+				  const sasl_canonuser_plug_t **plug,
 				  const char *plugname);
 
 /* add a canonuser plugin

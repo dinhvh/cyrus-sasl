@@ -1,6 +1,6 @@
 /* canonusr.c - user canonicalization support
  * Rob Siemborski
- * $Id: canonusr.c,v 1.1.2.4 2001/06/25 18:44:37 rjs3 Exp $
+ * $Id: canonusr.c,v 1.1.2.5 2001/06/26 19:07:02 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -49,9 +49,23 @@
 #include <prop.h>
 #include "saslint.h"
 
+#define MAX_CANONUSER_PLUG_NAME 128
+/* this could be a hash table, but I doubt it will get that large */
+typedef struct canonuser_plug_list 
+{
+    struct canonuser_plug_list *next;
+
+    char name[MAX_CANONUSER_PLUG_NAME];
+    const sasl_canonuser_plug_t *plug;
+} canonuser_plug_list_t;
+
+static canonuser_plug_list_t *canonuser_head = NULL;
+
 /* default behavior:
  *                   eliminate leading & trailing whitespace,
- *                   null-terminate, and get into the outparams */
+ *                   null-terminate, and get into the outparams
+ *
+ *                   (handled by INTERNAL plugin) */
 /* Also does auxprop lookups once username is canonoicalized */
 /* a zero ulen or alen indicates that it is strlen(value) */
 int _sasl_canon_user(sasl_conn_t *conn,
@@ -60,23 +74,30 @@ int _sasl_canon_user(sasl_conn_t *conn,
                      unsigned flags,
                      sasl_out_params_t *oparams)
 {
-    const char *begin_u, *begin_a;
+    canonuser_plug_list_t *ptr;
     sasl_server_conn_t *sconn = NULL;
-    unsigned u_apprealm = 0, a_apprealm = 0;
+    sasl_client_conn_t *cconn = NULL;
     sasl_server_canon_user_t *cuser_cb;
+    sasl_getopt_t *getopt;
+    void *context;
     int result;
-    void *cuser_ctx;
-    unsigned i;
+    const char *plugin_name = NULL;
 
     if(!conn) return SASL_BADPARAM;    
+    if(!user || !authid || !oparams) return SASL_BADPARAM;
 
     if(conn->type == SASL_CONN_SERVER) sconn = (sasl_server_conn_t *)conn;
-
-    /* check to see if we have been overridden by the application */
+    else if(conn->type == SASL_CONN_CLIENT) cconn = (sasl_client_conn_t *)conn;
+    else return SASL_FAIL;
+    
+    if(!ulen) ulen = strlen(user);
+    if(!alen) alen = strlen(authid);
+    
+    /* check to see if we have a callback to make*/
     result = _sasl_getcallback(conn, SASL_CB_CANON_USER,
-			       &cuser_cb, &cuser_ctx);
+			       &cuser_cb, &context);
     if(result == SASL_OK && cuser_cb) {
-	result = cuser_cb(conn, cuser_ctx,
+	result = cuser_cb(conn, context,
 			user, ulen, authid, alen,
 			flags, (conn->type == SASL_CONN_SERVER ?
 				((sasl_server_conn_t *)conn)->user_realm :
@@ -86,62 +107,58 @@ int _sasl_canon_user(sasl_conn_t *conn,
 
 	if (result != SASL_OK) return result;
 
-	goto done;
+	/* Point the inputs at the new copies */
+	user = conn->user_buf;
+	authid = conn->authid_buf;
+    }
+
+    /* which plugin are we supposed to use? */
+    result = _sasl_getcallback(conn, SASL_CB_GETOPT,
+			       &getopt, &context);
+    if(result == SASL_OK && getopt) {
+	getopt(context, NULL, "canon_user_plugin", &plugin_name, NULL);
+    }
+
+    if(!plugin_name) {
+	/* Use Defualt */
+	plugin_name = "INTERNAL";
     }
     
-    if(!user || !authid || !oparams) return SASL_BADPARAM;
-
-    /* FIXME: Plugin Support (also: how does this work with auxpropness?) */
-    if(!ulen) ulen = strlen(user);
-    if(!alen) alen = strlen(authid);
-
-    /* Strip User ID */
-    for(i=0;isspace(user[i]) && i<ulen;i++);
-    begin_u = &(user[i]);
-    if(i>0) ulen -= i;
-
-    for(;isspace(begin_u[ulen-1]) && ulen > 0; ulen--);
-    if(begin_u == &(user[ulen])) return SASL_FAIL;
-
-    /* Strip Auth ID */
-    for(i=0;isspace(authid[i]) && i<alen;i++);
-    begin_a = &(authid[i]);
-    if(i>0) alen -= i;
-
-    for(;isspace(begin_a[alen-1]) && alen > 0; alen--);
-    if(begin_a == &(user[alen])) return SASL_FAIL;
-
-    /* Need to append realm if necessary (see sasl.h) */
-    if(sconn && sconn->user_realm && !strchr(user, '@')) {
-	u_apprealm = strlen(sconn->user_realm) + 1;
+    for(ptr = canonuser_head; ptr; ptr = ptr->next) {
+	if(!strcmp(plugin_name, ptr->name)) break;
     }
-    if(sconn && sconn->user_realm && !strchr(authid, '@')) {
-	a_apprealm = strlen(sconn->user_realm) + 1;
-    }
+
+    /* We clearly don't have this one! */
+    if(!ptr) return SASL_NOMECH;
     
-    /* Now copy! */
-    memcpy(conn->user_buf, begin_u, MIN(ulen, CANON_BUF_SIZE));
-    if(u_apprealm) {
-	conn->user_buf[ulen] = '@';
-	memcpy(&(conn->user_buf[ulen+1]), sconn->user_realm,
-	       MIN(u_apprealm-1, CANON_BUF_SIZE-ulen-1));
+    if(sconn) {
+	/* we're a server */
+	result = ptr->plug->canon_user_server(ptr->plug->glob_context,
+					      sconn->sparams,
+					      user, ulen,
+					      authid, alen,
+					      flags,
+					      conn->user_buf,
+					      CANON_BUF_SIZE, &ulen,
+					      conn->authid_buf,
+					      CANON_BUF_SIZE, &alen);
+    } else {
+	/* we're a client */
+	result = ptr->plug->canon_user_client(ptr->plug->glob_context,
+					      cconn->cparams,
+					      user, ulen,
+					      authid, alen,
+					      flags,
+					      conn->user_buf,
+					      CANON_BUF_SIZE, &ulen,
+					      conn->authid_buf,
+					      CANON_BUF_SIZE, &alen);
     }
-    conn->user_buf[MIN(ulen + u_apprealm,CANON_BUF_SIZE)] = '\0';
-    
-    memcpy(conn->authid_buf, begin_a, MIN(alen, CANON_BUF_SIZE));
-    if(a_apprealm) {
-	conn->authid_buf[alen] = '@';
-	memcpy(&(conn->user_buf[alen+1]), sconn->user_realm,
-	       MIN(a_apprealm-1, CANON_BUF_SIZE-ulen-1));
-    }
-    conn->authid_buf[MIN(alen + a_apprealm, CANON_BUF_SIZE)] = '\0';
 
-    done:
+    if(result != SASL_OK) return result;
 
     /* finally, do auxprop lookups (server only) */
-    if(conn->type == SASL_CONN_SERVER) {
-	sasl_server_conn_t *sconn = (sasl_server_conn_t *)conn;
-
+    if(sconn) {
 	_sasl_auxprop_lookup(sconn->sparams, 0, user, 0);
     }
 
@@ -153,9 +170,180 @@ int _sasl_canon_user(sasl_conn_t *conn,
     return SASL_OK;
 }
 
-int sasl_canonuser_add_plugin(const char *plugname __attribute__((unused)),
-			      sasl_canonuser_init_t *canonuserfunc __attribute__((unused))) 
+int sasl_canonuser_add_plugin(const char *plugname,
+			      sasl_canonuser_init_t *canonuserfunc) 
 {
+    int result, out_version;
+    canonuser_plug_list_t *new_item;
+    const sasl_canonuser_plug_t *plug;
     
-    return SASL_FAIL;
+    result = canonuserfunc(global_utils, SASL_AUXPROP_PLUG_VERSION,
+			   &out_version, &plug, plugname);
+
+    if(result != SASL_OK) {
+	VL(("canonuserfunc error %i\n",result));
+	return result;
+    }
+
+    new_item = sasl_ALLOC(sizeof(canonuser_plug_list_t));
+    if(!new_item) return SASL_NOMEM;
+
+    strncpy(new_item->name,plugname,MAX_CANONUSER_PLUG_NAME);
+    new_item->plug = plug;
+    new_item->next = canonuser_head;
+    canonuser_head = new_item;
+
+    return SASL_OK;
+}
+
+void _sasl_canonuser_free() 
+{
+    canonuser_plug_list_t *ptr, *ptr_next;
+    
+    for(ptr = canonuser_head; ptr; ptr = ptr_next) {
+	ptr_next = ptr->next;
+	if(ptr->plug->canon_user_free)
+	    ptr->plug->canon_user_free(ptr->plug->glob_context, global_utils);
+	sasl_FREE(ptr);
+    }
+
+    canonuser_head = NULL;
+}
+
+static int _canonuser_internal(const sasl_utils_t *utils,
+			       const char *user, unsigned ulen,
+			       const char *authid, unsigned alen,
+			       unsigned flags __attribute__((unused)),
+			       char *out_user,
+			       unsigned out_umax, unsigned *out_ulen,
+			       char *out_authid,
+			       unsigned out_amax, unsigned *out_alen) 
+{
+    unsigned i;
+    char userin[ulen+1], authidin[alen+1];
+    const char *begin_u, *begin_a;
+    unsigned u_apprealm = 0, a_apprealm = 0;
+    sasl_server_conn_t *sconn = NULL;
+
+    if(!utils || !user || !authid) return SASL_BADPARAM;
+
+    memcpy(userin, user, ulen);
+    userin[ulen] = '\0';
+    memcpy(authidin, authid, alen);
+    authidin[alen] = '\0';
+    
+    /* Strip User ID */
+    for(i=0;isspace(userin[i]) && i<ulen;i++);
+    begin_u = &(userin[i]);
+    if(i>0) ulen -= i;
+
+    for(;isspace(begin_u[ulen-1]) && ulen > 0; ulen--);
+    if(begin_u == &(userin[ulen])) return SASL_FAIL;
+
+    /* Strip Auth ID */
+    for(i=0;isspace(authidin[i]) && i<alen;i++);
+    begin_a = &(authidin[i]);
+    if(i>0) alen -= i;
+
+    for(;isspace(begin_a[alen-1]) && alen > 0; alen--);
+    if(begin_a == &(authidin[alen])) return SASL_FAIL;
+
+    if(utils->conn && utils->conn->type == SASL_CONN_SERVER)
+	sconn = (sasl_server_conn_t *)utils->conn;
+
+    /* Need to append realm if necessary (see sasl.h) */
+    if(sconn && sconn->user_realm && !strchr(user, '@')) {
+	u_apprealm = strlen(sconn->user_realm) + 1;
+    }
+    if(sconn && sconn->user_realm && !strchr(authid, '@')) {
+	a_apprealm = strlen(sconn->user_realm) + 1;
+    }
+    
+    /* Now copy! */
+    memcpy(out_user, begin_u, MIN(ulen, out_umax));
+    if(u_apprealm) {
+	out_user[ulen] = '@';
+	memcpy(&(out_user[ulen+1]), sconn->user_realm,
+	       MIN(u_apprealm-1, out_umax-ulen-1));
+    }
+    out_user[MIN(ulen + u_apprealm,out_umax)] = '\0';
+
+    if(out_ulen) *out_ulen = MIN(ulen + u_apprealm,out_umax);
+    
+    memcpy(out_authid, begin_a, MIN(alen, out_amax));
+    if(a_apprealm) {
+	out_authid[alen] = '@';
+	memcpy(&(out_authid[alen+1]), sconn->user_realm,
+	       MIN(a_apprealm-1, out_amax-ulen-1));
+    }
+    out_authid[MIN(alen + a_apprealm, out_amax)] = '\0';
+
+    if(out_alen) *out_alen = MIN(alen + a_apprealm, out_amax);
+
+    return SASL_OK;
+}
+
+static int _cu_internal_server(void *glob_context __attribute__((unused)),
+			       sasl_server_params_t *sparams,
+			       const char *user, unsigned ulen,
+			       const char *authid, unsigned alen,
+			       unsigned flags,
+			       char *out_user,
+			       unsigned out_umax, unsigned *out_ulen,
+			       char *out_authid,
+			       unsigned out_amax, unsigned *out_alen) 
+{
+    return _canonuser_internal(sparams->utils,
+			       user, ulen, authid, alen,
+			       flags, out_user, out_umax, out_ulen,
+			       out_authid, out_amax, out_alen);
+}
+
+static int _cu_internal_client(void *glob_context __attribute__((unused)),
+			       sasl_client_params_t *cparams,
+			       const char *user, unsigned ulen,
+			       const char *authid, unsigned alen,
+			       unsigned flags,
+			       char *out_user,
+			       unsigned out_umax, unsigned *out_ulen,
+			       char *out_authid,
+			       unsigned out_amax, unsigned *out_alen) 
+{
+    return _canonuser_internal(cparams->utils,
+			       user, ulen, authid, alen,
+			       flags, out_user, out_umax, out_ulen,
+			       out_authid, out_amax, out_alen);
+}
+
+static const sasl_canonuser_plug_t canonuser_internal_plugin = {
+        0, /* features */
+	0, /* spare */
+	NULL, /* glob_context */
+	NULL, /* spare */
+	NULL, /* canon_user_free */
+	_cu_internal_server,
+	_cu_internal_client,
+	NULL,
+	NULL,
+	NULL
+};
+
+int internal_canonuser_init(const sasl_utils_t *utils __attribute__((unused)),
+                            int max_version,
+                            int *out_version,
+                            const sasl_canonuser_plug_t **plug,
+                            const char *plugname) 
+{
+    if(!out_version || !plug || !plugname) return SASL_BADPARAM;
+
+    /* We only support the "INTERNAL" plugin */
+    if(strcmp(plugname, "INTERNAL")) return SASL_NOMECH;
+
+    if(max_version < SASL_CANONUSER_PLUG_VERSION) return SASL_BADVERS;
+    
+    *out_version = SASL_CANONUSER_PLUG_VERSION;
+
+    *plug = &canonuser_internal_plugin;
+
+    return SASL_OK;
 }
