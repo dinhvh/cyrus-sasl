@@ -317,10 +317,18 @@ typedef struct sasl_security_properties
  * Callback types *
  ******************/
 
-/* Extensible type for a client/server callbacks
+/*
+ * Extensible type for a client/server callbacks
  *  id      -- identifies callback type
  *  proc    -- procedure call arguments vary based on id
  *  context -- context passed to procedure
+ */
+/* Note that any memory that is allocated by the callback needs to be
+ * freed by the application, be it via function call or interaction.
+ *
+ * It may be freed after sasl_*_step returns SASL_OK.  if the mechanism
+ * requires this information to persist (for a security layer, for example)
+ * it must maintain a private copy.
  */
 typedef struct sasl_callback {
     /* Identifies the type of the callback function.
