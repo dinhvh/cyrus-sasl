@@ -203,7 +203,7 @@ int sasl_decode64(const char *in, unsigned inlen,
 
     *out=0; /* terminate string */
 
-    *outlen=len;
+    if(outlen) *outlen=len;
 
     return SASL_OK;
 }

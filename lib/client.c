@@ -235,10 +235,11 @@ static void client_dispose(sasl_conn_t *pconn)
 
   _sasl_free_utils(&(c_conn->cparams->utils));
 
-  if (c_conn->serverFQDN!=NULL)
-    sasl_FREE(c_conn->serverFQDN);
+  if (c_conn->serverFQDN)
+      sasl_FREE(c_conn->serverFQDN);
 
-  sasl_FREE(c_conn->cparams);
+  if (c_conn->cparams)
+      sasl_FREE(c_conn->cparams);
 
   _sasl_conn_dispose(pconn);
 }

@@ -203,8 +203,7 @@ extern int _sasl_sasldb_set_pass(sasl_conn_t *conn,
 				 const char *pass,
 				 unsigned passlen,
 				 const char *user_realm,
-				 int flags,
-				 const char **errstr);
+				 int flags);
 
 
 /* The following is defined in common.c */

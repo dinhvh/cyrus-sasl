@@ -381,29 +381,35 @@ int sasl_getprop(sasl_conn_t *conn, int propnum, const void **pvalue)
 
   switch(propnum)
   {
-    case SASL_SSF:
+  case SASL_SSF:
       *(sasl_ssf_t **)pvalue= &conn->oparams.mech_ssf;
       break;      
-    case SASL_MAXOUTBUF:
+  case SASL_MAXOUTBUF:
       *(unsigned **)pvalue = &conn->oparams.maxoutbuf;
       break;
-    case SASL_GETOPTCTX:
+  case SASL_GETOPTCTX:
       result = SASL_FAIL;
       /* ??? */
       break;
-    case SASL_IPLOCALPORT:
+  case SASL_IPLOCALPORT:
       if (! conn->got_ip_local)
 	result = SASL_NOTDONE;
       else
 	*(struct sockaddr_in **)pvalue = &conn->ip_local;
       break;
-    case SASL_IPREMOTEPORT:
+  case SASL_IPREMOTEPORT:
       if (! conn->got_ip_remote)
 	result = SASL_NOTDONE;
       else
 	*(struct sockaddr_in **)pvalue = &conn->ip_remote;
       break;
   case SASL_USERNAME:
+      if(! conn->oparams.user)
+	  result = SASL_NOTDONE;
+      else
+	  *((const char **)pvalue) = conn->oparams.user;
+      break;
+/* FIXME: fill these in! */
   case SASL_DEFUSERREALM:
   case SASL_SERVICE:
   case SASL_SERVERFQDN:
@@ -417,8 +423,6 @@ int sasl_getprop(sasl_conn_t *conn, int propnum, const void **pvalue)
       result = SASL_BADPARAM;
   }
 
-  fprintf(stderr, "OLD sasl_getprop called\n");
-  
   return result; 
 }
 
