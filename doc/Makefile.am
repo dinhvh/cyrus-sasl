@@ -1,6 +1,6 @@
 # Makefile.am for SASL documentation
 # Rob Earhart
-# $Id: Makefile.am,v 1.10.2.6 2001/07/26 04:38:58 rjs3 Exp $
+# $Id: Makefile.am,v 1.10.2.7 2001/07/31 21:17:49 rjs3 Exp $
 #
 ################################################################
 # Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
@@ -58,4 +58,5 @@ EXTRA_DIST =	rfc1321.txt \
 		advanced.html \
 		options.html \
 		plugprog.html \
+		appconvert.html \
 		index.html 

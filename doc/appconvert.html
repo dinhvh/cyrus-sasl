@@ -1,0 +1,58 @@
+<HTML>
+<BODY>
+This documents our conversion experience of Cyrus.  It's going to be rough
+until we finish so bear with us.  This is also not intended to be comprehensive
+but should cover a wide range of common problems.
+
+<UL>
+<LI> Both:<P>
+<OL>
+<LI>Change configure scripts to search for libsasl2 and include files
+prefixed with sasl/ (sasl/sasl.h, sasl/saslutil.h, etc)</LI>
+<LI>sasl_decode64 and sasl_encode64 now take an additional parameter
+that is the size of the buffer they are passed.</LI>
+<LI>External properties are no longer handled by a sasl_external_properties_t
+but instead you make 2 calls to sasl_setprop with SASL_SSF_EXTERNAL
+and SASL_AUTH_EXTERNAL to set up the SSF and Authentication name, respectively.</LI>
+<LI>sasl_getprop now returns a const double pointer</LI>
+<LI>sasl_encode and sasl_decode now return a constant output buffer, which
+you do not need to free (it is only valid until the next call for this sasl_
+conn_t, however)</LI>
+<LI>The SASL_IP_REMOTE and SASL_IP_LOCAL properties are now SASL_IPLOCALPORT
+and SASL_IPREMOTEPORT and take strings instead of sockaddrs</LI>
+<li>error handling is different, everything that used to return a "reply" string no longer does.  Now you should (always) check sasl_errdetail.  Callbacks
+should likewise use sasl_seterror instead of setting their reply parameter</li>
+</OL></LI>
+
+<LI> Clients:</LI>
+<OL>
+<LI>sasl_client_init stays the same</LI>
+<LI>sasl_client_new: you can now pass ip address strings as parameters
+3 and 4 (which are new) instead of calling setprop later on sockaddr's.
+This is recommended.  You might find the iptostring() function in
+utils/smtptest.c to be useful for this.  If the protocol supports data
+on success you should pass SASL_SUCCESS_DATA as a flag.</LI>
+<LI>sasl_client_start loses the 3rd "secret" parameter, a NULL client out
+means that the protocol does not support client-send-first.</LI>
+<LI>both sasl_client_start and sasl_client_step now take const clientout
+parameters that you are no longer responsible for freeing (it is only
+valid until the next call for this sasl_conn_t, however)</LI>
+<LI>When interactions happen you have to save a pointer to the
+results in order to free the results later (remember, if you allocate
+it you must free it in SASLv2).</LI>
+</OL></LI>
+
+<LI> Servers:</LI>
+<OL>
+<LI>SASL_SECURITY_LAYER flag no longer exists, whether or not to use a
+security layer is solely determined by the security properties information</LI>
+<LI>sasl_server_new now can take ip address strings.</li>
+<LI>sasl_checkpass no longer has a "reply" parameter</li>
+<li>sasl_server_start / sasl_server_step have same output parameter deal as
+client side</li>
+<li>sasl_listmech has a constant output parameter</li>
+</OL></LI>
+
+</UL>
+</BODY>
+</HTML>

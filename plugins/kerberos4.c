@@ -1,7 +1,7 @@
 /* Kerberos4 SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: kerberos4.c,v 1.65.2.37 2001/07/30 22:37:34 rjs3 Exp $
+ * $Id: kerberos4.c,v 1.65.2.38 2001/07/31 21:17:57 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -842,19 +842,22 @@ static int kerberosv4_server_mech_step (void *conn_context,
   return SASL_FAIL; /* should never get here */
 }
 
-int mech_avail(void *glob_context __attribute__((unused)),
+static int mech_avail(void *glob_context __attribute__((unused)),
 #ifndef KRB4_IGNORE_IP_ADDRESS
-	       sasl_server_params_t *sparams,
+		      sasl_server_params_t *sparams,
 #else
-	       sasl_server_params_t *sparams __attribute__((unused)),
+		      sasl_server_params_t *sparams __attribute__((unused)),
 #endif
-	       void **conn_context __attribute__((unused))) 
+		      void **conn_context __attribute__((unused))) 
 {
 #ifndef KRB4_IGNORE_IP_ADDRESS
-    /* FIXME: this should also ensure that it is an IPv4 address! */
-    if(!sparams->iplocalport || !sparams->ipremoteport
-	|| strchr(sparams->iplocalport, ':')
-	|| strchr(sparams->ipremoteport, ':')) {
+    struct sockaddr_in addr;
+
+    if (!sparams->iplocalport || !sparams->ipremoteport
+       || ipv4_ipfromstring(sparams->utils,
+                            sparams->iplocalport, &addr) != SASL_OK
+       || ipv4_ipfromstring(sparams->utils,
+                            sparams->ipremoteport, &addr) != SASL_OK) {
 	SETERROR(sparams->utils,
 		 "KERBEROS_V4 unavailable due to lack of IPv4 information");
 	return SASL_NOMECH;

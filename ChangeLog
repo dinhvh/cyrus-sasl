@@ -1,4 +1,10 @@
-2001-07-28  Rob Siemborski <rjs3+@andrew.cmu.edu>
+2001-07-31  Rob Siemborski <rjs3+@andrew.cmu.edu>
+	* plugins/kerberos4.c (mech_avail): made static
+
+	* plugins/kerberos4.c (mech_avail): fixed ipv4 check
+	  (patch from Hajimu UMEMOTO <ume@mahoroba.org>)
+
+2001-07-30  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* sasldb/db_berkeley.c: utils->seterror() calls
 	* sasldb/db_gdbm.c: utils->seterror() calls
 	* sasldb/db_ndbm.c: utils->seterror() calls
