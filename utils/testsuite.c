@@ -1,7 +1,7 @@
 /* testsuite.c -- Stress the library a little
  * Rob Siemborski
  * Tim Martin
- * $Id: testsuite.c,v 1.13.2.19 2001/07/02 16:06:28 rjs3 Exp $
+ * $Id: testsuite.c,v 1.13.2.20 2001/07/02 20:47:49 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -498,12 +498,13 @@ void test_listmech(void)
 
 
 
-    if (sasl_server_init(emptysasl_cb,"TestSuite")!=SASL_OK) fatal("");
+    if (sasl_server_init(emptysasl_cb,"TestSuite")!=SASL_OK)
+	fatal("can't sasl_server_init");
 
     if (sasl_server_new("rcmd", myhostname,
 			NULL, NULL, NULL, NULL, 0, 
 			&saslconn) != SASL_OK) {
-	fatal("");
+	fatal("can't sasl_server_new");
     }
 
 
@@ -900,7 +901,7 @@ void sendbadsecond(char *mech, void *rock)
 
     if ((hp = gethostbyname(myhostname)) == NULL) {
 	perror("gethostbyname");
-	fatal("");
+	fatal("can't gethostbyname");
     }
 
     addr.sin_family = 0;
@@ -921,7 +922,7 @@ void sendbadsecond(char *mech, void *rock)
     if (sasl_server_new(service, myhostname, NULL,
 			buf, buf, NULL, 0, 
 			&saslconn) != SASL_OK) {
-	fatal("");
+	fatal("can't sasl_server_new");
     }
     set_properties(saslconn, NULL);
 
@@ -1142,7 +1143,7 @@ int doauth(char *mech, sasl_conn_t **server_conn, sasl_conn_t **client_conn,
 
     if ((hp = gethostbyname(myhostname)) == NULL) {
 	perror("gethostbyname");
-	fatal("");
+	fatal("can't gethostbyname");
     }
 
     addr.sin_family = 0;
@@ -1164,7 +1165,7 @@ int doauth(char *mech, sasl_conn_t **server_conn, sasl_conn_t **client_conn,
     if (sasl_server_new(service, myhostname, NULL,
 			buf, buf, NULL, 0, 
 			&saslconn) != SASL_OK) {
-	fatal("");
+	fatal("can't sasl_server_new");
     }
     set_properties(saslconn, props);
 
@@ -1488,7 +1489,7 @@ void foreach_mechanism(foreach_t *func, void *rock)
 
     if ((hp = gethostbyname(myhostname)) == NULL) {
         perror("gethostbyname");
-        fatal("");
+        fatal("can't gethostbyname");
     }
 
     addr.sin_family = 0;
@@ -1551,11 +1552,12 @@ void test_serverstart()
     struct hostent *hp;
     char buf[8192];
 
-    if (sasl_server_init(emptysasl_cb,"TestSuite")!=SASL_OK) fatal("");
+    if (sasl_server_init(emptysasl_cb,"TestSuite")!=SASL_OK)
+	fatal("can't sasl_server_init in test_serverstart");
 
     if ((hp = gethostbyname(myhostname)) == NULL) {
         perror("gethostbyname");
-        fatal("");
+        fatal("can't gethostbyname in test_serverstart");
     }
 
     addr.sin_family = 0;
@@ -1567,7 +1569,7 @@ void test_serverstart()
     if (sasl_server_new("rcmd", myhostname, NULL,
 			buf, buf, NULL, 0, 
 			&saslconn) != SASL_OK) {
-	fatal("");
+	fatal("can't sasl_server_new in test_serverstart");
     }
 
 
@@ -1660,11 +1662,12 @@ void create_ids(void)
     char digeststr[32];
 #endif
 
-    if (sasl_server_init(goodsasl_cb,"TestSuite")!=SASL_OK) fatal("");
+    if (sasl_server_init(goodsasl_cb,"TestSuite")!=SASL_OK)
+	fatal("can't sasl_server_init in create_ids");
 
     if ((hp = gethostbyname(myhostname)) == NULL) {
         perror("gethostbyname");
-        fatal("");
+        fatal("can't gethostbyname in create_ids");
     }
 
     addr.sin_family = 0;
@@ -1676,7 +1679,7 @@ void create_ids(void)
     if (sasl_server_new("rcmd", myhostname, NULL,
 			buf, buf, NULL, 0,
 			&saslconn) != SASL_OK)
-	fatal("");
+	fatal("can't sasl_server_new in create_ids");
     
     /* Try to set password then check it */
 
@@ -1800,12 +1803,13 @@ void test_checkpass(void)
 	fatal("sasl_checkpass() when library not initialized");
     }    
 
-    if (sasl_server_init(goodsasl_cb,"TestSuite")!=SASL_OK) fatal("");
+    if (sasl_server_init(goodsasl_cb,"TestSuite")!=SASL_OK)
+	fatal("can't sasl_server_init in test_checkpass");
 
     if (sasl_server_new("rcmd", myhostname,
 			NULL, NULL, NULL, NULL, 0, 
 			&saslconn) != SASL_OK)
-	fatal("");
+	fatal("can't sasl_server_new in test_checkpass");
 
     /* make sure works for general case */
 
