@@ -49,7 +49,6 @@ plain_version = 1:0:0
 anonymous_version = 1:0:0
 kerberos4_version = 1:0:0
 crammd5_version = 1:0:0
-scrammd5_version = 1:0:0
 gssapiv2_version = 1:0:0
 digestmd5_version = 1:0:0
 login_version = 1:0:0
@@ -63,7 +62,7 @@ plugindir = @plugindir@
 
 sasldir = $(prefix)/lib/sasl2
 sasl_LTLIBRARIES = @SASL_MECHS@
-EXTRA_LTLIBRARIES = libplain.la libanonymous.la libkerberos4.la libcrammd5.la libscrammd5.la libgssapiv2.la libdigestmd5.la liblogin.la libsrp.la
+EXTRA_LTLIBRARIES = libplain.la libanonymous.la libkerberos4.la libcrammd5.la libgssapiv2.la libdigestmd5.la liblogin.la libsrp.la
 
 libplain_la_SOURCES = plain.c plugin_common.c
 libplain_la_LDFLAGS = -version-info $(plain_version)
@@ -82,9 +81,6 @@ libgssapiv2_la_LIBADD = $(GSSAPIBASE_LIBS) $(GSSAPI_LIBS) $(LIB_SOCKET)
 
 libcrammd5_la_SOURCES = cram.c plugin_common.c
 libcrammd5_la_LDFLAGS = -version-info $(crammd5_version)
-
-libscrammd5_la_SOURCES = scram.c
-libscrammd5_la_LDFLAGS = -version-info $(scrammd5_version)
 
 libdigestmd5_la_SOURCES = digestmd5.c
 libdigestmd5_la_LDFLAGS = -version-info $(digestmd5_version)

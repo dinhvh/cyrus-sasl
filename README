@@ -1,4 +1,4 @@
-$Id: README,v 1.25 2000/04/18 18:15:12 wcw Exp $
+$Id: README,v 1.25.4.1 2001/06/20 16:06:38 rjs3 Exp $
 
 This is the Cyrus SASL API implentation. It can be used on the client
 or server side to provide authentication. See RFC 2222 for more
@@ -126,9 +126,6 @@ doc/sysadmin.html.
 
 KNOWN BUGS
 ----------
-* SCRAM-MD5 is no longer being maintained, and probably needs some
-work in order to be usable.
-
 * libtool doesn't always link libraries together.  In our environment,
 we only have static Krb5 libraries; the GSSAPI plugin should link
 these libraries in on platforms that support it (Solaris and Linux
@@ -165,6 +162,3 @@ draft-newman-tls-imappop-xx.txt, work in progress.
 
 [SASL] Myers, J., "Simple Authentication and Security Layer (SASL)",
 RFC 2222, October 1997.
-
-[SCRAM-MD5] Newman, C., "Salted Challenge Response Authentication
-Mechanism", draft-newman-auth-scram-xx.txt, Work in progress.
