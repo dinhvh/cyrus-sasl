@@ -22,13 +22,13 @@ sasl_getopt_t \- The SASL get option callback
 
 .SH SYNOPSIS
 .nf
-.B #include <sasl.h>
+.B #include <sasl/sasl.h>
 
 .sp
 .BI "int sasl_getopt_t(void " *context ", "
 .BI "		     const char " *plugin_name ", "
 .BI "		     const char " *option ", "
-.BI "		     const cahr ** " result ", "
+.BI "		     const char ** " result ", "
 .BI "		     unsigned * " len ")";
 
 .fi
@@ -55,6 +55,4 @@ SASL callback functions should return SASL return codes. See sasl.h for a comple
 .SH "CONFORMING TO"
 RFC 2222
 .SH "SEE ALSO"
-.BR other sasl stuff
-.BR 
-.BR 
+sasl(3), sasl_callbacks(3), sasl_errors(3)

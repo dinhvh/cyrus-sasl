@@ -22,11 +22,11 @@ sasl_log_t \- The SASL logging callback
 
 .SH SYNOPSIS
 .nf
-.B #include <sasl.h>
+.B #include <sasl/sasl.h>
 
 .sp
 .BI "int sasl_log_t(void " *context ", "
-.BI "		    int " priority ", "
+.BI "		    int " level ", "
 .BI "		    const char * " message ")";
 
 .fi
@@ -44,6 +44,4 @@ SASL callback functions should return SASL return codes. See sasl.h for a comple
 .SH "CONFORMING TO"
 RFC 2222
 .SH "SEE ALSO"
-.BR other sasl stuff
-.BR 
-.BR 
+sasl(3), sasl_callbacks(3), sasl_errors(3)

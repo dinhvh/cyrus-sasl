@@ -22,13 +22,13 @@ sasl_decode \- Decode data received
 
 .SH SYNOPSIS
 .nf
-.B #include <sasl.h>
+.B #include <sasl/sasl.h>
 
 .sp
 .BI "int sasl_decode(sasl_conn_t " *conn ", "
 .BI "		     const char * " input ", " 
 .BI "                unsigned " inputlen ", " 
-.BI "		     char ** " output ", " 
+.BI "		     const char ** " output ", " 
 .BI "		     unsigned * " outputlen ");"  
 
 .fi
@@ -41,7 +41,9 @@ encrypted or signed form to plain data. If there was no security layer
 negotiated the output is identical to the input.
 
 .I output
-is allocated by the library and must be freed by the application. One should not to give sasl_decode more data than the negotiated maxbufsize (see sasl_getprop).
+contains the decoded data and is allocated/freed by the library.
+
+One should not to give sasl_decode more data than the negotiated maxbufsize (see sasl_getprop).
 
 Note that sasl_decode can succeed and outputlen can be zero. If this
 is the case simply wait for more data and call sasl_decode again.
@@ -49,12 +51,10 @@ is the case simply wait for more data and call sasl_decode again.
 .PP
 
 .SH "RETURN VALUE"
-
-Returns SASL_OK on success. SASL error code on failure.
+Returns SASL_OK on success. See sasl_errors(3) for meanings of other return
+codes.
 
 .SH "CONFORMING TO"
 RFC 2222
 .SH "SEE ALSO"
-.BR sasl_encode
-.BR 
-.BR 
+sasl(3), sasl_errors(3), sasl_encode(3)

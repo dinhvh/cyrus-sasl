@@ -22,14 +22,14 @@ sasl_authorize_t \- The SASL authorization callback
 
 .SH SYNOPSIS
 .nf
-.B #include <sasl.h>
+.B #include <sasl/sasl.h>
 
 .sp
 .BI "int sasl_authorize_t(void " *context ", "
-.BI "		          const char " *auth_identity ", "
-.BI "		          const char " *requested_user ", "
-.BI "		          const char ** " user ", "
-.BI "		          const cahr ** " errstr ")";
+.BI "		          const char " *requested_user ", unsigned " alen ","
+.BI "		          const char " *auth_identity ", unsigned " alen ","
+.BI "		          const char " *def_realm ", unsigned " urlen ","
+.BI "		          struct propctx " *propctx ") "
 
 .fi
 .SH DESCRIPTION
@@ -47,12 +47,7 @@ whom.
 .PP
 
 .SH "RETURN VALUE"
-
 SASL callback functions should return SASL return codes. See sasl.h for a complete list. SASL_OK indicates success.
 
-.SH "CONFORMING TO"
-RFC 2222
 .SH "SEE ALSO"
-.BR other sasl stuff
-.BR 
-.BR 
+sasl(3), sasl_callbacks(3)

@@ -22,7 +22,7 @@ sasl_getpath_t \- The SASL callback to indicate location of the mechanism driver
 
 .SH SYNOPSIS
 .nf
-.B #include <sasl.h>
+.B #include <sasl/sasl.h>
 
 .sp
 .BI "int sasl_getpath_t(void " *context ", "
@@ -32,7 +32,7 @@ sasl_getpath_t \- The SASL callback to indicate location of the mechanism driver
 .SH DESCRIPTION
 
 .B sasl_getpath_t
-is used if the application wishes to use a different location for the SASL mechanism drivers (the shared library files). If this callback is not used SASL will either use the location in the enviornment variable SASL_PATH or /usr/lib/sasl by default.
+is used if the application wishes to use a different location for the SASL mechanism drivers (the shared library files). If this callback is not used SASL will either use the location in the enviornment variable SASL_PATH or /usr/lib/sasl2 by default.
 .PP
 
 .SH "RETURN VALUE"
@@ -42,6 +42,4 @@ SASL callback functions should return SASL return codes. See sasl.h for a comple
 .SH "CONFORMING TO"
 RFC 2222
 .SH "SEE ALSO"
-.BR other sasl stuff
-.BR 
-.BR 
+sasl(3), sasl_callbacks(3), sasl_errors(3)

@@ -15,36 +15,29 @@
 .\" the source, must acknowledge the copyright and authors of this work.
 .\"
 .\"
-.TH sasl_dispose "26 March 2000" SASL "SASL man pages"
+.TH sasl_done "26 March 2000" SASL "SASL man pages"
 .SH NAME
-sasl_dispose \- Dispose of a SASL connection object
-
+sasl_done \- Dispose of a SASL connection object
 
 .SH SYNOPSIS
 .nf
-.B #include <sasl.h>
+.B #include <sasl/sasl.h>
 
 .sp
-.BI "void sasl_dispose(" sasl_conn_t " **pconn )";
+.BI "void sasl_done( void )";
 
 .fi
 .SH DESCRIPTION
 
-.B sasl_dispose
-is called when a SASL connection object is no longer needed. Note that
-this is usually when the protocol session is done NOT when the
-authentication is done since a security layer may have been
-negotiated.
+.B sasl_done
+is called when the application is completely done with the SASL library.
 
 .PP
 
 .SH "RETURN VALUE"
-
 No return values
 
 .SH "CONFORMING TO"
 RFC 2222
 .SH "SEE ALSO"
-.BR other sasl stuff
-.BR 
-.BR 
+sasl(3), sasl_server_init(3), sasl_client_init(3)

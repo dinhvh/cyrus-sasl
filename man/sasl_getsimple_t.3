@@ -22,12 +22,12 @@ sasl_getsimple_t \- The SASL callback for username/authname/realm
 
 .SH SYNOPSIS
 .nf
-.B #include <sasl.h>
+.B #include <sasl/sasl.h>
 
 .sp
 .BI "int sasl_getsimple_t(void " *context ", "
 .BI "		          int " id ", "
-.BI "		          const cahr ** " result ", "
+.BI "		          const char ** " result ", "
 .BI "		          unsigned * " len ")";
 
 .fi
@@ -36,7 +36,16 @@ sasl_getsimple_t \- The SASL callback for username/authname/realm
 .B sasl_getsimple_t
 is used to retrieve simple things from the application. In practice this is authentication name, authorization name, and realm. The
 .BI id
-parameter indicates which value is being requested. See sasl.h for a list of possible values.
+parameter indicates which value is being requested.
+Possible values include:
+
+.nf
+SASL_CB_USER     - Client user identity to login as
+SASL_CB_AUTHNAME - Client authentication name
+SASL_CB_LANGUAGE - Comma-separated list of RFC 1766 languages
+SASL_CB_CNONCE   - Client-nonce (for testing mostly)
+.fi
+
 .PP
 
 .SH "RETURN VALUE"
@@ -46,6 +55,4 @@ SASL callback functions should return SASL return codes. See sasl.h for a comple
 .SH "CONFORMING TO"
 RFC 2222
 .SH "SEE ALSO"
-.BR other sasl stuff
-.BR 
-.BR 
+sasl(3), sasl_callbacks(3), sasl_errors(3)

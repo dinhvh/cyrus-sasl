@@ -18,11 +18,9 @@
 .TH sasl_setprop "26 March 2000" SASL "SASL man pages"
 .SH NAME
 sasl_setprop \- Set a SASL property
-
-
 .SH SYNOPSIS
 .nf
-.B #include <sasl.h>
+.B #include <sasl/sasl.h>
 
 .sp
 .BI "int sasl_setprop(sasl_conn_t " *conn ", "
@@ -43,14 +41,9 @@ is the identifier for the property requested and
 contains a pointer to the data. It is the applications job to make sure this type is correct. This is an easy way to crash a program.
 
 .nf
-SASL_MAXOUTBUF  -    security layer max output buf unsigned 
-SASL_REALM      -    server authentication realm used 
-SASL_GETOPTCTX  -    context for getopt callback 
-SASL_IP_LOCAL   -    local address (pvalue=sockaddr_in *) 
-SASL_IP_REMOTE  -    remote address (pvalue=sockaddr_in *) 
-SASL_SSF_EXTERNAL -  external SSF active -- sasl_external_properties_t
+SASL_AUTH_EXTERNAL - external authentication ID (const char *)
+SASL_SSF_EXTERNAL -  external SSF active -- (sasl_ssf_t)
 SASL_SEC_PROPS  -    sasl_security_properties_t 
-	             also allows SASL_IP_LOCAL, SASL_IP_REMOTE 
 .fi
 
 .PP
@@ -62,6 +55,4 @@ Returns SASL_OK on success. SASL error code on failure.
 .SH "CONFORMING TO"
 RFC 2222
 .SH "SEE ALSO"
-.BR other sasl stuff
-.BR 
-.BR 
+sasl(3), sasl_errors(3)

@@ -19,10 +19,9 @@
 .SH NAME
 sasl_callbacks \- How to work with SASL callbacks
 
-
 .SH SYNOPSIS
 .nf
-.B #include <sasl.h>
+.B #include <sasl/sasl.h>
 
 .fi
 .SH DESCRIPTION
@@ -46,13 +45,15 @@ The list of callbacks follows:
  sasl_getopt_t     client/server: Get an option value
  sasl_log_t        client/server: Log message handler
  sasl_getpath_t    client/server: Get path to search for mechanisms
+ sasl_verifyfile_t client/server: Verify files for use by SASL
+ sasl_canon_user_t client/server: Username canonicalization function.
  sasl_getsimple_t  client: Get user/language list
  sasl_getsecret_t  client: Get authentication secret
  sasl_chalprompt_t client: Display challenge and prompt for response
+ sasl_getrealm_t   client: Get the realm for authentication
  sasl_authorize_t  server: Authorize policy callback
- sasl_server_getsecret_t server: User secret database read
- sasl_server_putsecret_t server: User secret database write
-.PP
+ sasl_server_userdb_checkpass_t server: verify plaintext password
+ sasl_server_userdb_setpass_t   server: set plaintext password
 
 .SH "RETURN VALUE"
 
@@ -60,7 +61,10 @@ SASL callback functions should return SASL return codes. See sasl.h for a comple
 
 .SH "CONFORMING TO"
 RFC 2222
+
 .SH "SEE ALSO"
-.BR other sasl stuff
-.BR 
-.BR 
+sasl(3), sasl_errors(3), sasl_authorize_t(3), sasl_log_t(3), sasl_getpath_t(3),
+sasl_verifyfile_t(3), sasl_canon_user_t(3), sasl_getsimple(3),
+sasl_getsecret_t(3), sasl_chalprompt_t(3), sasl_getrealm_t(3),
+sasl_authorize_t(3), sasl_server_userdb_checkpass_t(3),
+sasl_server_userdb_setpass_t(3)
