@@ -1,0 +1,132 @@
+.\" Hey Emacs! This file is -*- nroff -*- source.
+.\"
+.\" This manpage is Copyright (C) 1999 Tim Martin
+.\"
+.\" Permission is granted to make and distribute verbatim copies of this
+.\" manual provided the copyright notice and this permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted to copy and distribute modified versions of this
+.\" manual under the conditions for verbatim copying, provided that the
+.\" entire resulting derived work is distributed under the terms of a
+.\" permission notice identical to this one
+.\" 
+.\" Formatted or processed versions of this manual, if unaccompanied by
+.\" the source, must acknowledge the copyright and authors of this work.
+.\"
+.\"
+.TH sasl_errors "26 March 2000" SASL "SASL man pages"
+.SH NAME
+sasl_errors \- SASL error codes
+
+.SH SYNOPSIS
+.nf
+.B #include <sasl/sasl.h>
+
+.fi
+.SH DESCRIPTION
+
+The following are the general error codes that may be returned by
+calls into the SASL library, and their meanings (that may vary
+slightly based on context):
+
+.SH Common Result Codes
+.TP 0.8i
+SASL_OK
+Success
+.TP 0.8i
+SASL_CONTINUE
+Another step is needed in authentication
+.TP 0.8i
+SASL_FAIL
+Generic Failure
+.TP 0.8i
+SASL_NOMEM
+Memory shortage failure
+.TP 0.8i
+SASL_BUFOVER
+Overflowed buffer
+.TP 0.8i
+SASL_NOMECH
+Mechanism not supported / No mechanisms matched requirements
+.TP 0.8i
+SASL_BADPROT
+Bad / Invalid Protocol or Protocol cancel
+.TP 0.8i
+SASL_NOTDONE
+Can't request information / Not applicable until later in exchange
+.TP 0.8i
+SASL_BADPARAM
+Invalid Parameter Supplied
+.TP 0.8i
+SASL_TRYAGAIN
+Transient Failure (e.g. weak key)
+.TP 0.8i
+SASL_BADMAC
+Integrity Check Failed
+.TP 0.8i
+SASL_NOTINIT
+SASL library not initialized
+
+.SH Client-only Result Codes
+.TP 0.8i
+SASL_INTERACT
+Needs user interaction
+.TP 0.8i
+SASL_BADSERV
+Server failed mutual authentication step
+.TP 0.8i
+SASL_WRONGMECH
+Mechanism does not support requested feature
+
+.SH Server-only Result Codes
+.TP 0.8i
+SASL_BADAUTH
+Authentication Failure
+.TP 0.8i
+SASL_NOAUTHZ
+Authorization Failure
+.TP 0.8i
+SASL_TOOWEAK
+Mechanism too weak for this user
+.TP 0.8i
+SASL_ENCRYPT
+Encryption needed to use mechanism
+.TP 0.8i
+SASL_TRANS
+One time use of a plaintext password will enable requested mechanism for user
+.TP 0.8i
+SASL_EXPIRED
+Passphrase expired, must be reset
+.TP 0.8i
+SASL_DISABLED
+Account Disabled
+.TP 0.8i
+SASL_NOUSER
+User Not Found 
+.TP 0.8i
+SASL_BADVERS
+Version mismatch with plug-in
+.TP 0.8i
+SASL_NOVERIFY
+USer exists, but no verifier for user
+
+.SH Password Setting Result Codes
+.TP 0.8i
+SASL_PWLOCK
+Passphrase locked
+.TP 0.8i
+SASL_NOCHANGE
+Requested change was not needed
+.TP 0.8i
+SASL_WEAKPASS
+Passphrase is too week for security policy.
+.TP 0.8i
+SASL_NOUSERPASS
+User supplied passwords are not permitted
+
+.SH "CONFORMING TO"
+RFC 2222
+
+.SH "SEE ALSO"
+sasl(3)
