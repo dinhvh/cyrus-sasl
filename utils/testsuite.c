@@ -1,7 +1,7 @@
 /* testsuite.c -- Stress the library a little
  * Rob Siemborski
  * Tim Martin
- * $Id: testsuite.c,v 1.13.2.26 2001/07/13 17:31:15 rjs3 Exp $
+ * $Id: testsuite.c,v 1.13.2.27 2001/07/13 21:10:52 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -1398,7 +1398,7 @@ void testseclayer(char *mech, void *rock __attribute__((unused)))
     const unsigned num_properties = 2;
     unsigned i;
     const sasl_ssf_t *this_ssf;
-    unsigned outlen, outlen2, totlen;
+    unsigned outlen = 0, outlen2 = 0, totlen = 0;
     
     printf("%s --> security layer start\n", mech);
 
@@ -1469,9 +1469,10 @@ void testseclayer(char *mech, void *rock __attribute__((unused)))
 	printf("Failed with: %s\n", sasl_errstring(result, NULL, NULL));
 	fatal("sasl_decode failure part 1/2");
     }    
-    
+
     memset(buf2, 0, 8192);
-    memcpy(buf2, out2, outlen2);
+    if(outlen2) 
+        memcpy(buf2, out2, outlen2);
 
     result = sasl_decode(sconn, out, outlen - 5, &out, &outlen);
     if(result != SASL_OK) {
@@ -1536,7 +1537,7 @@ void testseclayer(char *mech, void *rock __attribute__((unused)))
     memcpy(buf, out, outlen);
 
     tmp = buf + outlen;
-    
+
     result = sasl_encode(cconn, txstring, strlen(txstring), &out2, &outlen2);
     if(result != SASL_OK) {
 	fatal("basic sasl_encode failure (4)");
