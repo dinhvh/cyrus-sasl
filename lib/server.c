@@ -1,6 +1,6 @@
 /* SASL server API implementation
  * Tim Martin
- * $Id: server.c,v 1.84.2.19 2001/06/20 15:36:58 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.20 2001/06/22 14:32:40 rjs3 Exp $
  */
 
 /* 
@@ -92,6 +92,8 @@ extern int gethostname(char *, int);
 /* if we've initialized the server sucessfully */
 static int _sasl_server_active = 0;
 
+/* For access by other modules */
+int _is_sasl_server_active(void) { return _sasl_server_active; }
 
 static int _sasl_checkpass(sasl_conn_t *conn, const char *service, 
 			   const char *user, const char *pass);
@@ -244,16 +246,19 @@ static void server_dispose(sasl_conn_t *pconn)
 
 static int init_mechlist(void)
 {
+    sasl_utils_t *newutils = NULL;
+
     mechlist->mutex = sasl_MUTEX_ALLOC();
     if(!mechlist->mutex) return SASL_FAIL;
 
     /* set util functions - need to do rest */
-    mechlist->utils = _sasl_alloc_utils(NULL, &global_callbacks);
-    if (mechlist->utils == NULL)
+    newutils = _sasl_alloc_utils(NULL, &global_callbacks);
+    if (newutils == NULL)
 	return SASL_NOMEM;
 
-    mechlist->utils->checkpass = &sasl_checkpass;
+    newutils->checkpass = &sasl_checkpass;
 
+    mechlist->utils = newutils;
     mechlist->mech_list=NULL;
     mechlist->mech_length=0;
 

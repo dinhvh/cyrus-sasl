@@ -761,6 +761,8 @@ struct propctx *sasl_auxprop_getctx(sasl_conn_t *conn)
     return sconn->sparams->propctx;
 }
 
+static const sasl_utils_t *global_utils = NULL;
+
 /* add an auxiliary property plugin */
 int sasl_auxprop_add_plugin(const char *plugname,
 			    sasl_auxprop_init_t *auxpropfunc)
@@ -768,16 +770,14 @@ int sasl_auxprop_add_plugin(const char *plugname,
     int result, out_version;
     auxprop_plug_list_t *new_item;
     const sasl_auxprop_plug_t *plug;
-    sasl_utils_t *utils;
 
-    /* FIXME: This allocation is probabally unnecessary,
-     *        not to mention EVIL. */
-    utils = _sasl_alloc_utils(NULL, NULL);
-    if(utils == NULL) return SASL_NOMEM;
-
-    result = auxpropfunc(utils, SASL_AUXPROP_PLUG_VERSION,
+    if(!global_utils) {
+	global_utils = _sasl_alloc_utils(NULL, NULL);
+	if(global_utils == NULL) return SASL_NOMEM;
+    }
+    
+    result = auxpropfunc(global_utils, SASL_AUXPROP_PLUG_VERSION,
 			 &out_version, &plug, plugname);
-    _sasl_free_utils(&utils);
 
     if(result != SASL_OK) {
 	VL(("auxpropfunc error %i\n",result));
@@ -801,23 +801,17 @@ int sasl_auxprop_add_plugin(const char *plugname,
 void _sasl_auxprop_free() 
 {
     auxprop_plug_list_t *ptr, *ptr_next;
-    sasl_utils_t *utils;
     
-    /* FIXME: This allocation is probabally unnecessary,
-     *        not to mention EVIL. */
-    utils = _sasl_alloc_utils(NULL, NULL);
-    if(utils == NULL) return;
-
     for(ptr = auxprop_head; ptr; ptr = ptr_next) {
 	ptr_next = ptr->next;
 	if(ptr->plug->auxprop_free)
-	    ptr->plug->auxprop_free(ptr->plug->glob_context, utils);
+	    ptr->plug->auxprop_free(ptr->plug->glob_context, global_utils);
 	sasl_FREE(ptr);
     }
 
     auxprop_head = NULL;
 
-    _sasl_free_utils(&utils);
+    _sasl_free_utils(&global_utils);
 }
 
 

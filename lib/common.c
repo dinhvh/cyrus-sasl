@@ -1326,13 +1326,18 @@ _sasl_alloc_utils(sasl_conn_t *conn,
 }
 
 int
-_sasl_free_utils(sasl_utils_t ** utils)
+_sasl_free_utils(const sasl_utils_t ** utils)
 {
+    sasl_utils_t *nonconst;
+
     if(!utils) return SASL_BADPARAM;
     if(!*utils) return SASL_OK;
 
-    sasl_randfree(&((*utils)->rpool));
-    sasl_FREE(*utils);
+    /* FIXME: I wish we could avoid this */
+    nonconst = (sasl_utils_t *)(*utils);
+
+    sasl_randfree(&(nonconst->rpool));
+    sasl_FREE(nonconst);
 
     *utils = NULL;
     return SASL_OK;

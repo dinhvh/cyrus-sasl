@@ -51,6 +51,7 @@
 #define DEFAULT_MAXOUTBUF 8192
 
 extern int _sasl_common_init(void);
+extern int _is_sasl_server_active(void);
 
 /* dlopen.c */
 extern int _sasl_get_mech_list(const char *entryname,
@@ -162,7 +163,7 @@ typedef struct mechanism
 } mechanism_t;
 
 typedef struct mech_list {
-  sasl_utils_t *utils;  /* gotten from plug_init */
+  const sasl_utils_t *utils;  /* gotten from plug_init */
 
   void *mutex;            /* mutex for this data */ 
   mechanism_t *mech_list; /* list of mechanisms */
@@ -262,8 +263,9 @@ extern sasl_utils_t *
 _sasl_alloc_utils(sasl_conn_t *conn,
 		  sasl_global_callbacks_t *global_callbacks);
 
+/* FIXME: This const here is kind of ugly */
 extern int
-_sasl_free_utils(sasl_utils_t ** utils);
+_sasl_free_utils(const sasl_utils_t ** utils);
 
 
 /* Database Stuff */
