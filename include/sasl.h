@@ -501,15 +501,6 @@ typedef int sasl_chalprompt_t(void *context, int id,
  * returns SASL_OK
  * result must persist until the next callback
  */
-/* If there is an interaction with SASL_CB_GETREALM the challenge of
- *  the sasl_interact_t will be of the format: {realm1, realm2,
- *  ...}. That is a list of possible realms seperated by comma spaces
- *  enclosed by brackets.  It will be "{}" if the client is expected
- *  to select the realm.
- *
- * If a mechanism would use this callback, but it is not present, then the
- * first realm listed is automatically selected.
- */
 typedef int sasl_getrealm_t(void *context, int id,
 			    const char **availrealms,
 			    const char **result);
