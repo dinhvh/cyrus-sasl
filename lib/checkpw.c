@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: checkpw.c,v 1.41.2.13 2001/06/28 21:51:25 rjs3 Exp $
+ * $Id: checkpw.c,v 1.41.2.14 2001/07/03 18:00:56 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -97,8 +97,6 @@ extern int errno;
 
 static void _sasl_free_secret(sasl_secret_t **secret)
 {
-  VL(("trying to free secret\n"));
-
   if (secret==NULL) return;
   if (*secret==NULL) return;
 

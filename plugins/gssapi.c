@@ -1,7 +1,7 @@
 /* GSSAPI SASL plugin
  * Leif Johansson
  * Rob Siemborski (SASL v2 Conversion)
- * $Id: gssapi.c,v 1.41.2.15 2001/07/02 22:50:10 rjs3 Exp $
+ * $Id: gssapi.c,v 1.41.2.16 2001/07/03 18:01:04 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -583,8 +583,6 @@ sasl_gss_server_step (void *conn_context,
 	  real_input_token.length = clientinlen;
 	}
       
-      VL(("sasl_gss_server_step: AUTHNEG\n"));
-
       maj_stat =
 	gss_accept_sec_context (&min_stat,
 				&(text->gss_ctx),
@@ -627,7 +625,6 @@ sasl_gss_server_step (void *conn_context,
       
       if (maj_stat == GSS_S_COMPLETE)
 	{
-	  VL (("GSS_S_COMPLETE\n"));
           /* Switch to ssf negotiation */
 	  text->state = SASL_GSSAPI_STATE_SSFCAP;
 	}
@@ -644,7 +641,6 @@ sasl_gss_server_step (void *conn_context,
 
 	name_token.value = NULL;
 	name_without_realm.value = NULL;
-	VL(("sasl_gss_server_step: SSFCAP\n"));
 
 	name_token.value = NULL;
 	
@@ -803,7 +799,6 @@ sasl_gss_server_step (void *conn_context,
 	  gss_release_buffer(&min_stat, output_token);
         }
 
-	VL(("Sending %d bytes (ssfcap) to client\n",*serveroutlen));
         /* Wait for ssf request and authid */
 	text->state = SASL_GSSAPI_STATE_SSFREQ; 
 	
@@ -855,8 +850,6 @@ sasl_gss_server_step (void *conn_context,
 	    return SASL_FAIL;
 	}
 
-	VL (("Got %d bytes from client\n",output_token->length));
-
 	if (output_token->length > 4) {
 	    int ret;
 
@@ -871,8 +864,6 @@ sasl_gss_server_step (void *conn_context,
 		sasl_gss_free_context_contents(text);
 		return SASL_NOMEM;
 	    }
-
-	    VL(("Got user %s\n",oparams->user));
 
 	    memcpy(&oparams->maxoutbuf,((char *) real_output_token.value) + 1,
 		   sizeof(unsigned));
@@ -1156,21 +1147,14 @@ sasl_gss_client_step (void *conn_context,
     {
     case SASL_GSSAPI_STATE_AUTHNEG:
       {
-	  VL(("sasl_gss_client_step: AUTHNEG\n"));
-
 	  /* try to get the userid */
 	  if (text->u.user ==NULL)
 	  {
 	    int auth_result = SASL_OK;
-	    VL (("Trying to get userid\n"));
 
 	    auth_result=get_userid(params,
 				   &text->u.user,
 				   prompt_need);
-
-	    if (text->u.user) {
-		VL (("Userid: %s\n",text->u.user));
-	    }
 
 	    if ((auth_result!=SASL_OK) && (auth_result!=SASL_INTERACT))
 	      {
@@ -1217,7 +1201,6 @@ sasl_gss_client_step (void *conn_context,
 	    if (params->serverFQDN == NULL || strlen(params->serverFQDN) == 0)
 	      return SASL_FAIL;
 	    sprintf(name_token.value,"%s@%s", params->service, params->serverFQDN);
-	    VL(("name: %s\n",(char *)name_token.value)); /* */
 
 	    maj_stat = gss_import_name (&min_stat,
 					&name_token,
@@ -1290,10 +1273,10 @@ sasl_gss_client_step (void *conn_context,
         }
 
 	if (maj_stat == GSS_S_COMPLETE)
-	  {
-	    VL(("GSS_S_COMPLETE\n"));
-	    text->state = SASL_GSSAPI_STATE_SSFCAP; /* Switch to ssf negotiation */
-	  }
+	{
+            /* Switch to ssf negotiation */
+	    text->state = SASL_GSSAPI_STATE_SSFCAP;
+	}
 	
 	return SASL_CONTINUE;
 	break;
@@ -1304,8 +1287,6 @@ sasl_gss_client_step (void *conn_context,
 	unsigned int alen, external = params->external_ssf;
 	sasl_ssf_t need, allowed;
 	char serverhas, mychoice;
-
-	VL(("sasl_gss_client_step: SSFCAP\n"));
 
 	real_input_token.value = (void *) serverin;
 	real_input_token.length = serverinlen;
@@ -1354,21 +1335,18 @@ sasl_gss_client_step (void *conn_context,
 	    oparams->decode = &sasl_gss_decode;
 	    oparams->mech_ssf = 56;
 	    mychoice = 4;
-	    VL (("Using encryption layer\n"));
 	} else if (allowed >= 1 && need <= 1 && (serverhas & 2)) {
 	    /* integrity */
 	    oparams->encode = &sasl_gss_integrity_encode;
 	    oparams->decode = &sasl_gss_decode;
 	    oparams->mech_ssf = 1;
 	    mychoice = 2;
-	    VL (("Using integrity layer\n"));
 	} else if (need <= 0 && (serverhas & 1)) {
 	    /* no layer */
 	    oparams->encode = NULL;
 	    oparams->decode = NULL;
 	    oparams->mech_ssf = 0;
 	    mychoice = 1;
-	    VL (("Using no layer\n"));
 	} else {
 	    /* there's no appropriate layering for us! */
 	    sasl_gss_free_context_contents(text);
@@ -1389,7 +1367,7 @@ sasl_gss_client_step (void *conn_context,
 	    sasl_gss_free_context_contents(text);
 	    return SASL_NOMEM;
 	  }
-	VL(("user: %s,buflen=%d\n",oparams->user,input_token->length));
+
 	if (oparams->user)
 	    memcpy((char *)input_token->value+4,oparams->user,alen);
 	
@@ -1440,7 +1418,6 @@ sasl_gss_client_step (void *conn_context,
 	return SASL_OK;
       }
     case SASL_GSSAPI_STATE_AUTHENTICATED:
-      VL(("sasl_gss_client_step: AUTHENTICATED\n"));
       return SASL_OK;
       break;
 

@@ -1,7 +1,7 @@
 /* Kerberos4 SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: kerberos4.c,v 1.65.2.23 2001/07/02 22:50:10 rjs3 Exp $
+ * $Id: kerberos4.c,v 1.65.2.24 2001/07/03 18:01:05 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -524,8 +524,6 @@ static int server_continue_step (void *conn_context,
 
       /* shouldn't we check for erroneous client input here?!? */
 
-    VL(("KERBEROS_V4 Step 1\n"));
-    
     sparams->utils->rand(sparams->utils->rpool,(char *) &randocts ,
 			 sizeof(randocts));    
     text->challenge=randocts; 
@@ -551,8 +549,6 @@ static int server_continue_step (void *conn_context,
     KTEXT_ST ticket;
     unsigned lup;
     struct sockaddr_in addr;
-
-    VL(("KERBEROS_V4 Step 2\n"));
 
     /* received authenticator */
 
@@ -599,9 +595,9 @@ static int server_continue_step (void *conn_context,
     KRB_UNLOCK_MUTEX(sparams->utils);
 
     if (result) { /* if fails mechanism fails */
-	text->utils->seterror(text->utils->conn,0,krb_err_txt[result]);
-	VL(("krb_rd_req failed service=%s instance=%s error code=%i\n",
-	    sparams->service, text->instance,result));
+	text->utils->seterror(text->utils->conn,0,
+	"krb_rd_req failed service=%s instance=%s error code=%s (%i)",
+	    sparams->service, text->instance,krb_err_txt[result],result);
 	return SASL_BADAUTH;
     }
 
@@ -876,8 +872,6 @@ static int client_start(void *glob_context __attribute__((unused)),
 		 sasl_client_params_t *params,
 		 void **conn)
 {
-  VL(("KERBEROS_V4 Client start\n"));
-
   return new_text(params->utils, (context_t **) conn);
 }
 
@@ -898,8 +892,6 @@ static int client_continue_step (void *conn_context,
   
     if (text->state==0)
     {
-	VL(("KERBEROS_V4 Step 1\n"));
-
 	if (clientout) {
 	    *clientout = NULL;
 	    *clientoutlen = 0;
@@ -915,8 +907,6 @@ static int client_continue_step (void *conn_context,
 	 * We want to reply with an authenticator. */
 	int result;
 	KTEXT_ST ticket;
-
-	VL(("KERBEROS_V4 Step 2\n"));
 
 	memset(&ticket, 0L, sizeof(ticket));
 	ticket.length=MAX_KTXT_LEN;   

@@ -1,7 +1,7 @@
 /* common.c - Functions that are common to server and clinet
  * Rob Siemborski
  * Tim Martin
- * $Id: common.c,v 1.64.2.28 2001/07/02 16:48:01 rjs3 Exp $
+ * $Id: common.c,v 1.64.2.29 2001/07/03 18:00:56 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -298,9 +298,6 @@ int _sasl_conn_init(sasl_conn_t *conn,
 		    const sasl_callback_t *callbacks,
 		    const sasl_global_callbacks_t *global_callbacks) {
   int result = SASL_OK;
-
-  I(conn);
-  I(service);
 
   conn->type = SASL_CONN_UNKNOWN;
 

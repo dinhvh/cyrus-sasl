@@ -158,15 +158,6 @@
 
 #include <stdio.h>
 
-/* we no longer support or use nana, 
-   but we still have code that refers to it */
-#define WITHOUT_NANA
-#define L_DEFAULT_GUARD (0)
-#define I_DEFAULT_GUARD (0)
-#define I(foo)
-#define VL(foo)
-#define VLP(foo,bar)
-
 #ifndef HAVE___ATTRIBUTE__
 /* Can't use attributes... */
 #define __attribute__(foo)

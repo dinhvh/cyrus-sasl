@@ -1,7 +1,7 @@
 /* db_berkeley.c--SASL berkeley db interface
  * Rob Siemborski
  * Tim Martin
- * $Id: db_berkeley.c,v 1.16.2.4 2001/06/25 18:44:38 rjs3 Exp $
+ * $Id: db_berkeley.c,v 1.16.2.5 2001/07/03 18:00:56 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -99,7 +99,6 @@ static int berkeleydb_open(sasl_conn_t *conn, int rdwr, DB **mbdb)
 	_sasl_log (NULL, SASL_LOG_ERR,
 		   "unable to open Berkeley db %s: %s",
 		   path, strerror(ret));
-	VL(("error opening password file. Do you have write permissions?\n"));
 	return SASL_FAIL;
     }
 
@@ -252,8 +251,6 @@ putsecret(sasl_conn_t *context,
   if (!auth_identity || !realm)
       return SASL_FAIL;
 
-  VL(("Entering putsecret\n"));
-  
   result = alloc_key(auth_identity, realm, &key, &key_len);
   if (result != SASL_OK)
     return result;
@@ -281,8 +278,6 @@ putsecret(sasl_conn_t *context,
     {
       _sasl_log (NULL, SASL_LOG_ERR,
 		 "error updating sasldb: %s", strerror(result));
-      VL(("DBERROR: error updating database for %s: %s",
-	  key, strerror(result)));
       result = SASL_FAIL;
       goto cleanup;
     }
@@ -297,9 +292,6 @@ putsecret(sasl_conn_t *context,
     {
       _sasl_log (NULL, SASL_LOG_ERR,
 		 "error deleting entry from sasldb: %s", strerror(result));
-      VL(("DBERROR: error deleting entry for database for %s: %s",
-	  key, strerror(result)));
-
       if (result == DB_NOTFOUND)
 	  result = SASL_NOUSER;
       else	  

@@ -1,7 +1,7 @@
 /* Anonymous SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: anonymous.c,v 1.34.2.15 2001/07/02 22:50:09 rjs3 Exp $
+ * $Id: anonymous.c,v 1.34.2.16 2001/07/03 18:01:04 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -254,7 +254,6 @@ client_continue_step(void *conn_context,
   if (text->state == 3) {
       *clientout = NULL;
       *clientoutlen = 0;
-      VL(("Verify we're done step"));
       text->state++;
       return SASL_OK;      
   }
@@ -273,8 +272,6 @@ client_continue_step(void *conn_context,
       return SASL_FAIL;
   }
 
-  VL(("ANONYMOUS: step 1\n"));
-
   if (!cparams
       || !clientout
       || !clientoutlen
@@ -291,7 +288,6 @@ client_continue_step(void *conn_context,
   /* Watch out if this doesn't start nulled! */
   /* Get the username */
   if (prompt_need && *prompt_need) {
-    VL(("Received prompt\n"));
     /* We used an interaction to get it. */
     if (! (*prompt_need)[0].result)
       return SASL_BADPARAM;
@@ -356,8 +352,6 @@ client_continue_step(void *conn_context,
   strcpy(text->out_buf, user);
   text->out_buf[userlen] = '@';
   strcpy(text->out_buf + userlen + 1, hostname);
-
-  VL(("anonymous: out=%s\n", *clientout));
 
   oparams->doneflag = 1;
   oparams->mech_ssf=0;

@@ -3,6 +3,7 @@
 	  Note that this is different from --enable-static, which causes
 	  libtool to build static versions of everything is is almost
 	  certainly NOT what you want.
+	* Removed all references to the ancient NANA code.
 
 2000-07-02  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Improved allocation efficiency of KERBEROS_V4, DIGEST-MD5,

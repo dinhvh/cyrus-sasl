@@ -1,6 +1,6 @@
 /* Generic SASL plugin utility functions
  * Rob Siemborski
- * $Id: plugin_common.c,v 1.1.2.9 2001/06/25 18:44:41 rjs3 Exp $
+ * $Id: plugin_common.c,v 1.1.2.10 2001/07/03 18:01:05 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -200,7 +200,6 @@ int _plug_strdup(const sasl_utils_t * utils, const char *in,
 void _plug_free_string(const sasl_utils_t *utils, char **str)
 {
   size_t len;
-  VL(("Freeing string\n"));
 
   if (!utils || !str || !(*str)) return;
 
@@ -214,8 +213,6 @@ void _plug_free_string(const sasl_utils_t *utils, char **str)
 
 void _plug_free_secret(const sasl_utils_t *utils, sasl_secret_t **secret) 
 {
-    VL(("Freeing secret\n"));
-    
     if(!utils || !secret || !(*secret)) return;
 
     utils->erasebuffer((*secret)->data, (*secret)->len);

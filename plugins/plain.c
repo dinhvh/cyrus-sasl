@@ -1,7 +1,7 @@
 /* Plain SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: plain.c,v 1.43.2.8 2001/07/02 22:50:10 rjs3 Exp $
+ * $Id: plain.c,v 1.43.2.9 2001/07/03 18:01:05 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -174,8 +174,6 @@ server_continue_step (void *conn_context,
 
     /* should have received author-id NUL authen-id NUL password */
 
-    VL (("in=%s len=%i\n",clientin,clientinlen));
-
     /* get author */
     author = clientin;
     while ((lup < clientinlen) && (clientin[lup] != 0))
@@ -183,7 +181,8 @@ server_continue_step (void *conn_context,
 
     if (lup >= clientinlen)
     {
-	VL(("Can only find author (no password)\n"));
+	params->utils->seterror(params->utils->conn, 0,
+				"Can only find author (no password)");
 	return SASL_BADPROT;
     }
 
@@ -195,7 +194,8 @@ server_continue_step (void *conn_context,
 
     if (lup >= clientinlen)
     {
-	VL(("Can only find author/en (no password) \n"));
+	params->utils->seterror(params->utils->conn, 0,
+				"Can only find author/en (no password)");
 	return SASL_BADPROT;
     }
 
@@ -227,11 +227,10 @@ server_continue_step (void *conn_context,
 
     if (result != SASL_OK)
     {
-	VL(("Password verification failed\n"));
+	params->utils->seterror(params->utils->conn, 0,
+				"Password verification failed");
 	return result;
     }
-
-    VL(("Password verified A-ok\n"));
 
     if (! author || !*author)
       author = authen;
@@ -550,8 +549,6 @@ static int client_continue_step (void *conn_context,
   context_t *text;
   text=conn_context;
 
-  VL(("Plain step #%d\n",text->state));
-
   if (!clientout && text->state == 1) {
       text->state = 2;
       return SASL_CONTINUE;
@@ -573,7 +570,6 @@ static int client_continue_step (void *conn_context,
     /* try to get the userid */
     if (oparams->user==NULL)
     {
-      VL (("Trying to get userid\n"));
       user_result=get_userid(params,
 			     &user,
 			     prompt_need);
@@ -585,7 +581,6 @@ static int client_continue_step (void *conn_context,
     /* try to get the authid */    
     if (oparams->authid==NULL)
     {
-      VL (("Trying to get authid\n"));
       auth_result=get_authid(params,
 			     &authid,
 			     prompt_need);
@@ -597,7 +592,6 @@ static int client_continue_step (void *conn_context,
     /* try to get the password */
     if (text->password==NULL)
     {
-      VL (("Trying to get password\n"));
       pass_result=get_password(params,
 			       &text->password,
 			       prompt_need);
@@ -621,7 +615,6 @@ static int client_continue_step (void *conn_context,
 			  user_result, auth_result, pass_result);
       if (result!=SASL_OK) return result;
       
-      VL(("returning prompt(s)\n"));
       return SASL_INTERACT;
     }
     
@@ -629,8 +622,6 @@ static int client_continue_step (void *conn_context,
 
     if (!oparams->authid || !text->password)
       return SASL_BADPARAM;
-
-    VL (("Got username, authid, and password\n"));
 
     /* send authorized id NUL authentication id NUL password */
     {
@@ -644,11 +635,6 @@ static int client_continue_step (void *conn_context,
       if(result != SASL_OK) return result;
 
       memset(text->out_buf, 0, *clientoutlen + 1);
-
-      VL(("userid=[%s]\n",oparams->user ? oparams->user : "(NULL)"));
-      VL(("authid=[%s]\n",oparams->authid));
-      VL(("password=[%s]\n",text->password->data));
-
       memcpy(text->out_buf, oparams->user, oparams->ulen);
       memcpy(text->out_buf+oparams->ulen+1, oparams->authid, oparams->alen);
       memcpy(text->out_buf+oparams->ulen+oparams->alen+2,
@@ -675,7 +661,6 @@ static int client_continue_step (void *conn_context,
   {
       *clientout = NULL;
       *clientoutlen = 0;
-      VL(("Verify we're done step"));
       text->state++;
       return SASL_OK;      
   }

@@ -1,7 +1,7 @@
 /* SASL Config file API
  * Rob Siemborski
  * Tim Martin (originally in Cyrus distribution)
- * $Id: config.c,v 1.10.2.3 2001/06/27 15:55:44 rjs3 Exp $
+ * $Id: config.c,v 1.10.2.4 2001/07/03 18:00:56 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -90,8 +90,6 @@ int sasl_config_init(const char *filename)
     
     while (fgets(buf, sizeof(buf), infile)) {
 	lineno++;
-
-	VL(("reading config file lineno=%i\n",lineno));
 
 	if (buf[strlen(buf)-1] == '\n') buf[strlen(buf)-1] = '\0';
 	for (p = buf; *p && isspace((int) *p); p++);

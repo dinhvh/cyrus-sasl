@@ -1,7 +1,7 @@
 /* CRAM-MD5 SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: cram.c,v 1.55.2.11 2001/07/02 22:50:09 rjs3 Exp $
+ * $Id: cram.c,v 1.55.2.12 2001/07/03 18:01:04 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -266,9 +266,6 @@ static char *make_hashed(sasl_secret_t *sec, char *nonce, int noncelen,
     memcpy(secret, sec->data, 64);
   }
 
-  VL(("secret=[%s] %lu\n",secret,sec->len));
-  VL(("nonce=[%s] %i\n",nonce, noncelen));
-
   /* do the hmac md5 hash output 128 bits */
   utils->hmac_md5((unsigned char *) nonce,noncelen,
 		  (unsigned char *) secret,64,digest);
@@ -304,12 +301,6 @@ static int server_continue_step (void *conn_context,
     char *time, *randdigits;
     int result;
     
-    /* arbitrary string of random digits 
-     * time stamp
-     * primary host
-     */
-    VL(("CRAM-MD5 step 1\n"));
-
     /* we shouldn't have received anything */
     if (clientinlen!=0)
     {
@@ -347,8 +338,6 @@ static int server_continue_step (void *conn_context,
     memcpy(text->msgid,*serverout,*serveroutlen);
     text->msgid[ *serveroutlen ] ='\0';
 
-    VL(("nonce=[%s]\n",text->msgid));
-
     text->state=2;
     return SASL_CONTINUE;
   }
@@ -369,9 +358,6 @@ static int server_continue_step (void *conn_context,
     int clear_md5state = 0;
     char *digest_str = NULL;
     UINT4 digest[4];
-
-    VL(("CRAM-MD5 Step 2\n"));
-    VL(("Clientin: %s\n",clientin));
 
     /* extract userid; everything before last space*/
     pos=clientinlen-1;
@@ -460,7 +446,6 @@ static int server_continue_step (void *conn_context,
 	result = SASL_BADAUTH;
 	goto done;
     }
-    VL(("Succeeded!\n"));
 
     /* nothing more to do; authenticated 
      * set oparams information (canon_user was called before) 
@@ -491,7 +476,6 @@ static int server_continue_step (void *conn_context,
 
     return result;
   }
-
 
   return SASL_FAIL; /* should never get here */
 }
@@ -720,7 +704,6 @@ static int make_prompts(sasl_client_params_t *params,
     (prompts)->prompt="Please enter your authentication name";
     (prompts)->defresult=NULL;
 
-    VL(("authid callback added\n"));
     prompts++;
   }
 
@@ -732,7 +715,6 @@ static int make_prompts(sasl_client_params_t *params,
     (prompts)->prompt="Please enter your password";
     (prompts)->defresult=NULL;
 
-    VL(("password callback added\n"));
     prompts++;
   }
 
@@ -792,7 +774,6 @@ static int c_continue_step (void *conn_context,
     /* try to get the userid */
     if (text->authid==NULL)
     {
-      VL (("Trying to get authid\n"));
       auth_result=get_authid(params,
 			     &text->authid,
 			     prompt_need);
@@ -804,7 +785,6 @@ static int c_continue_step (void *conn_context,
     /* try to get the password */
     if (text->password==NULL)
     {
-      VL (("Trying to get password\n"));
       pass_result=get_password(params,
 			  &text->password,
 			  prompt_need);
@@ -825,7 +805,6 @@ static int c_continue_step (void *conn_context,
 			      auth_result, pass_result);
       if (result!=SASL_OK) return result;
       
-      VL(("returning prompt(s)\n"));
       return SASL_INTERACT;
     }
 
@@ -845,9 +824,6 @@ static int c_continue_step (void *conn_context,
 		     params->utils);
 
     if (in16==NULL) return SASL_FAIL;
-
-    VL(("authid=[%s]\n",text->authid));
-    VL(("in16=[%s]\n",in16));
 
     maxsize=32+1+strlen(text->authid)+30;
     result = _plug_buf_alloc(params->utils, &(text->out_buf),
@@ -869,8 +845,6 @@ static int c_continue_step (void *conn_context,
 				text->authid, 0, 0, oparams);
     if(result != SASL_OK) return result;
 
-    VL(("clientout looks like=%s %i\n",*clientout,*clientoutlen));
-
     text->state++; /* fail if called again */
 
     return SASL_CONTINUE;
@@ -880,7 +854,7 @@ static int c_continue_step (void *conn_context,
   {
       *clientout = NULL;
       *clientoutlen = 0;
-      VL(("Verify we're done step"));
+
       text->state++;
 
       oparams->mech_ssf=0;

@@ -1,6 +1,6 @@
 /* canonusr.c - user canonicalization support
  * Rob Siemborski
- * $Id: canonusr.c,v 1.1.2.10 2001/07/02 16:48:01 rjs3 Exp $
+ * $Id: canonusr.c,v 1.1.2.11 2001/07/03 18:00:55 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -181,7 +181,7 @@ int sasl_canonuser_add_plugin(const char *plugname,
 			   &out_version, &plug, plugname);
 
     if(result != SASL_OK) {
-	VL(("canonuserfunc error %i\n",result));
+	_sasl_log(NULL, SASL_LOG_ERR, "auxpropfunc error %i\n",result);
 	return result;
     }
 

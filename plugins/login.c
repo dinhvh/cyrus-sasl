@@ -2,7 +2,7 @@
  * Rob Siemborski (SASLv2 Conversion)
  * contributed by Rainer Schoepf <schoepf@uni-mainz.de>
  * based on PLAIN, by Tim Martin <tmartin@andrew.cmu.edu>
- * $Id: login.c,v 1.6.2.7 2001/07/02 22:50:10 rjs3 Exp $
+ * $Id: login.c,v 1.6.2.8 2001/07/03 18:01:05 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -152,9 +152,6 @@ server_continue_step (void *conn_context,
   oparams->param_version = 0;
 
   /* nothing more to do; authenticated */
-
-  VL (("Login: server state #%i\n",text->state));
-
   if (text->state == 1) {
       text->state = 2;
 
@@ -163,8 +160,6 @@ server_continue_step (void *conn_context,
       if (clientinlen == 0) {
 	  /* get username */
 	  
-	  VL (("out=%s len=%i\n",USERNAME,strlen(USERNAME)));
-  
 	  *serveroutlen = strlen(USERNAME);
 	  *serverout = USERNAME;
 	  
@@ -173,8 +168,6 @@ server_continue_step (void *conn_context,
   }
 
   if (text->state == 2) {
-    VL (("in=%s len=%i\n",clientin,clientinlen));
-
     /* Catch really long usernames */
     if(clientinlen > 1024) return SASL_BADPROT;
 
@@ -186,11 +179,8 @@ server_continue_step (void *conn_context,
     text->username->data[clientinlen] = '\0';
     text->username->len = clientinlen;
 
-    VL (("Got username: %s\n",text->username->data));
-
     /* Request password */
 
-    VL (("out=%s len=%i\n",PASSWORD,strlen(PASSWORD)));
     *serveroutlen = strlen(PASSWORD);
     *serverout = PASSWORD;
 
@@ -217,13 +207,11 @@ server_continue_step (void *conn_context,
 
     /* verify_password - return sasl_ok on success */
 
-    VL (("Verifying password...\n"));
-    result = verify_password(params, text->username->data, text->password->data);
+    result = verify_password(params, text->username->data,
+			     text->password->data);
 
     if (result != SASL_OK)
       return result;
-
-    VL (("Password OK"));
 
     result = params->canon_user(params->utils->conn, text->username->data,
 				0, text->username->data, 0, 0, oparams);
@@ -292,8 +280,6 @@ static int c_start(void *glob_context __attribute__((unused)),
 		   void **conn)
 {
   context_t *text;
-
-  VL (("Client start\n"));
 
   /* holds state are in */
   text = params->utils->malloc(sizeof(context_t));
@@ -487,8 +473,6 @@ static int client_continue_step (void *conn_context,
   context_t *text;
   text=conn_context;
 
-  VL(("Login step #%i\n",text->state));
-
   if (text->state==1)
   {
     int user_result=SASL_OK;
@@ -501,7 +485,6 @@ static int client_continue_step (void *conn_context,
     /* try to get the userid */
     if (oparams->user==NULL)
     {
-      VL (("Trying to get userid\n"));
       user_result=get_userid(params,
 			     &user,
 			     prompt_need);
@@ -513,7 +496,6 @@ static int client_continue_step (void *conn_context,
     /* try to get the password */
     if (text->password==NULL)
     {
-      VL (("Trying to get password\n"));
       pass_result=get_password(params,
 			       &text->password,
 			       prompt_need);
@@ -536,7 +518,6 @@ static int client_continue_step (void *conn_context,
 			  user_result, pass_result);
       if (result!=SASL_OK) return result;
       
-      VL(("returning prompt(s)\n"));
       return SASL_INTERACT;
     }
 
@@ -544,8 +525,6 @@ static int client_continue_step (void *conn_context,
     
     if (!oparams->authid || !text->password)
       return SASL_BADPARAM;
-
-    VL (("Got username and password\n"));
 
     /* Watch for initial client send */
     if(clientout) {

@@ -1,7 +1,7 @@
 /* db_testw32.c--SASL win32 test/dummy interface
  * Rob Siemborski
  * G. Diskin    NOTE THIS IS FOR TEST PURPOSES ONLY FOR WIN32
- * $Id: db_testw32.c,v 1.3.4.3 2001/06/25 18:44:38 rjs3 Exp $
+ * $Id: db_testw32.c,v 1.3.4.4 2001/07/03 18:00:56 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -137,7 +137,8 @@ putsecret(sasl_conn_t *context __attribute__((unused)),
   db = fopen(filename, "wb");
 
   if (! db) {
-    VL(("error opening password file. Do you have write permissions?\n"));
+      _sasl_log(NULL, SASL_LOG_ERR,
+		"error opening password file. Do you have write permissions?");
     result = SASL_FAIL;
     goto cleanup;
   }

@@ -2,7 +2,7 @@
  * Rob Siemborski
  * Tim Martin
  * Alexey Melnikov 
- * $Id: digestmd5.c,v 1.97.2.11 2001/07/02 22:50:09 rjs3 Exp $
+ * $Id: digestmd5.c,v 1.97.2.12 2001/07/03 18:01:04 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -399,8 +399,6 @@ DigestCalcHA1(IN context_t * text,
 		   pszPassword->len,
 		   HA1);
 
-  /*  VL(("HA1 is \"%s\"\r\n", HA1));*/
-
   /* calculate the session key */
   utils->MD5Init(&Md5Ctx);
   utils->MD5Update(&Md5Ctx, HA1, HASHLEN);
@@ -528,8 +526,6 @@ calculate_response(context_t * text,
       qop = "auth";
   }
 
-  VL(("calculate_response assert passed\n"));
-
   DigestCalcHA1(text,
 		utils,
 		username,
@@ -539,8 +535,6 @@ calculate_response(context_t * text,
 		nonce,
 		cnonce,
 		SessionKey);
-
-  VL(("Session Key is \"%s\"\r\n", SessionKey));
 
   DigestCalcResponse(utils,
 		     SessionKey,/* H(A1) */
@@ -558,9 +552,6 @@ calculate_response(context_t * text,
   result = utils->malloc(HASHHEXLEN + 1);
   memcpy(result, Response, HASHHEXLEN);
   result[HASHHEXLEN] = 0;
-
-  VL(("Calculated response\n"));
-
 
   if (response_value != NULL) {
     DigestCalcResponse(utils,
@@ -584,8 +575,6 @@ calculate_response(context_t * text,
     (*response_value)[HASHHEXLEN] = 0;
 
   }
-  VL(("Calculated response leaving\n"));
-
 
   return result;
 }
@@ -600,8 +589,6 @@ DigestCalcHA1FromSecret(IN context_t * text,
 			OUT HASHHEX SessionKey)
 {
   MD5_CTX         Md5Ctx;
-
-  VL(("HA1 is \"%s\"\r\n", SessionKey));
 
   /* calculate session key */
   utils->MD5Init(&Md5Ctx);
@@ -650,10 +637,6 @@ create_response(context_t * text,
 			  nonce,
 			  cnonce,
 			  SessionKey);
-
-
-  VL(("Session Key is \"%s\"\r\n", SessionKey));
-
 
   DigestCalcResponse(utils,
 		     SessionKey,/* H(A1) */
@@ -763,9 +746,10 @@ create_nonce(const sasl_utils_t * utils)
 
   base64buf = (unsigned char *) utils->malloc(base64len + 1);
   if (base64buf == NULL) {
-    VL(("ERROR: Unable to allocate final buffer\n"));
-    return (NULL);
+      utils->seterror(utils->conn, 0, "Unable to allocate final buffer");
+      return NULL;
   }
+
   /*
    * Returns SASL_OK on success, SASL_BUFOVER if result won't fit
    */
@@ -1650,8 +1634,8 @@ privacy_decode_once(context_t *text,
       ver=ntohs(ver);
       if (ver != version)
       {
-	VL(("Wrong Version\n"));
-	return SASL_FAIL;
+	  text->utils->seterror(text->utils->conn, 0, "Wrong Version");
+	  return SASL_FAIL;
       }
 
       /* check the CMAC */
@@ -1674,8 +1658,8 @@ privacy_decode_once(context_t *text,
       for (lup=0;lup<10;lup++)
 	if (checkdigest[lup]!=digest[lup])
 	{
-	  VL(("CMAC doesn't match!\n"));
-	  return SASL_FAIL;
+	    text->utils->seterror(text->utils->conn, 0, "CMAC doesn't match!");
+	    return SASL_FAIL;
 	} 
 
       /* check the sequence number */
@@ -1684,8 +1668,9 @@ privacy_decode_once(context_t *text,
 
       if (seqnum!=text->rec_seqnum)
       {
-	VL(("Incorrect sequence number\n"));
-	return SASL_FAIL;
+	    text->utils->seterror(text->utils->conn, 0,
+				  "Incorrect Sequence Number");
+	    return SASL_FAIL;
       }
 
       text->rec_seqnum++; /* now increment it */
@@ -1857,8 +1842,8 @@ check_integrity(context_t * text,
   /* make sure the MAC is right */
   if (strncmp((char *) MAC, buf + bufsize - 16, 16) != 0)
   {
-    VL(("MAC doesn't match\n"));
-    return SASL_FAIL;
+      text->utils->seterror(text->utils->conn, 0, "MAC doesn't match");
+      return SASL_FAIL;
   }
 
   text->rec_seqnum++;
@@ -2071,7 +2056,8 @@ get_realm(sasl_server_params_t * params,
   } else if (params->serverFQDN != NULL) {
       *realm = (char *) params->serverFQDN;
   } else {
-      VL(("No way to obtain domain\n"));
+      params->utils->seterror(params->utils->conn, 0,
+			      "no way to obtain domain");
       return SASL_FAIL;
   }
 
@@ -2331,8 +2317,6 @@ server_continue_step(void *conn_context,
       if (name == NULL)
 	  break;
 
-      VL(("received from client pair: %s - %s\n", name, value));
-
       /* Extracting parameters */
 
       /*
@@ -2340,9 +2324,6 @@ server_continue_step(void *conn_context,
        * nonce-count | qop | digest-uri | response | maxbuf | charset |
        * cipher | auth-param )
        */
-
-      VL(("server_start step 2 : received pair: \t"));
-      VL(("%s:%s\n", name, value));
 
       if (strcasecmp(name, "username") == 0) {
 	  _plug_strdup(sparams->utils, value, &username, NULL);
@@ -2423,7 +2404,9 @@ server_continue_step(void *conn_context,
 	}
 	_plug_strdup(sparams->utils, value, &charset, NULL);
       } else {
-	VL(("unrecognized pair: ignoring\n"));
+	  sparams->utils->log(sparams->utils->conn, SASL_LOG_DEBUG,
+			      "DIGEST-MD5 unrecognized pair %s/%s: ignoring",
+			      name, value);
       }
     }
 
@@ -2436,9 +2419,6 @@ server_continue_step(void *conn_context,
     if ((!strcasecmp(qop, "auth-conf")) && (cipher != NULL)) {
 	/* see what cipher was requested */
 	struct digest_cipher *cptr;
-
-	VL(("Client requested privacy layer\n"));
-	VL(("Client cipher=%s\n",cipher));
 
 	cptr = available_ciphers;
 	while (cptr->name) {
@@ -2473,12 +2453,10 @@ server_continue_step(void *conn_context,
 	oparams->decode=&privacy_decode;
     } else if (!strcasecmp(qop, "auth-int") &&
 	       text->requiressf <= 1 && text->limitssf >= 1) {
-	VL(("Client requested integrity layer\n"));
 	oparams->encode = &integrity_encode;
 	oparams->decode = &integrity_decode;
 	oparams->mech_ssf = 1;
     } else if (!strcasecmp(qop, "auth") && text->requiressf == 0) {
-	VL(("Client requested no layer\n"));
 	oparams->encode = NULL;
 	oparams->decode = NULL;
 	oparams->mech_ssf = 0;
@@ -2621,12 +2599,9 @@ server_continue_step(void *conn_context,
 		      "client response doesn't match what we generated");
 	result = SASL_BADAUTH;
 	
-	VL(("Client Sent: %s\n", response));
-	VL(("Server calculated: %s\n", serverresponse));
-	/* XXX stuff for reauth */
+	/* FIXME stuff for reauth */
 	goto FreeAllMem;
     }
-    VL(("MATCH! (authenticated) \n"));
 
     /*
      * nothing more to do; authenticated set oparams information
@@ -2741,7 +2716,6 @@ server_continue_step(void *conn_context,
   }
 
   if (text->state == 3) {
-    VL(("Digest-MD5 Step 3\n"));
     /*
      * Send additional information for reauthentication
      */
@@ -3172,7 +3146,6 @@ make_prompts(sasl_client_params_t * params,
     (prompts)->prompt = "Please enter your authentication name";
     (prompts)->defresult = NULL;
 
-    VL(("authid callback added\n"));
     prompts++;
   }
   if (user_res == SASL_INTERACT) {
@@ -3184,7 +3157,6 @@ make_prompts(sasl_client_params_t * params,
     (prompts)->prompt="Please enter your authorization name";
     (prompts)->defresult=NULL;
 
-    VL(("userid callback added\n"));
     prompts++;
   }
   if (pass_res == SASL_INTERACT) {
@@ -3196,7 +3168,6 @@ make_prompts(sasl_client_params_t * params,
     (prompts)->prompt = "Please enter your password";
     (prompts)->defresult = NULL;
 
-    VL(("password callback added\n"));
     prompts++;
   }
   if (realm_res == SASL_INTERACT) {
@@ -3212,8 +3183,6 @@ make_prompts(sasl_client_params_t * params,
 	
       (prompts)->prompt = "Please enter your realm";
       (prompts)->defresult = NULL;
-
-      VL(("realm callback added\n"));
   }
   /* add the ending one */
   (prompts)->id = SASL_CB_LIST_END;
@@ -3252,8 +3221,6 @@ c_continue_step(void *conn_context,
   if(serverinlen > 2048) return SASL_BADPROT;
 
   if (text->state == 1) {
-    VL(("Digest-MD5 Step 1\n"));
-
     /* here's where we'd attempt fast reauth if possible */
     /* if we can, then goto text->state=3!!! */
 
@@ -3292,8 +3259,6 @@ c_continue_step(void *conn_context,
     int            realm_result = SASL_OK;
     int            algorithm_count = 0;
 
-    VL(("Digest-MD5 Step 2\n"));
-
     if (params->props.min_ssf > params->props.max_ssf) {
 	return SASL_BADPARAM;
     }
@@ -3314,12 +3279,10 @@ c_continue_step(void *conn_context,
 
 	/* if parse error */
 	if (name == NULL) {
-	    VL (("Parse error\n"));
+	    params->utils->seterror(params->utils->conn, 0, "Parse error");
 	    result = SASL_FAIL;
 	    goto FreeAllocatedMem;
 	}
-
-	VL(("received pair: %s - %s\n", name, value));
 
 	if (strcasecmp(name, "realm") == 0) {
 	    nrealm++;
@@ -3348,16 +3311,15 @@ c_continue_step(void *conn_context,
 		}
 
 		if (strcasecmp(value, "auth-conf") == 0) {
-		    VL(("Server supports privacy layer\n"));
 		    protection |= DIGEST_PRIVACY;
 		} else if (strcasecmp(value, "auth-int") == 0) {
-		    VL(("Server supports integrity layer\n"));
 		    protection |= DIGEST_INTEGRITY;
 		} else if (strcasecmp(value, "auth") == 0) {
-		    VL(("Server supports no layer\n"));
 		    protection |= DIGEST_NOLAYER;
 		} else {
-		    VL(("Server supports unknown layer: %s\n", value));
+		    params->utils->log(params->utils->conn, SASL_LOG_DEBUG,
+				       "Server supports unknown layer: %s\n",
+				       value);
 		}
 
 		value = comma;
@@ -3365,7 +3327,8 @@ c_continue_step(void *conn_context,
 	    
 	    if (protection == 0) {
 		result = SASL_BADAUTH;
-		VL(("Server doesn't support known qop level\n"));
+		params->utils->seterror(params->utils->conn, 0,
+				    "Server doesn't support known qop level");
 		goto FreeAllocatedMem;
 	    }
 	} else if (strcasecmp(name, "cipher") == 0) {
@@ -3385,7 +3348,9 @@ c_continue_step(void *conn_context,
 		if (cipher->name) {
 			ciphers |= cipher->flag;
 		} else {
-		    VL(("Server supports unknown cipher: %s\n", value));
+		    params->utils->log(params->utils->conn, SASL_LOG_DEBUG,
+				       "Server supports unknown cipher: %s\n",
+				       value);
 		}
 		
 		value = comma;
@@ -3406,59 +3371,67 @@ c_continue_step(void *conn_context,
 
 	    if (maxbuf_count != 1) {
 		result = SASL_BADAUTH;
-		VL(("At least two maxbuf directives found. Authentication aborted\n"));
+		params->utils->seterror(params->utils->conn, 0,
+		    "At least two maxbuf directives found. Authentication aborted");
 		goto FreeAllocatedMem;
 	    } else if (sscanf(value, "%u", &server_maxbuf) != 1) {
 		result = SASL_BADAUTH;
-		VL(("Invalid maxbuf parameter received from server\n"));
+		params->utils->seterror(params->utils->conn, 0,
+		    "Invalid maxbuf parameter received from server");
 		goto FreeAllocatedMem;
 	    } else {
 		if (server_maxbuf<=16) {
 		    result = SASL_BADAUTH;
-		    VL(("Invalid maxbuf parameter received from server (too small)\n"));
+		    params->utils->seterror(params->utils->conn, 0,
+		      "Invalid maxbuf parameter received from server (too small)");
 		    goto FreeAllocatedMem;
 		}
 	    }
 	} else if (strcasecmp(name, "charset") == 0) {
 	    if (strcasecmp(value, "utf-8") != 0) {
 		result = SASL_BADAUTH;
-		VL(("Charset must be UTF-8\n"));
+		params->utils->seterror(params->utils->conn, 0,
+					"Charset must be UTF-8");
 		goto FreeAllocatedMem;
 	    } else {
 		IsUTF8 = TRUE;
 	    }
 	} else if (strcasecmp(name,"algorithm")==0) {
-
-	    VL (("Seeing algorithm now!\n"));
-
 	  if (strcasecmp(value, "md5-sess") != 0)
 	  {
-	    VL(("'algorithm' isn't 'md5-sess'\n"));
-	    result = SASL_FAIL;
-	    goto FreeAllocatedMem;
+	      params->utils->seterror(params->utils->conn, 0,
+				      "'algorithm' isn't 'md5-sess'");
+	      result = SASL_FAIL;
+	      goto FreeAllocatedMem;
 	  }
 
 	  algorithm_count++;
 	  if (algorithm_count > 1)
 	  {
-	    VL(("Must see 'algorithm' only once\n"));
-	    result = SASL_FAIL;
-	    goto FreeAllocatedMem;
+	      params->utils->seterror(params->utils->conn, 0,
+				      "Must see 'algorithm' only once");
+	      result = SASL_FAIL;
+	      goto FreeAllocatedMem;
 	  }
 	} else {
-	    VL(("unrecognized pair: ignoring\n"));
+	  params->utils->log(params->utils->conn, SASL_LOG_DEBUG,
+			     "DIGEST-MD5 unrecognized pair %s/%s: ignoring",
+			     name, value);
 	}
     }
 
     if (algorithm_count != 1)
     {
-      VL(("Must see 'algoirthm' once. Didn't see at all\n"));
-      result = SASL_FAIL;
-      goto FreeAllocatedMem;
+	params->utils->seterror(params->utils->conn, 0,
+			    "Must see 'algoirthm' once. Didn't see at all");
+	result = SASL_FAIL;
+	goto FreeAllocatedMem;
     }
 
     /* make sure we have everything we require */
     if (nonce == NULL) {
+	params->utils->seterror(params->utils->conn, 0,
+			    "Don't have nonce.");
 	result = SASL_FAIL;
 	goto FreeAllocatedMem;
     }
@@ -3467,7 +3440,6 @@ c_continue_step(void *conn_context,
 
     /* try to get the userid */
     if (text->userid == NULL) {
-      VL(("Trying to get authorization id\n"));
       user_result = get_userid(params,
 			       (char **) &text->userid,
 			       prompt_need);
@@ -3481,7 +3453,6 @@ c_continue_step(void *conn_context,
 
     /* try to get the authid */
     if (text->authid == NULL) {
-      VL(("Trying to get authentication id\n"));
       auth_result = get_authid(params,
 			       (char **) &text->authid,
 			       prompt_need);
@@ -3495,7 +3466,6 @@ c_continue_step(void *conn_context,
     }
     /* try to get the password */
     if (text->password == NULL) {
-      VL(("Trying to get password\n"));
       pass_result = get_password(params,
 				 &text->password,
 				 prompt_need);
@@ -3508,7 +3478,6 @@ c_continue_step(void *conn_context,
     /* try to get the realm, if needed */
     if (nrealm == 1 && text->realm == NULL) {
       /* only one choice! */
-      VL(("Realm copying\n"));
       if (_plug_strdup(params->utils, realm[0], 
 			&text->realm, NULL) == SASL_NOMEM) {
 	result = SASL_NOMEM;
@@ -3516,7 +3485,6 @@ c_continue_step(void *conn_context,
       }
     }
     if (text->realm == NULL) {
-	VL(("Trying to get realm\n"));
 	realm_result = c_get_realm(params, &text->realm, realm,
 				   prompt_need);
 
@@ -3561,9 +3529,6 @@ c_continue_step(void *conn_context,
       if (result != SASL_OK)
 	return result;
 
-
-
-      VL(("returning prompt(s)\n"));
       return SASL_INTERACT;
     }
 
@@ -3622,7 +3587,8 @@ c_continue_step(void *conn_context,
 	    text->cipher_init = bestcipher->cipher_init;
 	} else {
 	    /* we didn't find any ciphers we like */
-	    VL(("No good privacy layers\n"));
+	    params->utils->seterror(params->utils->conn, 0,
+				    "No good privacy layers");
 	    qop = NULL;
 	}
     }
@@ -3638,23 +3604,23 @@ c_continue_step(void *conn_context,
 	    oparams->decode = &integrity_decode;
 	    oparams->mech_ssf = 1;
 	    qop = "auth-int";
-	    VL(("Using integrity layer\n"));
 	} else if (musthave <= 0) {
 	    /* no layer */
 	    oparams->encode = NULL;
 	    oparams->decode = NULL;
 	    oparams->mech_ssf = 0;
 	    qop = "auth";
-	    VL(("Using no layer\n"));
 	    
 	    /* See if server supports not having a layer */
 	    if ((protection & DIGEST_NOLAYER) != DIGEST_NOLAYER) {
-		VL(("Server doesn't support \"no layer\"\n"));
+		params->utils->seterror(params->utils->conn, 0, 
+					"Server doesn't support \"no layer\"");
 		result = SASL_FAIL;
 		goto FreeAllocatedMem;
 	    }
 	} else {
-	    VL(("Can't find an acceptable layer\n"));
+	    params->utils->seterror(params->utils->conn, 0,
+				    "Can't find an acceptable layer");
 	    result = SASL_TOOWEAK;
 	    goto FreeAllocatedMem;
 	}
@@ -3663,9 +3629,10 @@ c_continue_step(void *conn_context,
     /* get nonce XXX have to clean up after self if fail */
     cnonce = create_nonce(params->utils);
     if (cnonce == NULL) {
-      VL(("failed to create cnonce\n"));
-      result = SASL_FAIL;
-      goto FreeAllocatedMem;
+	params->utils->seterror(params->utils->conn, 0,
+				"failed to create cnonce");
+	result = SASL_FAIL;
+	goto FreeAllocatedMem;
     }
     /* XXX nonce count */
 
@@ -3705,8 +3672,6 @@ c_continue_step(void *conn_context,
 				  text->password,
 				  text->userid, /* authorization_id */
 				  &text->response_value);
-
-    VL(("Constructing challenge\n"));
 
     if (add_to_challenge(params->utils, &client_response, 
 			 "username", text->authid, TRUE) != SASL_OK) {
@@ -3763,7 +3728,6 @@ c_continue_step(void *conn_context,
       result = SASL_FAIL;
       goto FreeAllocatedMem;
     }
-    VL(("adding things\n"));
 
     /* FIXME: this copy is wholy inefficient */
     *clientoutlen = strlen(client_response);
@@ -3852,16 +3816,11 @@ FreeAllocatedMem:
     if ((result != SASL_CONTINUE) && (client_response))
 	params->utils->free(client_response);
 
-    VL(("All done. exiting DIGEST-MD5\n"));
-
     return result;
  }
 
   if (text->state == 3) {	
      /* Verify that server is really what he claims to be */
-
-    VL(("Digest-MD5: In Reauth state\n"));
-
     in = params->utils->malloc(serverinlen + 1);
     if (in == NULL) return SASL_NOMEM;
     memcpy(in, serverin, serverinlen);
@@ -3876,31 +3835,33 @@ FreeAllocatedMem:
 
       if (name == NULL)
       {
-	  VL (("Received garbage\n"));
+	  params->utils->seterror(params->utils->conn, 0,
+				  "DIGEST-MD5 Received Garbage");
 	  params->utils->free(in_start);
 	  return SASL_FAIL;
       }
 
-      VL(("received pair: %s - %s\n", name, value));
-
       if (strcasecmp(name, "rspauth") == 0) {
 
 	if (strcmp(text->response_value, value) != 0) {
-	  VL(("This server wants us to believe that he knows shared secret\n"));
-	  params->utils->free(in_start);
-	  return SASL_FAIL;
+	    params->utils->seterror(params->utils->conn, 0,
+	       "This server wants us to believe that he knows shared secret");
+	    params->utils->free(in_start);
+	    return SASL_FAIL;
 	} else {
-	  VL(("Ok I think we can re-auth\n"));
-	  params->utils->free(in_start);
-
-	  *clientout = blank_string;
-	  *clientoutlen = 0;
-
-	  text->state = 4;
-	  return SASL_CONTINUE;
+	    /* Ok I think we can re-auth */;
+	    params->utils->free(in_start);
+	    
+	    *clientout = blank_string;
+	    *clientoutlen = 0;
+	    
+	    text->state = 4;
+	    return SASL_CONTINUE;
 	}
       } else {
-	VL(("unrecognized pair: ignoring\n"));
+	  params->utils->log(params->utils->conn, SASL_LOG_DEBUG,
+			     "DIGEST-MD5 unrecognized pair %s/%s: ignoring",
+			     name, value);
       }
     }
 
@@ -3914,7 +3875,6 @@ FreeAllocatedMem:
   {
       *clientout = NULL;
       *clientoutlen = 0;
-      VL(("Verify we're done step"));
       text->state++;
       return SASL_OK;      
   }

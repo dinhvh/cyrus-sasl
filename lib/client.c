@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: client.c,v 1.34.4.18 2001/06/27 14:56:28 rjs3 Exp $
+ * $Id: client.c,v 1.34.4.19 2001/07/03 18:00:56 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -120,13 +120,13 @@ static int add_plugin(void *p, void *library) {
 
   if (result != SASL_OK)
   {
-    VL(("entry_point failed\n"));
+    _sasl_log(NULL, SASL_LOG_WARN, "entry_point failed in add_plugin");
     return result;
   }
 
   if (version != SASL_CLIENT_PLUG_VERSION)
   {
-    VL(("Version conflict\n"));
+    _sasl_log(NULL, SASL_LOG_WARN, "version conflict in add_plugin");
     return SASL_BADVERS;
   }
 
@@ -396,8 +396,6 @@ int sasl_client_start(sasl_conn_t *conn,
     if (mechlist == NULL)
 	return SASL_BADPARAM;
 
-    VL(("in sasl_client_start\n"));
-
     /* if prompt_need != NULL we've already been here
        and just need to do the continue step again */
 
@@ -416,7 +414,6 @@ int sasl_client_start(sasl_conn_t *conn,
     }
 
     /* parse mechlist */
-    VL(("mech list from server is %s\n", mechlist));
     list_len = strlen(mechlist);
 
     while (pos<list_len)
@@ -440,8 +437,6 @@ int sasl_client_start(sasl_conn_t *conn,
 	name[place]=0;
 
 	if (! place) continue;
-
-	VL(("Considering mech %s\n",name));
 
 	/* foreach in server list */
 	for (m = cmechlist->mech_list; m != NULL; m = m->next) {
@@ -483,7 +478,6 @@ int sasl_client_start(sasl_conn_t *conn,
 	    }
 #endif
 
-	    VL(("Best mech so far: %s\n", m->plug->mech_name));
 	    if (mech) {
 		*mech = m->plug->mech_name;
 	    }
@@ -494,7 +488,7 @@ int sasl_client_start(sasl_conn_t *conn,
     }
 
     if (bestm == NULL) {
-	VL(("No worthy mechs found\n"));
+	sasl_seterror(conn, 0, "No worthy mechs found");
 	result = SASL_NOMECH;
 	goto done;
     }
