@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: client.c,v 1.34.4.27 2001/07/20 16:43:06 rjs3 Exp $
+ * $Id: client.c,v 1.34.4.28 2001/07/23 19:16:34 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -276,15 +276,14 @@ int sasl_client_new(const char *service,
   }
 
   (*pconn)->destroy_conn = &client_dispose;
-  result = _sasl_conn_init(*pconn, service, flags,
+
+  result = _sasl_conn_init(*pconn, service, flags, SASL_CONN_CLIENT,
 			   &client_idle, serverFQDN,
 			   iplocalport, ipremoteport,
 			   prompt_supp, &global_callbacks);
   if (result != SASL_OK) RETURN(*pconn, result);
   
   conn = (sasl_client_conn_t *)*pconn;
-
-  conn->base.type = SASL_CONN_CLIENT;
   
   conn->mech = NULL;
 

@@ -2,6 +2,8 @@
 	* Added check for db3/db.h
 	* Added check for ip address information in mech_avail for
 	  KERBEROS_V4
+	* Fixed ip string parsing to allow ':' as a delimiter
+	* Fixed setting of serverFQDN in _sasl_conn_init
 
 2001-07-20  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Can now deal with variable client-first mechs such as

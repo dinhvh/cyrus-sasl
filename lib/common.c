@@ -1,7 +1,7 @@
 /* common.c - Functions that are common to server and clinet
  * Rob Siemborski
  * Tim Martin
- * $Id: common.c,v 1.64.2.42 2001/07/19 22:49:53 rjs3 Exp $
+ * $Id: common.c,v 1.64.2.43 2001/07/23 19:16:35 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -299,6 +299,7 @@ void sasl_done(void)
 int _sasl_conn_init(sasl_conn_t *conn,
 		    const char *service,
 		    int flags,
+		    enum Sasl_conn_type type,
 		    int (*idle_hook)(sasl_conn_t *conn),
 		    const char *serverFQDN,
 		    const char *iplocalport,
@@ -307,7 +308,7 @@ int _sasl_conn_init(sasl_conn_t *conn,
 		    const sasl_global_callbacks_t *global_callbacks) {
   int result = SASL_OK;
 
-  conn->type = SASL_CONN_UNKNOWN;
+  conn->type = type;
 
   result = _sasl_strdup(service, &conn->service, NULL);
   if (result != SASL_OK) 
@@ -351,16 +352,19 @@ int _sasl_conn_init(sasl_conn_t *conn,
   conn->decode_buf = NULL;
   conn->decode_buf_len = 0;
 
-  if (serverFQDN==NULL) {
-      /* FIXME: this isn't valid if we are the client */
-    char name[MAXHOSTNAMELEN];
-    memset(name, 0, sizeof(name));
-    gethostname(name, MAXHOSTNAMELEN);
-
-    result = _sasl_strdup(name, &conn->serverFQDN, NULL);
+  if(serverFQDN) {
+      result = _sasl_strdup(serverFQDN, &conn->serverFQDN, NULL);
+  } else if (conn->type == SASL_CONN_SERVER) {
+      /* We can fake it because we *are* the server */
+      char name[MAXHOSTNAMELEN];
+      memset(name, 0, sizeof(name));
+      gethostname(name, MAXHOSTNAMELEN);
+      
+      result = _sasl_strdup(name, &conn->serverFQDN, NULL);
   } else {
-    result = _sasl_strdup(serverFQDN, &conn->serverFQDN, NULL);
+      conn->serverFQDN = NULL;
   }
+  
 
   if(result != SASL_OK) MEMERROR( conn );
 
@@ -1589,14 +1593,14 @@ int _sasl_ipfromstring(const char *addr,
     if(!addr) return SASL_BADPARAM;
 
     /* Parse the address */
-    for (i = 0; addr[i] != '\0' && addr[i] != ';'; i++) {
+    for (i = 0; addr[i] != '\0' && addr[i] != ';' && addr[i] != ':'; i++) {
 	if (i >= NI_MAXHOST)
 	    return SASL_BADPARAM;
 	hbuf[i] = addr[i];
     }
     hbuf[i] = '\0';
 
-    if (addr[i] == ';')
+    if (addr[i] == ';' || addr[i] == ':')
 	i++;
     /* XXX: Do we need this check? */
     for (j = i; addr[j] != '\0'; j++)

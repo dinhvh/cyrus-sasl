@@ -1,7 +1,7 @@
 /* saslint.h - internal SASL library definitions
  * Rob Siemborski
  * Tim Martin
- * $Id: saslint.h,v 1.33.2.38 2001/07/19 22:49:53 rjs3 Exp $
+ * $Id: saslint.h,v 1.33.2.39 2001/07/23 19:16:35 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -337,7 +337,8 @@ extern int _sasl_common_init(void);
 
 extern int _sasl_conn_init(sasl_conn_t *conn,
 			   const char *service,
-			   int secflags,
+			   int flags,
+			   enum Sasl_conn_type type,
 			   int (*idle_hook)(sasl_conn_t *conn),
 			   const char *serverFQDN,
 			   const char *iplocalport,
