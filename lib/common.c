@@ -1,7 +1,7 @@
 /* common.c - Functions that are common to server and clinet
  * Rob Siemborski
  * Tim Martin
- * $Id: common.c,v 1.64.2.52 2001/08/07 21:57:15 rjs3 Exp $
+ * $Id: common.c,v 1.64.2.53 2001/08/10 18:52:51 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -137,7 +137,7 @@ int _sasl_strdup(const char *in, char **out, int *outlen)
 }
 
 /* adds a string to the buffer; reallocing if need be */
-static int add_string(char **out, int *alloclen, int *outlen, char *add)
+static int add_string(char **out, int *alloclen, int *outlen, const char *add)
 {
   int addlen;
 
