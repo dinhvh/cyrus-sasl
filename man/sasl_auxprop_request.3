@@ -38,46 +38,41 @@
 .\" AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\" 
-.TH sasl_server_init "10 July 2001" SASL "SASL man pages"
+.TH sasl_auxprop_request "10 July 2001" SASL "SASL man pages"
 .SH NAME
-sasl_server_init \- SASL server authentication initialization
-
+sasl_auxprop_request \- Request Auxilliary Properties from SASL
 
 .SH SYNOPSIS
 .nf
 .B #include <sasl/sasl.h>
+
 .sp
-.BI "int sasl_server_init(const sasl_callback_t " *callbacks ", "
-.BI "                     const char " *appname ");"
+.BI "int sasl_auxprop_request(sasl_conn_t " *conn ", "
+.BI "		              const char ** " propnames ")" 
 
 .fi
 .SH DESCRIPTION
 
-.B sasl_server_init()
-initializes SASL. It must be called before any calls to
-sasl_server_start, and only once per process.
-This call initializes all SASL mechanism drivers
-(e.g. authentication mechanisms). These are usually found in the
-/usr/lib/sasl2 directory but the directory may be overriden with the
-SASL_PATH enviornment variable (or at compile time).
-.PP
-.I callbacks
-specifies the base callbacks for all client connections. See
-the sasl_callbacks man page for more information.
-.PP
-.I appname
-is the name of the application. It is used for where to find the
-default configuration file.
-.PP
+.B sasl_auxprop_request
+will request that the SASL library obtain properties from any auxilliary
+property plugins that might be installed (such as the user's home directory
+from an LDAP server for example).  Such lookup occurs just after username
+cannonicalization is complete.  Therefore, the request should be made before
+the call to sasl_server_start(3), but after the call to sasl_server_new(3).
+
+.I conn
+the sasl_conn_t for which the request is being made.
+
+.I propnames
+a NULL-terminated array of property names to request.  Note that this
+array must persist until a call to sasl_dispose on the sasl_conn_t.
 
 .SH "RETURN VALUE"
-
-sasl_server_init returns an integer which corresponds to one of the
-SASL error codes. SASL_OK is the only one that indicates success. All
-others indicate errors and should either be handled or the
-authentication session should be quit.
+Returns SASL_OK on success.  See sasl_errors(3) for meanings of other return
+codes.
 
 .SH "CONFORMING TO"
 RFC 2222
 .SH "SEE ALSO"
-sasl(3), sasl_callbacks(3), sasl_errors(3), sasl_server_new(3), sasl_server_start(3), sasl_server_step(3)
+sasl(3), sasl_errors(3), sasl_auxprop(3), sasl_auxprop_getctx(3),
+sasl_server_new(3), sasl_server_start(3)
