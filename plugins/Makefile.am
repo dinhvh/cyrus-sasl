@@ -1,7 +1,7 @@
 # Makefile.am for the SASL plugins
 # Rob Siemborski
 # Rob Earhart
-# $Id: Makefile.am,v 1.39.2.14 2001/07/02 22:50:09 rjs3 Exp $
+# $Id: Makefile.am,v 1.39.2.15 2001/07/02 22:55:56 rjs3 Exp $
 #
 ################################################################
 # Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
@@ -96,7 +96,7 @@ libgssapiv2_la_LIBADD = $(GSSAPIBASE_LIBS) $(GSSAPI_LIBS) $(LIB_SOCKET)
 
 libgssapiv2_a_SOURCES = gssapi.c $(common_sources)
 
-libcrammd5_la_SOURCES = cram.c cram_init.c $(common_sources)
+libcrammd5_la_SOURCES = cram.c crammd5_init.c $(common_sources)
 libcrammd5_la_LDFLAGS = -version-info $(crammd5_version)
 
 libcrammd5_a_SOURCES = cram.c $(common_sources)
