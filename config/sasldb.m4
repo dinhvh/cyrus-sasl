@@ -129,7 +129,7 @@ AC_MSG_CHECKING(DB library to use)
 AC_MSG_RESULT($dblib)
 
 SASL_DB_BACKEND="db_${dblib}.lo"
-SASL_DB_BACKEND_STATIC="../sasldb/db_${dblib}.o"
+SASL_DB_BACKEND_STATIC="../sasldb/db_${dblib}.o ../sasldb/allockey.o"
 SASL_DB_UTILS="saslpasswd sasldblistusers"
 SASL_DB_MANS="saslpasswd.8 sasldblistusers.8"
 
