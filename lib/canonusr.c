@@ -1,6 +1,6 @@
 /* canonusr.c - user canonicalization support
  * Rob Siemborski
- * $Id: canonusr.c,v 1.1.2.9 2001/06/30 01:29:30 rjs3 Exp $
+ * $Id: canonusr.c,v 1.1.2.10 2001/07/02 16:48:01 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -243,22 +243,22 @@ static int _canonuser_internal(const sasl_utils_t *utils,
     authidin[alen] = '\0';
     
     /* Strip User ID */
-    for(i=0;isspace(userin[i]) && i<ulen;i++);
+    for(i=0;isspace((int)userin[i]) && i<ulen;i++);
     begin_u = &(userin[i]);
     if(i>0) ulen -= i;
 
-    for(;isspace(begin_u[ulen-1]) && ulen > 0; ulen--);
+    for(;isspace((int)begin_u[ulen-1]) && ulen > 0; ulen--);
     if(begin_u == &(userin[ulen])) {
 	sasl_FREE(in_buf);
 	return SASL_FAIL;
     }
 
     /* Strip Auth ID */
-    for(i=0;isspace(authidin[i]) && i<alen;i++);
+    for(i=0;isspace((int)authidin[i]) && i<alen;i++);
     begin_a = &(authidin[i]);
     if(i>0) alen -= i;
 
-    for(;isspace(begin_a[alen-1]) && alen > 0; alen--);
+    for(;isspace((int)begin_a[alen-1]) && alen > 0; alen--);
     if(begin_a == &(authidin[alen])) {
 	sasl_FREE(in_buf);
 	return SASL_FAIL;

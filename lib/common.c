@@ -1,7 +1,7 @@
 /* common.c - Functions that are common to server and clinet
  * Rob Siemborski
  * Tim Martin
- * $Id: common.c,v 1.64.2.27 2001/06/29 05:52:57 rjs3 Exp $
+ * $Id: common.c,v 1.64.2.28 2001/07/02 16:48:01 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -1492,7 +1492,7 @@ int _iovec_to_buf(const struct iovec *vec,
 
     if(ret != SASL_OK) return SASL_NOMEM;
     
-    bzero(out->data, out->reallen);
+    memset(out->data, 0, out->reallen);
     pos = out->data;
     
     for(i=0; i<numiov; i++) {
@@ -1514,7 +1514,7 @@ int _sasl_iptostring(const struct sockaddr_in *addr,
     if(outlen <= 21) return SASL_BUFOVER;
     if(!addr || !out) return SASL_BADPARAM;
 
-    bzero(out,outlen);
+    memset(out, 0, outlen);
 
     for(i=3; i>=0; i--) {
 	a[i] = (addr->sin_addr.s_addr & (0xFF << (8*i))) >> (i*8);
@@ -1547,7 +1547,7 @@ int _sasl_ipfromstring(const char *addr, struct sockaddr_in *out)
 	val |= inval;
 	
         for(;*addr && *addr != '.' && *addr != ';'; addr++)
-	    if(!isdigit(*addr)) return SASL_BADPARAM;
+	    if(!isdigit((int)(*addr))) return SASL_BADPARAM;
 
 	/* skip the separator */
 	addr++;
@@ -1563,9 +1563,9 @@ int _sasl_ipfromstring(const char *addr, struct sockaddr_in *out)
     if((port & 0xFFFF) != port) return SASL_BADPARAM;
         
     for(;*addr;addr++)
-	if(!isdigit(*addr)) return SASL_BADPARAM;
+	if(!isdigit((int)(*addr))) return SASL_BADPARAM;
     
-    bzero(out, sizeof(struct sockaddr_in));
+    memset(out, 0, sizeof(struct sockaddr_in));
     out->sin_addr.s_addr = val;
     out->sin_port = port;
 
