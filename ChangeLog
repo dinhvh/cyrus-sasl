@@ -3,6 +3,10 @@
 	* lib/server.c (sasl_server_step): corrected maxoutbuf handleing
 	* lib/saslint.h (DEFAULT_MAXOUTBUF): removed
 
+	* utils/testsuite.c (testseclayer,doauth): more security layer
+	  checking.  Added parameter to doauth to disable fatal() calls,
+	  updated all callers.
+
 2001-08-06  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* utils/dbconverter-2.c (listusers_cb): handle PLAIN-APOP
 

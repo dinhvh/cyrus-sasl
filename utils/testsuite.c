@@ -1,7 +1,7 @@
 /* testsuite.c -- Stress the library a little
  * Rob Siemborski
  * Tim Martin
- * $Id: testsuite.c,v 1.13.2.32 2001/07/27 19:11:40 rjs3 Exp $
+ * $Id: testsuite.c,v 1.13.2.33 2001/08/07 19:06:00 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -881,7 +881,7 @@ void fillin_correctly(sasl_interact_t *tlist)
 
 const sasl_security_properties_t security_props = {
     0,
-    128,
+    256,
     8192,
     0,
     NULL,
@@ -1245,7 +1245,7 @@ void sendbadsecond(char *mech, void *rock)
 /* Authenticate two sasl_conn_t's to eachother, validly.
  * used to test the security layer */
 int doauth(char *mech, sasl_conn_t **server_conn, sasl_conn_t **client_conn,
-           const sasl_security_properties_t *props)
+           const sasl_security_properties_t *props, int fail_ok)
 {
     int result, need_another_client = 0;
     sasl_conn_t *saslconn;
@@ -1255,7 +1255,6 @@ int doauth(char *mech, sasl_conn_t **server_conn, sasl_conn_t **client_conn,
     sasl_interact_t *client_interact=NULL;
     const char *mechusing;
     const char *service = "rcmd";
-
     struct sockaddr_in addr;
     struct hostent *hp;
     char buf[8192];
@@ -1264,13 +1263,21 @@ int doauth(char *mech, sasl_conn_t **server_conn, sasl_conn_t **client_conn,
     
     if (strcmp(mech,"GSSAPI")==0) service = gssapi_service;
 
-    if (sasl_client_init(client_callbacks)!=SASL_OK) fatal("Unable to init client");
-
-    if (sasl_server_init(goodsasl_cb,"TestSuite")!=SASL_OK) fatal("unable to init server");
+    result = sasl_client_init(client_callbacks);
+    if (result!=SASL_OK) {
+	if(!fail_ok) fatal("Unable to init client");
+	else return result;
+    }
+    result=sasl_server_init(goodsasl_cb,"TestSuite");
+    if (result!=SASL_OK) {
+	if(!fail_ok) fatal("unable to init server");
+	return result;
+    }
 
     if ((hp = gethostbyname(myhostname)) == NULL) {
 	perror("gethostbyname");
-	fatal("can't gethostbyname");
+	if(!fail_ok) fatal("can't gethostbyname");
+	else return SASL_FAIL;
     }
 
     addr.sin_family = 0;
@@ -1280,19 +1287,25 @@ int doauth(char *mech, sasl_conn_t **server_conn, sasl_conn_t **client_conn,
     sprintf(buf,"%s;%d", inet_ntoa(addr.sin_addr), 0);
 
     /* client new connection */
-    if (sasl_client_new(service,
-			myhostname,
-			buf, buf, NULL,
-			0,
-			&clientconn)!= SASL_OK) fatal("sasl_client_new() failure");
+    result = sasl_client_new(service,
+			     myhostname,
+			     buf, buf, NULL,
+			     0,
+			     &clientconn);
+    if(result != SASL_OK) {
+	if(!fail_ok) fatal("sasl_client_new() failure");
+	else return result;
+    }
 
     /* Set the security properties */
     set_properties(clientconn, props);
 
-    if (sasl_server_new(service, myhostname, NULL,
-			buf, buf, NULL, 0, 
-			&saslconn) != SASL_OK) {
-	fatal("can't sasl_server_new");
+    result = sasl_server_new(service, myhostname, NULL,
+			     buf, buf, NULL, 0, 
+			     &saslconn);
+    if(result != SASL_OK) {
+	if(!fail_ok) fatal("can't sasl_server_new");
+	else return result;
     }
     set_properties(saslconn, props);
 
@@ -1309,8 +1322,8 @@ int doauth(char *mech, sasl_conn_t **server_conn, sasl_conn_t **client_conn,
 			       
     if (result < 0)
     {
-	printf("%s - \n",sasl_errdetail(clientconn));
-	fatal("sasl_client_start() error");
+	if(!fail_ok) fatal("sasl_client_start() error");
+	else return result;
     }
 
     result = sasl_server_start(saslconn,
@@ -1322,8 +1335,8 @@ int doauth(char *mech, sasl_conn_t **server_conn, sasl_conn_t **client_conn,
 
     if (result < 0) 
     {
-	printf("%s\n",sasl_errstring(result,NULL,NULL));
-	fatal("sasl_server_start() error");
+	if(!fail_ok) fatal("sasl_server_start() error");
+	else return result;
     }
 
     while (result == SASL_CONTINUE) {
@@ -1343,8 +1356,8 @@ int doauth(char *mech, sasl_conn_t **server_conn, sasl_conn_t **client_conn,
 
 	if (result < 0) 
 	{
-	    printf("%s\n",sasl_errstring(result,NULL,NULL));
-	    fatal("sasl_client_step() error");
+	    if(!fail_ok) fatal("sasl_client_step() error");
+	    else return result;
 	}
 
 	out=out2;
@@ -1358,14 +1371,15 @@ int doauth(char *mech, sasl_conn_t **server_conn, sasl_conn_t **client_conn,
 	
 	if (result < 0) 
 	{
-	    printf("%s\n",sasl_errstring(result,NULL,NULL));
-	    fatal("sasl_server_step() error");
+	    if(!fail_ok) fatal("sasl_server_step() error");
+	    else return result;
 	}
 
     }
 
     if(need_another_client) {
-	fatal("server-last not allowed, but need another client call");
+	if(!fail_ok) fatal("server-last not allowed, but need another client call");
+	else return SASL_BADPROT;
     }
 
     *server_conn = saslconn;
@@ -1442,7 +1456,6 @@ int doauth_noclientfirst(char *mech, sasl_conn_t **server_conn,
 
     if (result < 0)
     {
-	printf("%s - \n",sasl_errdetail(clientconn));
 	fatal("sasl_client_start() error");
     }	
 
@@ -1455,7 +1468,6 @@ int doauth_noclientfirst(char *mech, sasl_conn_t **server_conn,
 
     if (result < 0) 
     {
-	printf("%s\n",sasl_errstring(result,NULL,NULL));
 	fatal("sasl_server_start() error");
     }
 
@@ -1476,7 +1488,6 @@ int doauth_noclientfirst(char *mech, sasl_conn_t **server_conn,
 
 	if (result < 0) 
 	{
-	    printf("%s\n",sasl_errstring(result,NULL,NULL));
 	    fatal("sasl_client_step() error");
 	}
 
@@ -1491,7 +1502,6 @@ int doauth_noclientfirst(char *mech, sasl_conn_t **server_conn,
 	
 	if (result < 0) 
 	{
-	    printf("%s\n",sasl_errstring(result,NULL,NULL));
 	    fatal("sasl_server_step() error");
 	}
 
@@ -1576,7 +1586,6 @@ int doauth_serverlast(char *mech, sasl_conn_t **server_conn,
 
     if (result < 0)
     {
-	printf("%s - \n",sasl_errdetail(clientconn));
 	fatal("sasl_client_start() error");
     }			       
 
@@ -1589,7 +1598,6 @@ int doauth_serverlast(char *mech, sasl_conn_t **server_conn,
 
     if (result < 0) 
     {
-	printf("%s\n",sasl_errstring(result,NULL,NULL));
 	fatal("sasl_server_start() error");
     }
 
@@ -1610,7 +1618,6 @@ int doauth_serverlast(char *mech, sasl_conn_t **server_conn,
 
 	if (result < 0) 
 	{
-	    printf("%s\n",sasl_errstring(result,NULL,NULL));
 	    fatal("sasl_client_step() error");
 	}
 
@@ -1625,7 +1632,6 @@ int doauth_serverlast(char *mech, sasl_conn_t **server_conn,
 	
 	if (result < 0) 
 	{
-	    printf("%s\n",sasl_errstring(result,NULL,NULL));
 	    fatal("sasl_server_step() error");
 	}
 
@@ -1714,7 +1720,6 @@ int doauth_noclientfirst_andserverlast(char *mech, sasl_conn_t **server_conn,
 
     if (result < 0)
     {
-	printf("%s - \n",sasl_errdetail(clientconn));
 	fatal("sasl_client_start() error");
     }				       
 
@@ -1727,7 +1732,6 @@ int doauth_noclientfirst_andserverlast(char *mech, sasl_conn_t **server_conn,
 
     if (result < 0) 
     {
-	printf("%s\n",sasl_errstring(result,NULL,NULL));
 	fatal("sasl_server_start() error");
     }
 
@@ -1748,7 +1752,6 @@ int doauth_noclientfirst_andserverlast(char *mech, sasl_conn_t **server_conn,
 
 	if (result < 0) 
 	{
-	    printf("%s\n",sasl_errstring(result,NULL,NULL));
 	    fatal("sasl_client_step() error");
 	}
 
@@ -1763,7 +1766,6 @@ int doauth_noclientfirst_andserverlast(char *mech, sasl_conn_t **server_conn,
 	
 	if (result < 0) 
 	{
-	    printf("%s\n",sasl_errstring(result,NULL,NULL));
 	    fatal("sasl_server_step() error");
 	}
 
@@ -1801,6 +1803,25 @@ const sasl_security_properties_t int_only = {
     NULL	    
 };
 
+
+const sasl_security_properties_t no_int = {
+    2,
+    256,
+    8192,
+    0,
+    NULL,
+    NULL	    
+};
+
+const sasl_security_properties_t disable_seclayer = {
+    0,
+    256,
+    0,
+    0,
+    NULL,
+    NULL	    
+};
+
 void test_clientfirst(char *mech, void *rock __attribute__((unused))) 
 {
     sasl_conn_t *sconn, *cconn;
@@ -1808,7 +1829,7 @@ void test_clientfirst(char *mech, void *rock __attribute__((unused)))
     printf("%s --> start\n", mech);
 
     /* Basic crash-tests (none should cause a crash): */
-    if(doauth(mech, &sconn, &cconn, &security_props) != SASL_OK) {
+    if(doauth(mech, &sconn, &cconn, &security_props, 0) != SASL_OK) {
 	fatal("doauth failed in test_clientfirst");
     }
 
@@ -1877,9 +1898,12 @@ void testseclayer(char *mech, void *rock __attribute__((unused)))
     const char *txstring = "THIS IS A TEST";
     const char *out, *out2;
     char *tmp;
-    const sasl_security_properties_t *test_props[2] =
-                                          { &security_props, &int_only };
-    const unsigned num_properties = 2;
+    const sasl_security_properties_t *test_props[4] =
+                                          { &security_props,
+					    &int_only,
+					    &no_int,
+					    &disable_seclayer };
+    const unsigned num_properties = 4;
     unsigned i;
     const sasl_ssf_t *this_ssf;
     unsigned outlen = 0, outlen2 = 0, totlen = 0;
@@ -1889,7 +1913,12 @@ void testseclayer(char *mech, void *rock __attribute__((unused)))
     for(i=0; i<num_properties; i++) {
         
     /* Basic crash-tests (none should cause a crash): */
-    if(doauth(mech, &sconn, &cconn, test_props[i]) != SASL_OK) {
+    result = doauth(mech, &sconn, &cconn, test_props[i], 1);
+    if(result == SASL_NOMECH && test_props[i]->min_ssf > 0) {
+	printf("  Testing SSF: SKIPPED (requested minimum > 0: %d)\n",
+	       test_props[i]->min_ssf);
+	continue;
+    } else if(result != SASL_OK) {
 	fatal("doauth failed in testseclayer");
     }
 
@@ -1897,27 +1926,42 @@ void testseclayer(char *mech, void *rock __attribute__((unused)))
 	fatal("sasl_getprop in testseclayer");
     }
 
-    printf("  Testing SSF: %d (requested %d/%d)\n", (unsigned)(*this_ssf),
-	   test_props[i]->min_ssf, test_props[i]->max_ssf);
+    printf("  Testing SSF: %d (requested %d/%d with maxbufsize: %d)\n",
+	   (unsigned)(*this_ssf),
+	   test_props[i]->min_ssf, test_props[i]->max_ssf,
+	   test_props[i]->maxbufsize);
 
+    if(!test_props[i]->maxbufsize) {
+	result = sasl_encode(cconn, txstring, strlen(txstring), &out, &outlen);
+	if(result == SASL_OK) {
+	    fatal("got OK when encoding with zero maxbufsize");
+	}
+	result = sasl_decode(sconn, "foo", 3, &out, &outlen);
+	if(result == SASL_OK) {
+	    fatal("got OK when decoding with zero maxbufsize");
+	}
+	cleanup_auth(&sconn, &cconn);
+	continue;
+    }
+    
     sasl_encode(NULL, txstring, strlen(txstring), &out, &outlen);
     sasl_encode(cconn, NULL, strlen(txstring), &out, &outlen);
     sasl_encode(cconn, txstring, 0, &out, &outlen);
     sasl_encode(cconn, txstring, (unsigned)-1, &out, &outlen);
     sasl_encode(cconn, txstring, strlen(txstring), NULL, &outlen);
     sasl_encode(cconn, txstring, strlen(txstring), &out, NULL);
-
+    
     sasl_decode(NULL, txstring, strlen(txstring), &out, &outlen);
     sasl_decode(cconn, NULL, strlen(txstring), &out, &outlen);
     sasl_decode(cconn, txstring, 0, &out, &outlen);
     sasl_decode(cconn, txstring, (unsigned)-1, &out, &outlen);
     sasl_decode(cconn, txstring, strlen(txstring), NULL, &outlen);
     sasl_decode(cconn, txstring, strlen(txstring), &out, NULL);
-
+    
     cleanup_auth(&sconn, &cconn);
 
     /* Basic I/O Test */
-    if(doauth(mech, &sconn, &cconn, test_props[i]) != SASL_OK) {
+    if(doauth(mech, &sconn, &cconn, test_props[i], 0) != SASL_OK) {
 	fatal("doauth failed in testseclayer");
     }
 
@@ -1934,7 +1978,7 @@ void testseclayer(char *mech, void *rock __attribute__((unused)))
     cleanup_auth(&sconn, &cconn);
 
     /* Split one block and reassemble */
-    if(doauth(mech, &sconn, &cconn, test_props[i]) != SASL_OK) {
+    if(doauth(mech, &sconn, &cconn, test_props[i], 0) != SASL_OK) {
 	fatal("doauth failed in testseclayer");
     }
 
@@ -1972,7 +2016,7 @@ void testseclayer(char *mech, void *rock __attribute__((unused)))
     cleanup_auth(&sconn, &cconn);
 
     /* Combine 2 blocks */
-    if(doauth(mech, &sconn, &cconn, test_props[i]) != SASL_OK) {
+    if(doauth(mech, &sconn, &cconn, test_props[i], 0) != SASL_OK) {
 	fatal("doauth failed in testseclayer");
     }
 
@@ -2009,7 +2053,7 @@ void testseclayer(char *mech, void *rock __attribute__((unused)))
     cleanup_auth(&sconn, &cconn);
 
     /* Combine 2 blocks with 1 split */
-    if(doauth(mech, &sconn, &cconn, test_props[i]) != SASL_OK) {
+    if(doauth(mech, &sconn, &cconn, test_props[i], 0) != SASL_OK) {
 	fatal("doauth failed in testseclayer");
     }
 
