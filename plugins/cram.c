@@ -1,7 +1,7 @@
 /* CRAM-MD5 SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: cram.c,v 1.55.2.13 2001/07/05 21:30:32 rjs3 Exp $
+ * $Id: cram.c,v 1.55.2.14 2001/07/06 17:37:46 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -395,7 +395,7 @@ static int server_continue_step (void *conn_context,
     sparams->utils->free(authstr);
     if (result != SASL_OK) goto done;
 
-    result = prop_request(sparams->propctx, password_request);
+    result = sparams->utils->prop_request(sparams->propctx, password_request);
     if (result != SASL_OK) goto done;
 
     /* this will trigger the getting of the aux properties */

@@ -2,7 +2,7 @@
  * Rob Siemborski
  * Tim Martin
  * Alexey Melnikov 
- * $Id: digestmd5.c,v 1.97.2.12 2001/07/03 18:01:04 rjs3 Exp $
+ * $Id: digestmd5.c,v 1.97.2.13 2001/07/06 17:37:46 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -2494,7 +2494,7 @@ server_continue_step(void *conn_context,
 	goto FreeAllMem;
     }
 
-    result = prop_request(sparams->propctx, password_request);
+    result = sparams->utils->prop_request(sparams->propctx, password_request);
     if(result != SASL_OK) {
 	sasl_seterror(sparams->utils->conn, 0,
 		      "unable to resquest user password");
