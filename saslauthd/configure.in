@@ -67,5 +67,6 @@ AC_TYPE_PID_T
 dnl Checks for library functions.
 AC_TYPE_SIGNAL
 AC_CHECK_FUNCS(gethostname mkdir socket strdup)
+AC_CHECK_FUNCS(getspnam getuserpw, break)
 
 AC_OUTPUT(Makefile)

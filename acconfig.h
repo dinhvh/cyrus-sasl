@@ -127,6 +127,9 @@
 /* where does saslauthd look for the communication socket? */
 #undef PATH_SASLAUTHD_RUNDIR
 
+/* do we want alwaystrue (discouraged)? */
+#undef HAVE_ALWAYSTRUE
+
 /* are we linking against DMALLOC? */
 #undef WITH_DMALLOC
 

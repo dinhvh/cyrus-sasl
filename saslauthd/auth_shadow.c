@@ -28,7 +28,7 @@
  * END COPYRIGHT */
 
 #ifdef __GNUC__
-#ident "$Id: auth_shadow.c,v 1.3.2.1 2001/08/13 19:15:53 rjs3 Exp $"
+#ident "$Id: auth_shadow.c,v 1.3.2.2 2001/08/13 20:41:07 rjs3 Exp $"
 #endif
 
 /* PUBLIC DEPENDENCIES */
@@ -146,7 +146,7 @@ auth_shadow (
      * not returning any information about a login until we have validated
      * the password.
      */
-    cpw = strdup(crypt(password, sp->sp_pwdp));
+    cpw = strdup((const char *)crypt(password, sp->sp_pwdp));
     if (strcmp(sp->sp_pwdp, cpw)) {
 	if (debug) {
 	    syslog(LOG_DEBUG, "DEBUG: auth_shadow: pw mismatch: '%s' != '%s'",

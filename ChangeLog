@@ -8,8 +8,17 @@
 	* lib/saslutil.c (sasl_randseed): actually initilize the randpool
 
 	* saslauthd/auth_getpwent.c (auth_getpwent): clear a warning
+	* saslauthd/auth_shadow.c (auth_shadow): clear a similar warning
 
 	* utils/Makefile.am (EXTRA_DIST): Actually include the needed files
+
+	* saslauthd/configure.in: Handle shadow passwords correctly
+	* saslauthd/acconfig.h: Handle shadow passwords correctly
+
+	* lib/checkpw.c (always_true): added
+	* configure.in: added check for alwaystrue verifier
+	* acconfig.h: added HAVE_ALWAYSTRUE
+	* doc/options.html: alwaystrue verifier documented
 
 2001-08-11  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* saslauthd/: Now configures separately from SASL, so as

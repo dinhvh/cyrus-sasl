@@ -15,6 +15,12 @@
 /* do we have SIA for plaintext password checking? */
 #undef HAVE_SIA
 
+/* do we have a getuserpw? */
+#undef HAVE_GETUSERPW
+
+/* do we have a getspnam? */
+#undef HAVE_GETSPNAM
+
 /* Path to saslauthd rundir */
 #undef PATH_SASLAUTHD_RUNDIR
 
