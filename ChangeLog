@@ -2,6 +2,7 @@
 	* Working libsfsasl and smtptest program (--with-sfio)
 	* Fixed sasldblistusers (atleast for Berkeley DB)
 	* seterror() calls in ANONYMOUS, CRAM, PLAIN and LOGIN
+	* Some new manpages
 
 2000-07-03  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Static library compilation now optional (--with-staticsasl)
