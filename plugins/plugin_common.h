@@ -1,6 +1,6 @@
 /* Generic SASL plugin utility functions
  * Rob Siemborski
- * $Id: plugin_common.h,v 1.1.2.2 2001/06/01 20:08:00 rjs3 Exp $
+ * $Id: plugin_common.h,v 1.1.2.3 2001/06/19 20:50:16 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
@@ -75,5 +75,8 @@ int _plug_iovec_to_buf(const sasl_utils_t *utils, const struct iovec *vec,
 		       unsigned numiov, buffer_info_t **output);
 int _plug_buf_alloc(const sasl_utils_t *utils, char **rwbuf,
 		    unsigned *curlen, unsigned newlen);
+int _plug_strdup(const sasl_utils_t * utils, const char *in,
+	         char **out, int *outlen);
+void _plug_free_string(const sasl_utils_t *utils, char **str);
 
 #endif /* _PLUGIN_COMMON_H_ */

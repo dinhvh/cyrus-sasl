@@ -1,6 +1,6 @@
 /* Generic SASL plugin utility functions
  * Rob Siemborski
- * $Id: plugin_common.c,v 1.1.2.5 2001/06/18 18:43:36 rjs3 Exp $
+ * $Id: plugin_common.c,v 1.1.2.6 2001/06/19 20:50:16 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
@@ -176,4 +176,43 @@ int _plug_buf_alloc(const sasl_utils_t *utils, char **rwbuf,
     } 
 
     return SASL_OK;
+}
+
+/* copy a string */
+int _plug_strdup(const sasl_utils_t * utils, const char *in,
+		 char **out, int *outlen)
+{
+  size_t len = strlen(in);
+
+  if (outlen!=NULL) {
+      *outlen = len;
+  }
+
+  *out = utils->malloc(len + 1);
+  if (!*out) {
+      return SASL_NOMEM;
+  }
+
+  strcpy((char *) *out, in);
+  return SASL_OK;
+}
+
+void _plug_free_string(const sasl_utils_t *utils, char **str)
+{
+  size_t lup;
+  size_t len;
+  VL(("Freeing string\n"));
+
+  if (str==NULL) return;
+  if (*str==NULL) return;
+
+  len=strlen(*str);
+
+  /* overwrite the memory */
+  for (lup=0;lup<len;lup++)
+    (*str)[lup]='\0';
+
+  utils->free(*str);
+
+  *str=NULL;
 }

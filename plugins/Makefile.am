@@ -80,7 +80,7 @@ libgssapiv2_la_SOURCES = gssapi.c plugin_common.c
 libgssapiv2_la_LDFLAGS = -version-info $(gssapiv2_version)
 libgssapiv2_la_LIBADD = $(GSSAPIBASE_LIBS) $(GSSAPI_LIBS) $(LIB_SOCKET)
 
-libcrammd5_la_SOURCES = cram.c
+libcrammd5_la_SOURCES = cram.c plugin_common.c
 libcrammd5_la_LDFLAGS = -version-info $(crammd5_version)
 
 libscrammd5_la_SOURCES = scram.c
