@@ -42,6 +42,8 @@
  */
 
 #include <config.h>
+#include <stdio.h>
+
 #ifndef WIN32
 #include <termios.h>
 #include <unistd.h>

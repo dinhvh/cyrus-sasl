@@ -1,3 +1,6 @@
+2000-07-05  Rob Siemborski <rjs3+@andrew.cmu.edu>
+	* Working libsfsasl and smtptest program (--with-sfio)
+
 2000-07-03  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Static library compilation now optional (--with-staticsasl)
 	  Note that this is different from --enable-static, which causes

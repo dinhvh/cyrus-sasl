@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: checkpw.c,v 1.41.2.14 2001/07/03 18:00:56 rjs3 Exp $
+ * $Id: checkpw.c,v 1.41.2.15 2001/07/05 17:52:29 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -47,6 +47,7 @@
 
 /* checkpw stuff */
 
+#include <stdio.h>
 #include "sasl.h"
 #include "saslutil.h"
 #include "saslplug.h"

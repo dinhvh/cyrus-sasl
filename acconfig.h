@@ -156,8 +156,6 @@
 /* Make Linux happy... */
 #define _GNU_SOURCE
 
-#include <stdio.h>
-
 #ifndef HAVE___ATTRIBUTE__
 /* Can't use attributes... */
 #define __attribute__(foo)

@@ -42,25 +42,41 @@
 #
 ################################################################
 
+all_sasl_libs = ../lib/libsasl2.la $(SASL_DB_LIB) $(LIB_SOCKET)
+all_sasl_static_libs = ../lib/libsasl2.a $(SASL_DB_LIB) $(LIB_SOCKET) $(GSSAPIBASE_LIBS) $(GSSAPI_LIBS) $(SASL_KRB_LIB) $(LIB_DES) $(PLAIN_LIBS) $(SRP_LIBS)
+
 sbin_PROGRAMS = saslpasswd sasldblistusers
 man_MANS = saslpasswd.8 sasldblistusers.8
-saslpasswd_LDADD = ../lib/libsasl2.la
+saslpasswd_LDADD = $(all_sasl_libs)
 sasldblistusers_LDADD = $(SASL_DB_LIB)
 
-EXTRA_PROGRAMS = testsuite testsuitestatic
-testsuite_LDADD = ../lib/libsasl2.la $(SASL_DB_LIB) $(LIB_SOCKET)
+EXTRA_PROGRAMS = testsuite testsuitestatic smtptest
+testsuite_LDADD = $(all_sasl_libs) 
 
 testsuitestatic_SOURCES = testsuite.c
-testsuitestatic_LDADD = ../lib/libsasl2.a $(SASL_DB_LIB) $(LIB_SOCKET) $(GSSAPIBASE_LIBS) $(GSSAPI_LIBS) $(SASL_KRB_LIB) $(LIB_DES) $(PLAIN_LIBS) $(SRP_LIBS)
+testsuitestatic_LDADD = $(all_sasl_static_libs)
 testsuitestatic_DEPENDENCIES = ../lib/libsasl2.a
+
+smtptest_SOURCES =
+smtptest_DEPENDENCIES = ./smtptest.lo ./libsfsasl.la
+smtptest_LDADD = ./smtptest.lo ./libsfsasl.la @SFIO_LIB_FLAGS@ $(all_sasl_libs)
 
 include_HEADERS = @SASL_UTIL_HEADERS_EXTRA@
 EXTRA_HEADERS = sfsasl.h
 
+# Note: we explicitly do *not* link to libsfio, as people will need to
+# link to that anyway if they want to use this. 
 lib_LTLIBRARIES = @SASL_UTIL_LIBS_EXTRA@
 EXTRA_LTLIBRARIES = libsfsasl.la
-libsfsasl_la_SOURCES = sfsasl.c
-libsfsasl_la_LDFLAGS = -version-info 0:0:0 -export-dynamic -rpath $(libdir)
+libsfsasl_la_SOURCES = 
+libsfsasl_la_LIBADD = sfsasl.lo
+libsfsasl_la_LDFLAGS = -version-info 1:0:0 -export-dynamic -rpath $(libdir)
 
 INCLUDES=-I$(top_srcdir)/include
 EXTRA_DIST = saslpasswd.8 sasldblistusers.8 sfsasl.h testsuite.c
+
+sfsasl.lo: sfsasl.c
+	$(LIBTOOL) --mode=compile $(COMPILE) @SFIO_INC_FLAGS@ -c sfsasl.c
+
+smtptest.lo: smtptest.c
+	$(LIBTOOL) --mode=compile $(COMPILE) @SFIO_INC_FLAGS@ -c smtptest.c
