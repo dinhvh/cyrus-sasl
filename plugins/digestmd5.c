@@ -2,7 +2,7 @@
  * Rob Siemborski
  * Tim Martin
  * Alexey Melnikov 
- * $Id: digestmd5.c,v 1.97.2.21 2001/07/20 20:39:15 rjs3 Exp $
+ * $Id: digestmd5.c,v 1.97.2.22 2001/07/23 14:41:26 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -2544,7 +2544,7 @@ server_continue_step(void *conn_context,
 	HASH HA1;
 
 	DigestCalcSecret(sparams->utils,
-			 username, realm, sec->data, sec->len, HA1);
+			 username, text->realm, sec->data, sec->len, HA1);
 
 	/*
 	 * A1       = { H( { username-value, ":", realm-value, ":", passwd } ),
