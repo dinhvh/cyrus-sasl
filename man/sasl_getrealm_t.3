@@ -33,10 +33,6 @@ sasl_getrealm_t \- Realm Acquisition Callback
 
 .B sasl_getrealm_t
 is used when there is an interaction with SASL_CB_GETREALM as the type.
-The challenge of the sasl_interact_t will be of the format {realm1, realm2, ...}.
-That is a list of possible realms seperated by comma spaces
-enclosed by brackets.  It will be "{}" if the client is expected to select
-the realm.
 
 If a mechanism would use this callback, but it is not present, then the first
 realm listed is automatically selected.  (Note that a mechanism may still
@@ -47,10 +43,10 @@ required_prompts list).
 context from the callback record
 
 .I availrealms
-The challenge string in the format {realm1, realm2, ....}
+A string list of the available realms.  NULL terminated, may be empty.
 
 .I result
-The chosen realm.
+The chosen realm. (a NUL terminated string)
 
 .SH "RETURN VALUE"
 SASL callback functions should return SASL return codes. See sasl.h for a complete list. SASL_OK indicates success.
