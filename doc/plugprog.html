@@ -1,6 +1,6 @@
 <HTML><HEAD>
 <title>SASL Plugin Programmer's Guide</title>
-<!-- $Id: plugprog.html,v 1.1.2.2 2001/07/24 22:55:27 rjs3 Exp $ -->
+<!-- $Id: plugprog.html,v 1.1.2.3 2001/07/24 22:57:58 rjs3 Exp $ -->
 </HEAD>
 <BODY>
 <h1>SASL Plugin Programmer's Guide</h1>
@@ -19,6 +19,7 @@
     <li><a href="#overview">Overview of Plugin Programming</a></li>
     <li><a href="#sasl_utils_t">Use of sasl_utils_t</a></li>
     <li><a href="#error_reporting">Error Reporting</a></li>
+    <li><a href="#memory">Memory Allocation</a></li>
     <li><a href="#cslssl">Client Send First / Server Send Last</a></li>
   </ul>
   <li><a href="#client">Client Plugins</a></li>
@@ -110,6 +111,13 @@
     <p><i>In order to ensure consistancy of this information, it is the
 	responsibility of the deepest function with access to the sasl_conn_t
 	make the call to set the errdetail string.</i></p>
+
+    <a name="memory"><h3>Memory Allocation</h3></a>
+    <p>Memory allocation in SASLv2 follows the simple paradigm that if you
+      allocate it, you free it.  This improves portability, and allows
+      for a large performance improvement over SASLv1.  To prevent memory
+      leaks (especially in the mechanism plugins), please ensure that you
+      follow this paradigm.</p>
 
     <a name="cslssl"><h3>Client Send First / Server Send Last</h3></a>
     <p>Mechanism plugins used to have to worry about the situation
