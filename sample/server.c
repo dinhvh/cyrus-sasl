@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.1.2.6 2001/07/19 16:34:22 rjs3 Exp $ */
+/* $Id: server.c,v 1.1.2.7 2001/07/20 16:43:10 rjs3 Exp $ */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
  *
@@ -163,7 +163,7 @@ int mysasl_negotiate(FILE *in, FILE *out, sasl_conn_t *conn)
     char chosenmech[128];
     const char *data;
     int len;
-    int r;
+    int r = SASL_FAIL;
     const char *userid;
     
     /* generate the capability list */
@@ -199,12 +199,26 @@ int mysasl_negotiate(FILE *in, FILE *out, sasl_conn_t *conn)
 	return -1;
     }
 
-    /* receive initial response (if any) */
     len = recv_string(in, buf, sizeof(buf));
+    if(len != 1) {
+	saslerr(r, "didn't receive first-send parameter correctly");
+	fputc('N', out);
+	fflush(out);
+	return -1;
+    }
 
-    /* start libsasl negotiation */
-    r = sasl_server_start(conn, chosenmech, buf, len,
-			  &data, &len);
+    if(buf[0] == 'Y') {
+        /* receive initial response (if any) */
+        len = recv_string(in, buf, sizeof(buf));
+
+        /* start libsasl negotiation */
+        r = sasl_server_start(conn, chosenmech, buf, len,
+			      &data, &len);
+    } else {
+	r = sasl_server_start(conn, chosenmech, NULL, 0,
+			      &data, &len);
+    }
+    
     if (r != SASL_OK && r != SASL_CONTINUE) {
 	saslerr(r, "starting SASL negotiation");
 	fputc('N', out); /* send NO to client */
@@ -302,6 +316,7 @@ int main(int argc, char *argv[])
     for (;;) {
 	char localaddr[NI_MAXHOST | NI_MAXSERV],
 	     remoteaddr[NI_MAXHOST | NI_MAXSERV];
+	char myhostname[1024+1];
 	char hbuf[NI_MAXHOST], pbuf[NI_MAXSERV];
 	struct sockaddr_storage local_ip, remote_ip;
 	int salen;
@@ -354,7 +369,10 @@ int main(int argc, char *argv[])
 		    NI_NUMERICHOST | NI_WITHSCOPEID | NI_NUMERICSERV);
 	snprintf(remoteaddr, sizeof(remoteaddr), "%s;%s", hbuf, pbuf);
 
-	r = sasl_server_new(service, NULL, NULL, localaddr, remoteaddr,
+	r = gethostname(myhostname, sizeof(myhostname)-1);
+	if(r == -1) saslfail(r, "getting hostname");
+
+	r = sasl_server_new(service, myhostname, NULL, localaddr, remoteaddr,
 			    NULL, 0, &conn);
 	if (r != SASL_OK) saslfail(r, "allocating connection state");
 

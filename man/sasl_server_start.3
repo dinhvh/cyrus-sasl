@@ -73,7 +73,9 @@ is the mechanism name that the client requested
 .PP
 .I clientin
 is the client initial response, NULL if the protocol lacks support for
-client-send-first, (or if the other end did not send first),
+client-send-first or if the other end did not have an initial send.  Note that
+no initial client send is distinct from an initial send of a null string,
+and the protocol MUST account for this difference.
 
 .PP
 .I clientinlen

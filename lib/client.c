@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: client.c,v 1.34.4.26 2001/07/19 22:49:53 rjs3 Exp $
+ * $Id: client.c,v 1.34.4.27 2001/07/20 16:43:06 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -503,12 +503,16 @@ int sasl_client_start(sasl_conn_t *conn,
 
     /* do a step -- but only if we can do a client-send-first */
  dostep:
-    if(clientout) {
+    if(c_conn->mech->plug->features & SASL_FEAT_INTERNAL_CLIENT_FIRST) {
+	/* The plugin handles client-first internally */
+	result = sasl_client_step(conn, NULL, 0, prompt_need,
+				  clientout, clientoutlen);
+    } else if(clientout) {
 	if(c_conn->mech->plug->features & SASL_FEAT_WANT_CLIENT_FIRST) {
 	    result = sasl_client_step(conn, NULL, 0, prompt_need,
 				      clientout, clientoutlen);
 	} else {
-	    *clientout = "";
+	    *clientout = NULL;
 	    *clientoutlen = 0;
 	    result = SASL_CONTINUE;
 	}

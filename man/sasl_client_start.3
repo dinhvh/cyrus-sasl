@@ -1,4 +1,4 @@
-s.\" -*- nroff -*-
+.\" -*- nroff -*-
 .\" 
 .\" Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
 .\"
@@ -87,9 +87,13 @@ client to send it over the network to the server.
 Any protocal specific encoding (such as base64
 encoding) necessary needs to be done by the client.
 
-If the protocol lacks client-send-first capability, then sent
+If the protocol lacks client-send-first capability, then set
 .I clientout
 to NULL.
+
+If there is no initial client-send, then
+.I *clientout
+will be set to NULL on return.
 
 .I mech
 contains the name of the chosen SASL mechanism (on success)

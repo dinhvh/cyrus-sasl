@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.1.2.5 2001/07/19 16:34:21 rjs3 Exp $ */
+/* $Id: client.c,v 1.1.2.6 2001/07/20 16:43:10 rjs3 Exp $ */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
  *
@@ -260,9 +260,16 @@ int mysasl_negotiate(FILE *in, FILE *out, sasl_conn_t *conn)
     
     dprintf(1, "using mechanism %s\n", chosenmech);
 
-    /* we send two strings; the mechanism chosen and the initial response */
+    /* we send up to 3 strings;
+       the mechanism chosen, the presence of initial response,
+       and optionally the initial response */
     send_string(out, chosenmech, strlen(chosenmech));
-    send_string(out, data, len);
+    if(data) {
+	send_string(out, "Y", 1);
+	send_string(out, data, len);
+    } else {
+	send_string(out, "N", 1);
+    }
 
     for (;;) {
 	dprintf(2, "waiting for server reply...\n");

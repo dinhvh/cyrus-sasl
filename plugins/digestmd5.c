@@ -2,7 +2,7 @@
  * Rob Siemborski
  * Tim Martin
  * Alexey Melnikov 
- * $Id: digestmd5.c,v 1.97.2.19 2001/07/19 22:50:01 rjs3 Exp $
+ * $Id: digestmd5.c,v 1.97.2.20 2001/07/20 16:43:08 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -2090,6 +2090,8 @@ server_continue_step(void *conn_context,
     struct digest_cipher *cipher;
     int added_conf = 0;
 
+    /* We don't implement fast-reauth, so we just ignore whatever they sent */
+
     if (sparams->props.max_ssf < sparams->external_ssf) {
 	text->limitssf = 0;
     } else {
@@ -2712,7 +2714,7 @@ static sasl_server_plug_t plugins[] =
     0,
 #endif
     SASL_SEC_NOPLAINTEXT | SASL_SEC_NOANONYMOUS,
-    SASL_FEAT_WANT_SERVER_LAST,
+    SASL_FEAT_INTERNAL_CLIENT_FIRST | SASL_FEAT_WANT_SERVER_LAST,
     NULL,
     &server_start,
     &server_continue_step,
@@ -3173,25 +3175,28 @@ c_continue_step(void *conn_context,
   context_t      *text;
   text = conn_context;
 
-  *clientout = NULL;
-  *clientoutlen = 0;
-
   if(serverinlen > 2048) return SASL_BADPROT;
 
 #if 0
   if (text->state == 1) {
-    /* here's where we'd attempt fast reauth if possible */
-    /* if we can, then goto text->state=3!!! */
+      /* here's where we'd attempt fast reauth if possible */
+      /* if we can, then goto text->state=3!!! */
 
-    *clientout = blank_string;
-    *clientoutlen = 0;
+      /* however, we don't implement it, so we just return
+       * that there is no initial client send */
 
-    text->state = 2;
-    return SASL_CONTINUE;
+      if(clientout) *clientout = NULL;
+      if(clientoutlen) *clientoutlen = 0;
+
+      text->state = 2;
+      return SASL_CONTINUE;
   }
 #else
   if(text->state == 1) text->state = 2;
 #endif
+
+  *clientout = NULL;
+  *clientoutlen = 0;
 
   if (text->state == 2) {
     sasl_ssf_t limit, musthave = 0;
@@ -3855,6 +3860,7 @@ static sasl_client_plug_t client_plugins[] =
     0,
 #endif
     SASL_SEC_NOPLAINTEXT | SASL_SEC_NOANONYMOUS,
+    /* Note: we don't do client-first on this side of the plugin */
     SASL_FEAT_WANT_SERVER_LAST,
     client_required_prompts,
     NULL,
