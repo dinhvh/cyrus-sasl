@@ -5,6 +5,8 @@
 	* utils/testsuite.c: changed "sasldb" verifier to "auxprop"
 	* doc/options.html: changed "sasldb" verifier to "auxprop"
 
+	* README: updated upgrade information
+	
 2001-07-24  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* plugins/sasldb.c: Cleaned up calls into the glue code
 

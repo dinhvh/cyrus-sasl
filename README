@@ -1,8 +1,8 @@
-$Id: README,v 1.25.4.3 2001/07/20 21:29:00 rjs3 Exp $
+$Id: README,v 1.25.4.4 2001/07/25 15:55:54 rjs3 Exp $
 
 This is the Cyrus SASL API implentation. It can be used on the client
-or server side to provide authentication. See RFC 2222 for more
-information.
+or server side to provide authentication and authorization services.
+See RFC 2222 for more information.
 
 The latest version is available at:
 ftp://ftp.andrew.cmu.edu/pub/cyrus-mail
@@ -18,8 +18,7 @@ ALPHA WARNING
 THIS CODE IS ALPHA-QUALITY AND IS INTENDED FOR DEVELOPERS ONLY.
 IT IS NOT BACKWARDS COMPATIBLE WITH SASLv1.
 
-Bugs can be searched/reported at:
-http://bugzilla.andrew.cmu.edu
+Bugs can be searched/reported at: http://bugzilla.andrew.cmu.edu
 
 FEATURES
 --------
@@ -69,7 +68,7 @@ Currently configurable parameters:
 - srvtab (for KERBEROS_V4): [/etc/srvtab] path
 	where to find the srvtab
 
-- pwcheck_method: [sasldb] one of {PAM, kerberos_v4, passwd, shadow, sasldb}
+- pwcheck_method: [auxprop] one of {auxprop, pwcheck, saslauthd}
 	how to check plaintext passwords.
 
 - auto_transition: [false]
@@ -78,7 +77,7 @@ Currently configurable parameters:
 	use the more secure mechanisms.
 
 *** For a more detailed guide on configuring SASL, please look at
-doc/sysadmin.html.
+doc/sysadmin.html and doc/options.html.
 
 KNOWN BUGS
 ----------
@@ -99,7 +98,10 @@ and suffering on the part of the developer).
 
 Likewise, "sasldb" is incompatible between SASLv1 and SASLv2. As of this time
 there is no migration utility because the passwords in the SASLv1 database
-are all encrypted, so there is no easy way to extract them.
+are all encrypted, so there is no easy way to extract them.  (Note that
+as sasldb support has been extracted from the main library into an auxprop
+plugin, thew default pwcheck_method is now "auxprop", which does auxprop
+lookups in search of the userPassword property)
 
 Note that all passwords in the SASLv2 version of sasldb are stored in plain
 text format.  That means that a comprimized sasldb comprimizes all services
