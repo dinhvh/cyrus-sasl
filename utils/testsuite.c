@@ -1,7 +1,7 @@
 /* testsuite.c -- Stress the library a little
  * Rob Siemborski
  * Tim Martin
- * $Id: testsuite.c,v 1.13.2.30 2001/07/25 15:32:08 rjs3 Exp $
+ * $Id: testsuite.c,v 1.13.2.31 2001/07/25 20:41:46 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -1365,6 +1365,410 @@ int doauth(char *mech, sasl_conn_t **server_conn, sasl_conn_t **client_conn,
     }
 
     if(need_another_client) {
+	fatal("server-last not allowed, but need another client call");
+    }
+
+    *server_conn = saslconn;
+    *client_conn = clientconn;
+    
+    return SASL_OK;
+}
+
+/* Authenticate two sasl_conn_t's to eachother, validly.
+ * without allowing client-send-first */
+int doauth_noclientfirst(char *mech, sasl_conn_t **server_conn,
+			 sasl_conn_t **client_conn,
+			 const sasl_security_properties_t *props)
+{
+    int result, need_another_client = 0;
+    sasl_conn_t *saslconn;
+    sasl_conn_t *clientconn;
+    const char *out, *out2;
+    unsigned outlen, outlen2;
+    sasl_interact_t *client_interact=NULL;
+    const char *mechusing;
+    const char *service = "rcmd";
+
+    struct sockaddr_in addr;
+    struct hostent *hp;
+    char buf[8192];
+
+    if(!server_conn || !client_conn) return SASL_BADPARAM;
+    
+    if (strcmp(mech,"GSSAPI")==0) service = gssapi_service;
+
+    if (sasl_client_init(client_callbacks)!=SASL_OK) fatal("Unable to init client");
+
+    if (sasl_server_init(goodsasl_cb,"TestSuite")!=SASL_OK) fatal("unable to init server");
+
+    if ((hp = gethostbyname(myhostname)) == NULL) {
+	perror("gethostbyname");
+	fatal("can't gethostbyname");
+    }
+
+    addr.sin_family = 0;
+    memcpy(&addr.sin_addr, hp->h_addr, hp->h_length);
+    addr.sin_port = htons(0);
+
+    sprintf(buf,"%s;%d", inet_ntoa(addr.sin_addr), 0);
+
+    /* client new connection */
+    if (sasl_client_new(service,
+			myhostname,
+			buf, buf, NULL,
+			0,
+			&clientconn)!= SASL_OK) fatal("sasl_client_new() failure");
+
+    /* Set the security properties */
+    set_properties(clientconn, props);
+
+    if (sasl_server_new(service, myhostname, NULL,
+			buf, buf, NULL, 0, 
+			&saslconn) != SASL_OK) {
+	fatal("can't sasl_server_new");
+    }
+    set_properties(saslconn, props);
+
+    do {
+	result = sasl_client_start(clientconn, mech,
+				   &client_interact,
+				   NULL, NULL,
+				   &mechusing);
+
+	if (result == SASL_INTERACT) fillin_correctly(client_interact);
+	else if(result == SASL_CONTINUE) need_another_client = 1;
+	else if(result == SASL_OK) need_another_client = 0;
+    } while (result == SASL_INTERACT);
+			       
+    if (result < 0)
+    {
+	printf("%s - \n",sasl_errstring(result,NULL,NULL));
+	fatal("sasl_client_start() error");
+    }
+
+    result = sasl_server_start(saslconn,
+			       mech,
+			       NULL,
+			       0,
+			       &out,
+			       &outlen);
+
+    if (result < 0) 
+    {
+	printf("%s\n",sasl_errstring(result,NULL,NULL));
+	fatal("sasl_server_start() error");
+    }
+
+    while (result == SASL_CONTINUE) {
+	do {
+	    result = sasl_client_step(clientconn,
+				      out, outlen,
+				      &client_interact,
+				      &out2, &outlen2);
+	    
+	    if (result == SASL_INTERACT)
+		fillin_correctly(client_interact);
+	    else if (result == SASL_CONTINUE)
+		need_another_client = 1;
+	    else if (result == SASL_OK)
+		need_another_client = 0;
+	} while (result == SASL_INTERACT);
+
+	if (result < 0) 
+	{
+	    printf("%s\n",sasl_errstring(result,NULL,NULL));
+	    fatal("sasl_client_step() error");
+	}
+
+	out=out2;
+	outlen=outlen2;
+
+	result = sasl_server_step(saslconn,
+				  out,
+				  outlen,
+				  &out,
+				  &outlen);
+	
+	if (result < 0) 
+	{
+	    printf("%s\n",sasl_errstring(result,NULL,NULL));
+	    fatal("sasl_server_step() error");
+	}
+
+    }
+
+    if(need_another_client) {
+	fatal("server-last not allowed, but need another client call");
+    }
+
+    *server_conn = saslconn;
+    *client_conn = clientconn;
+    
+    return SASL_OK;
+}
+
+/* Authenticate two sasl_conn_t's to eachother, validly.
+ * used to test the security layer */
+int doauth_serverlast(char *mech, sasl_conn_t **server_conn,
+		      sasl_conn_t **client_conn,
+		      const sasl_security_properties_t *props)
+{
+    int result, need_another_client = 0;
+    sasl_conn_t *saslconn;
+    sasl_conn_t *clientconn;
+    const char *out, *out2;
+    unsigned outlen, outlen2;
+    sasl_interact_t *client_interact=NULL;
+    const char *mechusing;
+    const char *service = "rcmd";
+
+    struct sockaddr_in addr;
+    struct hostent *hp;
+    char buf[8192];
+
+    if(!server_conn || !client_conn) return SASL_BADPARAM;
+    
+    if (strcmp(mech,"GSSAPI")==0) service = gssapi_service;
+
+    if (sasl_client_init(client_callbacks)!=SASL_OK) fatal("Unable to init client");
+
+    if (sasl_server_init(goodsasl_cb,"TestSuite")!=SASL_OK) fatal("unable to init server");
+
+    if ((hp = gethostbyname(myhostname)) == NULL) {
+	perror("gethostbyname");
+	fatal("can't gethostbyname");
+    }
+
+    addr.sin_family = 0;
+    memcpy(&addr.sin_addr, hp->h_addr, hp->h_length);
+    addr.sin_port = htons(0);
+
+    sprintf(buf,"%s;%d", inet_ntoa(addr.sin_addr), 0);
+
+    /* client new connection */
+    if (sasl_client_new(service,
+			myhostname,
+			buf, buf, NULL,
+			SASL_SUCCESS_DATA,
+			&clientconn)!= SASL_OK) fatal("sasl_client_new() failure");
+
+    /* Set the security properties */
+    set_properties(clientconn, props);
+
+    if (sasl_server_new(service, myhostname, NULL,
+			buf, buf, NULL, SASL_SUCCESS_DATA, 
+			&saslconn) != SASL_OK) {
+	fatal("can't sasl_server_new");
+    }
+    set_properties(saslconn, props);
+
+    do {
+	result = sasl_client_start(clientconn, mech,
+				   &client_interact,
+				   &out, &outlen,
+				   &mechusing);
+
+	if (result == SASL_INTERACT) fillin_correctly(client_interact);
+	else if(result == SASL_CONTINUE) need_another_client = 1;
+	else if(result == SASL_OK) need_another_client = 0;
+    } while (result == SASL_INTERACT);
+			       
+    if (result < 0)
+    {
+	printf("%s - \n",sasl_errstring(result,NULL,NULL));
+	fatal("sasl_client_start() error");
+    }
+
+    result = sasl_server_start(saslconn,
+			       mech,
+			       out,
+			       outlen,
+			       &out,
+			       &outlen);
+
+    if (result < 0) 
+    {
+	printf("%s\n",sasl_errstring(result,NULL,NULL));
+	fatal("sasl_server_start() error");
+    }
+
+    while (result == SASL_CONTINUE) {
+	do {
+	    result = sasl_client_step(clientconn,
+				      out, outlen,
+				      &client_interact,
+				      &out2, &outlen2);
+	    
+	    if (result == SASL_INTERACT)
+		fillin_correctly(client_interact);
+	    else if (result == SASL_CONTINUE)
+		need_another_client = 1;
+	    else if (result == SASL_OK)
+		need_another_client = 0;
+	} while (result == SASL_INTERACT);
+
+	if (result < 0) 
+	{
+	    printf("%s\n",sasl_errstring(result,NULL,NULL));
+	    fatal("sasl_client_step() error");
+	}
+
+	out=out2;
+	outlen=outlen2;
+
+	result = sasl_server_step(saslconn,
+				  out,
+				  outlen,
+				  &out,
+				  &outlen);
+	
+	if (result < 0) 
+	{
+	    printf("%s\n",sasl_errstring(result,NULL,NULL));
+	    fatal("sasl_server_step() error");
+	}
+
+    }
+
+    if(need_another_client) {
+	result = sasl_client_step(clientconn,
+				  out, outlen,
+				  &client_interact,
+				  &out2, &outlen2);
+	if(result != SASL_OK)
+	    fatal("client was not ok on last server step");
+    }
+
+    *server_conn = saslconn;
+    *client_conn = clientconn;
+    
+    return SASL_OK;
+}
+
+/* Authenticate two sasl_conn_t's to eachother, validly.
+ * without allowing client-send-first */
+int doauth_noclientfirst_andserverlast(char *mech, sasl_conn_t **server_conn,
+				       sasl_conn_t **client_conn,
+				       const sasl_security_properties_t *props)
+{
+    int result, need_another_client = 0;
+    sasl_conn_t *saslconn;
+    sasl_conn_t *clientconn;
+    const char *out, *out2;
+    unsigned outlen, outlen2;
+    sasl_interact_t *client_interact=NULL;
+    const char *mechusing;
+    const char *service = "rcmd";
+
+    struct sockaddr_in addr;
+    struct hostent *hp;
+    char buf[8192];
+
+    if(!server_conn || !client_conn) return SASL_BADPARAM;
+    
+    if (strcmp(mech,"GSSAPI")==0) service = gssapi_service;
+
+    if (sasl_client_init(client_callbacks)!=SASL_OK) fatal("Unable to init client");
+
+    if (sasl_server_init(goodsasl_cb,"TestSuite")!=SASL_OK) fatal("unable to init server");
+
+    if ((hp = gethostbyname(myhostname)) == NULL) {
+	perror("gethostbyname");
+	fatal("can't gethostbyname");
+    }
+
+    addr.sin_family = 0;
+    memcpy(&addr.sin_addr, hp->h_addr, hp->h_length);
+    addr.sin_port = htons(0);
+
+    sprintf(buf,"%s;%d", inet_ntoa(addr.sin_addr), 0);
+
+    /* client new connection */
+    if (sasl_client_new(service,
+			myhostname,
+			buf, buf, NULL,
+			SASL_SUCCESS_DATA,
+			&clientconn)!= SASL_OK) fatal("sasl_client_new() failure");
+
+    /* Set the security properties */
+    set_properties(clientconn, props);
+
+    if (sasl_server_new(service, myhostname, NULL,
+			buf, buf, NULL, SASL_SUCCESS_DATA, 
+			&saslconn) != SASL_OK) {
+	fatal("can't sasl_server_new");
+    }
+    set_properties(saslconn, props);
+
+    do {
+	result = sasl_client_start(clientconn, mech,
+				   &client_interact,
+				   NULL, NULL,
+				   &mechusing);
+
+	if (result == SASL_INTERACT) fillin_correctly(client_interact);
+	else if(result == SASL_CONTINUE) need_another_client = 1;
+	else if(result == SASL_OK) need_another_client = 0;
+    } while (result == SASL_INTERACT);
+			       
+    if (result < 0)
+    {
+	printf("%s - \n",sasl_errstring(result,NULL,NULL));
+	fatal("sasl_client_start() error");
+    }
+
+    result = sasl_server_start(saslconn,
+			       mech,
+			       NULL,
+			       0,
+			       &out,
+			       &outlen);
+
+    if (result < 0) 
+    {
+	printf("%s\n",sasl_errstring(result,NULL,NULL));
+	fatal("sasl_server_start() error");
+    }
+
+    while (result == SASL_CONTINUE) {
+	do {
+	    result = sasl_client_step(clientconn,
+				      out, outlen,
+				      &client_interact,
+				      &out2, &outlen2);
+	    
+	    if (result == SASL_INTERACT)
+		fillin_correctly(client_interact);
+	    else if (result == SASL_CONTINUE)
+		need_another_client = 1;
+	    else if (result == SASL_OK)
+		need_another_client = 0;
+	} while (result == SASL_INTERACT);
+
+	if (result < 0) 
+	{
+	    printf("%s\n",sasl_errstring(result,NULL,NULL));
+	    fatal("sasl_client_step() error");
+	}
+
+	out=out2;
+	outlen=outlen2;
+
+	result = sasl_server_step(saslconn,
+				  out,
+				  outlen,
+				  &out,
+				  &outlen);
+	
+	if (result < 0) 
+	{
+	    printf("%s\n",sasl_errstring(result,NULL,NULL));
+	    fatal("sasl_server_step() error");
+	}
+
+    }
+
+    if(need_another_client) {
 	result = sasl_client_step(clientconn,
 				  out, outlen,
 				  &client_interact,
@@ -1395,6 +1799,74 @@ const sasl_security_properties_t int_only = {
     NULL,
     NULL	    
 };
+
+void test_clientfirst(char *mech, void *rock __attribute__((unused))) 
+{
+    sasl_conn_t *sconn, *cconn;
+    
+    printf("%s --> start\n", mech);
+
+    /* Basic crash-tests (none should cause a crash): */
+    if(doauth(mech, &sconn, &cconn, &security_props) != SASL_OK) {
+	fatal("doauth failed in test_clientfirst");
+    }
+
+    cleanup_auth(&cconn, &sconn);
+
+    printf("%s --> successful result\n", mech);
+}
+
+void test_noclientfirst(char *mech, void *rock __attribute__((unused))) 
+{
+    sasl_conn_t *sconn, *cconn;
+    
+    printf("%s --> start\n", mech);
+
+    /* Basic crash-tests (none should cause a crash): */
+    if(doauth_noclientfirst(mech, &sconn, &cconn, &security_props)
+       != SASL_OK) {
+	fatal("doauth failed in test_noclientfirst");
+    }
+
+    cleanup_auth(&cconn, &sconn);
+
+    printf("%s --> successful result\n", mech);
+}
+
+void test_serverlast(char *mech, void *rock __attribute__((unused))) 
+{
+    sasl_conn_t *sconn, *cconn;
+    
+    printf("%s --> start\n", mech);
+
+    /* Basic crash-tests (none should cause a crash): */
+    if(doauth_serverlast(mech, &sconn, &cconn, &security_props) != SASL_OK) {
+	fatal("doauth failed in test_serverlast");
+    }
+
+    cleanup_auth(&cconn, &sconn);
+
+    printf("%s --> successful result\n", mech);
+}
+
+
+void test_noclientfirst_andserverlast(char *mech,
+				      void *rock __attribute__((unused))) 
+{
+    sasl_conn_t *sconn, *cconn;
+    
+    printf("%s --> start\n", mech);
+
+    /* Basic crash-tests (none should cause a crash): */
+    if(doauth_noclientfirst_andserverlast(mech, &sconn, &cconn,
+					  &security_props) != SASL_OK) {
+	fatal("doauth failed in test_noclientfirst_andserverlast");
+    }
+
+    cleanup_auth(&cconn, &sconn);
+
+    printf("%s --> successful result\n", mech);
+}
 
 void testseclayer(char *mech, void *rock __attribute__((unused))) 
 {
@@ -1675,7 +2147,6 @@ void test_serverstart()
     sasl_conn_t *saslconn;
     const char *out;
     unsigned outlen;
-    tosend_t tosend;
     struct sockaddr_in addr;
     struct hostent *hp;
     char buf[8192];
@@ -1733,12 +2204,6 @@ void test_serverstart()
 
     sasl_dispose(&saslconn);
     sasl_done();
-
-    tosend.type = NOTHING;
-    tosend.step = 500;
-
-    printf("trying to do correctly\n");
-    foreach_mechanism((foreach_t *) &sendbadsecond,&tosend);
 }
 
 void test_rand_corrupt(unsigned steps) 
@@ -2076,13 +2541,42 @@ int main(int argc, char **argv)
     if(mem_stat() != SASL_OK) fatal("memory error");
     printf("Testing sasl_listmech()... ok\n");
 
+    printf("Testing serverstart...");
+    test_serverstart();
+    if(mem_stat() != SASL_OK) fatal("memory error");
+    printf("ok\n");
+
     if(!skip_do_correct) {
-	printf("Testing serverstart (correct)...\n");
-	test_serverstart();
-	printf("Tests of serverstart (correct)... ok\n");
+	tosend_t tosend;
+	
+	tosend.type = NOTHING;
+	tosend.step = 500;
+
+	printf("Testing client-first/no-server-last correctly...\n");
+	foreach_mechanism((foreach_t *) &test_clientfirst,&tosend);
 	if(mem_stat() != SASL_OK) fatal("memory error");
+	printf("Test of client-first/no-server-last...ok\n");
+
+	printf("Testing no-client-first/no-server-last correctly...\n");
+	foreach_mechanism((foreach_t *) &test_noclientfirst, &tosend);
+	if(mem_stat() != SASL_OK) fatal("memory error");
+	printf("Test of no-client-first/no-server-last...ok\n");
+	
+	printf("Testing no-client-first/server-last correctly...\n");
+	foreach_mechanism((foreach_t *) &test_serverlast, &tosend);
+	if(mem_stat() != SASL_OK) fatal("memory error");
+	printf("Test of no-client-first/server-last...ok\n");
+
+	printf("Testing client-first/server-last correctly...\n");
+	foreach_mechanism((foreach_t *) &test_noclientfirst_andserverlast,
+			  &tosend);
+	if(mem_stat() != SASL_OK) fatal("memory error");
+	printf("Test of client-first/server-last...ok\n");
     } else {
-	printf("Tests of serverstart (correct)... skipped\n");
+	printf("Testing client-first/no-server-last correctly...skipped\n");
+	printf("Testing no-client-first/no-server-last correctly...skipped\n");
+	printf("Testing no-client-first/server-last correctly...skipped\n");
+	printf("Testing client-first/server-last correctly...skipped\n");
     }
     
     /* FIXME: do memory tests below here on the things

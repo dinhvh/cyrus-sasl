@@ -1,7 +1,7 @@
 /* Plain SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: plain.c,v 1.43.2.14 2001/07/19 22:50:01 rjs3 Exp $
+ * $Id: plain.c,v 1.43.2.15 2001/07/25 20:41:44 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -156,15 +156,6 @@ server_continue_step (void *conn_context,
     oparams->authid = NULL;
 
     oparams->param_version = 0;
-
-  if (text->state == 1 && clientin == NULL && clientinlen == 0)
-  {
-      /* for IMAP's sake! */
-      *serverout = blank_server_out;
-      *serveroutlen = 0;
-
-      return SASL_CONTINUE;
-  }
 
   if (text->state == 1) {
     const char *author;
@@ -682,15 +673,7 @@ static int client_continue_step (void *conn_context,
 
     text->state = 2;
 
-    return SASL_CONTINUE;
-  }
-
-  if (text->state == 2)
-  {
-      *clientout = NULL;
-      *clientoutlen = 0;
-      text->state++;
-      return SASL_OK;      
+    return SASL_OK;
   }
 
   return SASL_FAIL; /* should never get here */

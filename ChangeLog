@@ -16,6 +16,14 @@
 	* configure.in: added checks for db-3.3 and db3.3
 
 	* plugins/digestmd5.c (get_realm): now error on empty user_realm
+
+	* plugins/cram.c (client_required_prompts): removed redundant
+	  required_prompts
+
+	* plugins/plain.c (client_continue_step): server-send-last error
+
+	* utils/testsuite.c (main): detailed client-send-first,
+		server-send-last checking
 	
 2001-07-24  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* plugins/sasldb.c: Cleaned up calls into the glue code
