@@ -1,7 +1,7 @@
 /* testsuite.c -- Stress the library a little
  * Rob Siemborski
  * Tim Martin
- * $Id: testsuite.c,v 1.13.2.21 2001/07/06 17:39:15 rjs3 Exp $
+ * $Id: testsuite.c,v 1.13.2.22 2001/07/09 16:10:07 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -842,7 +842,9 @@ void corrupt(corrupt_type_t type, char *in, int inlen,
 	case SHORTEN:
 	    if (inlen > 0)
 	    {
-		*outlen = (rand() % inlen);
+		*outlen = 0;
+		while(*outlen == 0)
+		    *outlen = (rand() % inlen);
 		*out = (char *) malloc(*outlen);
 		memcpy(*out, in, *outlen);
 	    } else {
@@ -852,9 +854,14 @@ void corrupt(corrupt_type_t type, char *in, int inlen,
 	    break;
 	case REASONABLE_RANDOM:
 	    *outlen = inlen;
-	    *out = (char *) malloc(*outlen);
+	    if(*outlen != 0)
+		*out = (char *) malloc(*outlen);
+	    else
+		*out = malloc(1);
+
 	    for (lup=0;lup<*outlen;lup++)
 		(*out)[lup] = (char) (rand() % 256);
+
 	    break;
 	case REALLYBIG:
 	    *outlen = rand() % 50000;
@@ -949,7 +956,7 @@ void sendbadsecond(char *mech, void *rock)
 	fatal("sasl_client_start() error");
     }
 
-    if (mystep == send->step)
+    if (mystep == send->step && outlen)
     {
 	memcpy(buf, out, outlen);
 	corrupt(send->type, buf, outlen, &tmp, &outlen);
