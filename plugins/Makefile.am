@@ -45,18 +45,18 @@
 
 # Library version info - here at the top, for sanity
 # CURRENT:REVISION:AGE
-plain_version = 1:15:0
-anonymous_version = 1:16:0
-kerberos4_version = 1:17:0
-crammd5_version = 1:17:0
-scrammd5_version = 1:7:0
-gssapiv2_version = 1:18:0
-digestmd5_version = 0:19:0
-login_version = 0:6:0
-srp_version = 0:1:0
+plain_version = 2:0:0
+anonymous_version = 2:0:0
+kerberos4_version = 2:0:0
+crammd5_version = 2:0:0
+scrammd5_version = 2:0:0
+gssapiv2_version = 2:0:0
+digestmd5_version = 2:0:0
+login_version = 2:0:0
+srp_version = 2:0:0
 # x509_version = 0:0:0
 
-INCLUDES=-I$(top_srcdir)/include
+INCLUDES=-I$(top_srcdir)/include -I$(top_srcdir)/lib
 
 LDFLAGS = @LDFLAGS@ -export-dynamic -rpath $(plugindir)
 
