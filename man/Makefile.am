@@ -43,7 +43,7 @@
 
 man_MANS = sasl_authorize_t.3 sasl_done.3 sasl_listmech.3 sasl_callbacks.3 \
            sasl_encode.3 sasl_encodev.3 sasl_log_t.3 sasl_checkpass.3 \
-           sasl_errstring.3 sasl_dispose.3 \
+           sasl_errstring.3 sasl_dispose.3 sasl_canon_user_t.3 \
            sasl_server_init.3 sasl_client_init.3 sasl_getopt_t.3 \
            sasl_server_new.3 sasl_client_new.3 sasl_getpath_t.3  \
            sasl_server_start.3 sasl_client_start.3 sasl_getprop.3 \
