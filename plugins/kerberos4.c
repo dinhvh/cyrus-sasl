@@ -1,6 +1,6 @@
 /* Kerberos4 SASL plugin
  * Tim Martin 
- * $Id: kerberos4.c,v 1.65.2.10 2001/06/08 21:36:51 rjs3 Exp $
+ * $Id: kerberos4.c,v 1.65.2.11 2001/06/12 19:25:16 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
@@ -665,7 +665,7 @@ static int server_continue_step (void *conn_context,
         from machine to machine) */
 
     /* get ip number in addr*/
-    result = _sasl_ipfromstring(sparams->ipremoteport, &addr);
+    result = _plug_ipfromstring(sparams->ipremoteport, &addr);
     if (result != SASL_OK)
 	/* couldn't get remote IP address */
 	return result;
