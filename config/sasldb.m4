@@ -5,27 +5,49 @@ dnl Berkeley DB specific checks first..
 dnl this is unbelievably painful due to confusion over what db-3 should be
 dnl named and where the db-3 header file is located.  arg.
 AC_DEFUN(BERKELEY_DB_CHK_LIB,
-[      for dbname in db-3.3 db3.3 db-3.2 db3.2 db-3.1 db3.1 db-3 db3 db
-         do
-           AC_CHECK_LIB($dbname, db_create, SASL_DB_LIB="-l$dbname";
-             dblib="berkeley"; break, dblib="no")
-         done
-       if test "$dblib" = "no"; then
-         AC_CHECK_LIB(db, db_open, SASL_DB_LIB="-ldb";
-           dblib="berkeley"; dbname=db,
-           dblib="no")
-       fi
+[
+	BDB_SAVE_LIBS=$LIBS
+
+	if test -d $with_bdb_lib; then
+	    LIBS="$LIBS -L$with_bdb_lib"
+	    BDB_LIBADD="-L$with_bdb_lib"
+	else
+	    BDB_LIBADD=""
+	fi
+
+        for dbname in db-3.3 db3.3 db-3.2 db3.2 db-3.1 db3.1 db-3 db3 db
+          do
+            AC_CHECK_LIB($dbname, db_create, SASL_DB_LIB="$BDB_LIBADD -l$dbname";
+              dblib="berkeley"; break, dblib="no")
+          done
+        if test "$dblib" = "no"; then
+          AC_CHECK_LIB(db, db_open, SASL_DB_LIB="$BDB_LIBADD -ldb";
+            dblib="berkeley"; dbname=db,
+            dblib="no")
+        fi
+
+	LIBS=$BDB_SAVE_LIBS
 ])
 
 AC_DEFUN(BERKELEY_DB_CHK,
-[      dnl FreeBSD puts it in a wierd place
-       AC_CHECK_HEADER(db3/db.h,
+[
+	if test -d $with_bdb_inc; then
+	    CPPFLAGS="$CPPFLAGS -I$with_bdb_inc"
+	    BDB_INCADD="-I$with_bdb_inc"
+	else
+	    BDB_INCADD=""
+	fi
+
+	dnl FreeBSD puts it in a wierd place
+	AC_CHECK_HEADER(db3/db.h,
                        BERKELEY_DB_CHK_LIB()
                        if test "$dblib" = "berkeley"; then
+			 SASL_DB_INC=$BDB_INCADD
                          AC_DEFINE(HAVE_DB3_DB_H)
                        fi,
                AC_CHECK_HEADER(db.h,
-                       	       BERKELEY_DB_CHK_LIB(),
+                       	       BERKELEY_DB_CHK_LIB()
+			       SASL_DB_INC=$BDB_INCADD,
                                dblib="no"))
 ])
 
@@ -35,6 +57,16 @@ cmu_save_LIBS="$LIBS"
 AC_ARG_WITH(dblib, [  --with-dblib=DBLIB      set the DB library to use [berkeley] ],
   dblib=$withval,
   dblib=auto_detect)
+
+AC_ARG_WITH(bdb-libdir,
+	[  --with-bdb-libdir=DIR   Berkeley DB lib files are in DIR],
+	with_bdb_lib=$withval,
+	with_bdb_lib=none)
+AC_ARG_WITH(bdb-incdir,
+	[  --with-bdb-incdir=DIR   Berkeley DB include files are in DIR],
+	with_bdb_inc=$withval,
+	with_bdb_inc=none)
+
 SASL_DB_LIB=""
 
 case "$dblib" in
@@ -133,6 +165,7 @@ AC_SUBST(SASL_DB_UTILS)
 AC_SUBST(SASL_DB_MANS)
 AC_SUBST(SASL_DB_BACKEND)
 AC_SUBST(SASL_DB_BACKEND_STATIC)
+AC_SUBST(SASL_DB_INC)
 AC_SUBST(SASL_DB_LIB)
 ])
 

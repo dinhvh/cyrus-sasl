@@ -11,6 +11,10 @@
 	  properties
 
 	* plugins/Makefile.am: added -module to LDFLAGS
+
+	* config/sasldb.m4: Allow specification of exact berkeley db
+	  lib and include paths
+	* sasldb/Makefile.am: Add proper include directory
 	
 2001-07-27  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* configure.in: extracted SASLDB-related checking
