@@ -1,6 +1,6 @@
 /* sample-client.c -- sample SASL client
  * Rob Earhart
- * $Id: sample-client.c,v 1.23.4.3 2001/06/25 18:44:43 rjs3 Exp $
+ * $Id: sample-client.c,v 1.23.4.4 2001/07/19 16:34:22 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -192,7 +192,7 @@ static int getrealm(void *context,
 
 static int
 getpath(void *context,
-	char ** path) 
+	const char ** path) 
 {
   const char *searchpath = (const char *) context;
 
@@ -200,11 +200,10 @@ getpath(void *context,
     return SASL_BADPARAM;
 
   if (searchpath) {
-    *path = strdup(searchpath);
-    if (! *path)
-      return SASL_NOMEM;
-  } else
-    *path = NULL;
+      *path = searchpath;
+  } else {
+      *path = PLUGINDIR;
+  }
 
   return SASL_OK;
 }
@@ -781,11 +780,6 @@ main(int argc, char *argv[])
   else
     printf("Username: %s\n", data);
 
-  result = sasl_getprop(conn, SASL_DEFUSERREALM, (const void **)&data);
-  if (result != SASL_OK)
-    sasldebug(result, "realm", NULL);
-  else
-    printf("Realm: %s\n", data);
 #define CLIENT_MSG1 "client message 1"
 #define SERVER_MSG1 "srv message 1"
 

@@ -1,6 +1,6 @@
 /* sample-server.c -- sample SASL server
  * Rob Earhart
- * $Id: sample-server.c,v 1.23.4.3 2001/06/25 18:44:43 rjs3 Exp $
+ * $Id: sample-server.c,v 1.23.4.4 2001/07/19 16:34:22 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -173,11 +173,10 @@ getpath(void *context __attribute__((unused)),
     return SASL_BADPARAM;
 
   if (searchpath) {
-    *path = strdup(searchpath);
-    if (! *path)
-      return SASL_NOMEM;
-  } else
-    *path = strdup("/usr/lib/sasl");
+    *path = searchpath;
+  } else {
+    *path = PLUGINDIR;
+  }
 
   return SASL_OK;
 }
@@ -520,6 +519,11 @@ main(int argc, char *argv[])
   
   printf("Sending list of %d mechanism(s)\n", count);
   samp_send(data, len);
+
+  if(mech) {
+      free((void *)data);
+  }
+
   puts("Waiting for client mechanism...");
   len = samp_recv();
   if (mech && strcasecmp(mech, buf))
@@ -586,19 +590,13 @@ main(int argc, char *argv[])
   len=samp_recv();
  {
  	unsigned int recv_len;
- 	char *recv_data;
+ 	const char *recv_data;
 	result=sasl_decode(conn,buf,len,&recv_data,&recv_len);
  	if (result != SASL_OK)
       saslfail(result, "sasl_encode", NULL);
     printf("recieved decoded message '%s'\n",recv_data);
     if(strcmp(recv_data,CLIENT_MSG1)!=0)
     	saslfail(1,"recive decoded server message",NULL);
-#ifndef WIN32
-	free(recv_data);
-#endif
-#ifndef WIN32
-  free(data);
-#endif
  }
 
   return (EXIT_SUCCESS);

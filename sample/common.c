@@ -1,4 +1,4 @@
-/* $Id: common.c,v 1.1.2.2 2001/06/25 18:44:43 rjs3 Exp $ */
+/* $Id: common.c,v 1.1.2.3 2001/07/19 16:34:22 rjs3 Exp $ */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
  *
@@ -61,9 +61,9 @@ int send_string(FILE *f, const char *s, int l)
     printf("send: {%d}\n", l);
     while (l--) {
 	if (isprint((unsigned char) *s)) {
-	    printf("%c ", *s);
+	    printf("%c", *s);
 	} else {
-	    printf("%x ", (unsigned char) *s);
+	    printf("[%X]", (unsigned char) *s);
 	}
 	s++;
     }
@@ -113,9 +113,9 @@ int recv_string(FILE *f, char *buf, int buflen)
     printf("recv: {%d}\n", len);
     while (l--) {
 	if (isprint((unsigned char) *s)) {
-	    printf("%c ", *s);
+	    printf("%c", *s);
 	} else {
-	    printf("%X ", (unsigned char) *s);
+	    printf("[%X]", (unsigned char) *s);
 	}
 	s++;
     }

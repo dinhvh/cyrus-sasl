@@ -1,3 +1,8 @@
+2001-07-19  Rob Siemborski <rjs3+@andrew.cmu.edu>
+	* Fixed prototype of sasl_getpath_t to be in conformance with
+	  memory allocation rules
+	* Fixed up samples directory
+
 2001-07-18  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Updated config.guess and config.sub
 	* Better underscore checking for dlsym

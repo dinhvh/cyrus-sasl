@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: server.c,v 1.84.2.45 2001/07/17 21:48:44 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.46 2001/07/19 16:34:19 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -381,7 +381,8 @@ server_idle(sasl_conn_t *conn)
 static int load_config(const sasl_callback_t *verifyfile_cb)
 {
   int result;
-  char *path_to_config=NULL, *c;
+  const char *path_to_config=NULL;
+  char *c;
   char *config_filename=NULL;
   int len;
   const sasl_callback_t *getpath_cb=NULL;
@@ -434,9 +435,6 @@ static int load_config(const sasl_callback_t *verifyfile_cb)
 
  done:
   if (config_filename) sasl_FREE(config_filename);
-  if ((path_to_config) && (*path_to_config)) { /* was path_to_config allocated? */
-      sasl_FREE(path_to_config);
-  }
 
   return result;
 }

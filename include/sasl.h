@@ -390,16 +390,13 @@ typedef int sasl_log_t(void *context,
  * inputs:
  *  context     -- getpath context from the callback record
  * outputs:
- *  path	-- colon seperated path (allocated on the heap; the
- *                 library will free it using the sasl_free_t *
- *                 passed to sasl_set_callback, or the standard free()
- *                 library call).
+ *  path	-- colon seperated path
  * returns:
  *  SASL_OK     -- no error
  *  SASL_FAIL   -- error
  */
 typedef int sasl_getpath_t(void *context,
-			   char **path);
+			   const char **path);
 
 #define SASL_CB_GETPATH	    3
 

@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.1.2.4 2001/07/18 21:27:34 rjs3 Exp $ */
+/* $Id: client.c,v 1.1.2.5 2001/07/19 16:34:21 rjs3 Exp $ */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
  *
@@ -254,6 +254,7 @@ int mysasl_negotiate(FILE *in, FILE *out, sasl_conn_t *conn)
     r = sasl_client_start(conn, mech, NULL, &data, &len, &chosenmech);
     if (r != SASL_OK && r != SASL_CONTINUE) {
 	saslerr(r, "starting SASL negotiation");
+	printf("\n%s\n", sasl_errdetail(conn));
 	return -1;
     }
     
@@ -286,6 +287,7 @@ int mysasl_negotiate(FILE *in, FILE *out, sasl_conn_t *conn)
 	r = sasl_client_step(conn, buf, len, NULL, &data, &len);
 	if (r != SASL_OK && r != SASL_CONTINUE) {
 	    saslerr(r, "performing SASL negotiation");
+	    printf("\n%s\n", sasl_errdetail(conn));
 	    return -1;
 	}
 

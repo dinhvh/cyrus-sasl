@@ -1,7 +1,7 @@
 /* common.c - Functions that are common to server and clinet
  * Rob Siemborski
  * Tim Martin
- * $Id: common.c,v 1.64.2.40 2001/07/18 21:27:31 rjs3 Exp $
+ * $Id: common.c,v 1.64.2.41 2001/07/19 16:34:18 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -1032,17 +1032,16 @@ _sasl_getsimple(void *context,
 
 static int
 _sasl_getpath(void *context __attribute__((unused)),
-	      char ** path_dest)
+	      const char **path)
 {
-  char *path;
-
-  if (! path_dest)
-    return SASL_BADPARAM;
-  path = getenv(SASL_PATH_ENV_VAR);
   if (! path)
-    path = PLUGINDIR;
+    return SASL_BADPARAM;
 
-  return _sasl_strdup(path, path_dest, NULL);
+  *path = getenv(SASL_PATH_ENV_VAR);
+  if (! *path)
+    *path = PLUGINDIR;
+
+  return SASL_OK;
 }
 
 static int

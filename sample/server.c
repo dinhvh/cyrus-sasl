@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.1.2.5 2001/07/19 13:05:30 rjs3 Exp $ */
+/* $Id: server.c,v 1.1.2.6 2001/07/19 16:34:22 rjs3 Exp $ */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
  *
@@ -98,6 +98,7 @@ int *listensock(const char *port, const int af)
     socks[0] = 0;	/* num of sockets counter at start of array */
     sock = socks + 1;
     for (r = ai; r; r = r->ai_next) {
+	fprintf(stderr, "trying %d, %d, %d\n",r->ai_family, r->ai_socktype, r->ai_protocol);
 	*sock = socket(r->ai_family, r->ai_socktype, r->ai_protocol);
 	if (*sock < 0) {
 	    perror("socket");
@@ -308,8 +309,7 @@ int main(int argc, char *argv[])
 	FILE *in, *out;
 	fd_set readfds;
 
-
-        memset(&readfds, 0, sizeof(readfds));
+	FD_ZERO(&readfds);
 	for (i = 1; i <= l[0]; i++)
 	    FD_SET(l[i], &readfds);
 

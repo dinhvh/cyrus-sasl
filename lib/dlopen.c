@@ -1,7 +1,7 @@
 /* dlopen.c--Unix dlopen() dynamic loader interface
  * Rob Siemborski
  * Rob Earhart
- * $Id: dlopen.c,v 1.32.2.9 2001/07/18 21:27:31 rjs3 Exp $
+ * $Id: dlopen.c,v 1.32.2.10 2001/07/19 16:34:18 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -260,7 +260,7 @@ int _sasl_load_plugins(const add_plugin_list_t *entrypoints,
 				/* 1 for '/' 1 for trailing '\0' */
     char c;
     int pos;
-    char *path=NULL;
+    const char *path=NULL;
     int position;
     DIR *dp;
     struct dirent *dir;
@@ -282,7 +282,6 @@ int _sasl_load_plugins(const add_plugin_list_t *entrypoints,
     if (! path) return SASL_FAIL;
 
     if (strlen(path) >= PATH_MAX) { /* no you can't buffer overrun */
-	sasl_FREE(path);
 	return SASL_FAIL;
     }
 
@@ -346,8 +345,6 @@ int _sasl_load_plugins(const add_plugin_list_t *entrypoints,
 	}
 
     } while ((c!='=') && (c!=0));
-
-    sasl_FREE(path); 
 
     return SASL_OK;
 }
