@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: server.c,v 1.84.2.33 2001/06/28 21:51:25 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.34 2001/06/30 00:53:56 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -87,7 +87,7 @@ extern int gethostname(char *, int);
  * sasl_server_step
  * sasl_checkpass
  * sasl_checkapop
- * sasl_user_exists <= not yet implemented
+ * sasl_user_exists
  * sasl_setpass
  */
 
@@ -109,14 +109,18 @@ static sasl_global_callbacks_t global_callbacks;
  *  user        -- user name
  *  pass        -- plaintext password, may be NULL to remove user
  *  passlen     -- length of password, 0 = strlen(pass)
+ *  oldpass     -- NULL will sometimes work
+ *  oldpasslen  -- length of password, 0 = strlen(oldpass)
  *  flags       -- see flags below
- *  errstr      -- optional more detailed error
  * 
  * returns:
  *  SASL_NOCHANGE  -- proper entry already exists
  *  SASL_NOMECH    -- no authdb supports password setting as configured
+ *  SASL_NOVERIFY  -- user exists, but no settable password present
  *  SASL_DISABLED  -- account disabled
  *  SASL_PWLOCK    -- password locked
+ *  SASL_WEAKPASS  -- password too weak for security policy
+ *  SASL_NOUSERPASS -- user-supplied passwords not permitted
  *  SASL_FAIL      -- OS error
  *  SASL_BADPARAM  -- password too long
  *  SASL_OK        -- successful
@@ -578,7 +582,8 @@ static int parse_mechlist_file(const char *mechlistfile)
 }
 
 /* initialize server drivers, done once per process
- *  callbacks      -- base callbacks for all server connections
+ *  callbacks      -- callbacks for all server connections; must include
+ *                    getopt callback
  *  appname        -- name of calling application (for lower level logging)
  * results:
  *  state          -- server state
@@ -719,11 +724,16 @@ _sasl_transition(sasl_conn_t * conn,
 
 /* create context for a single SASL connection
  *  service        -- registered name of the service using SASL (e.g. "imap")
- *  serverFQDN     -- Fully qualified server domain name.  NULL means use
- *                    gethostname().  Useful for multi-homed servers.
- *  user_realm     -- permits multiple user domains on server, NULL = default
+ *  serverFQDN     -- Fully qualified domain name of server.  NULL means use
+ *                    gethostname() or equivalent.
+ *                    Useful for multi-homed servers.
+ *  user_realm     -- permits multiple user realms on server, NULL = default
+ *  iplocalport    -- server IPv4/IPv6 domain literal string with port
+ *                    (if NULL, then mechanisms requiring IPaddr are disabled)
+ *  ipremoteport   -- client IPv4/IPv6 domain literal string with port
+ *                    (if NULL, then mechanisms requiring IPaddr are disabled)
  *  callbacks      -- callbacks (e.g., authorization, lang, new getopt context)
- *  secflags       -- security flags (see above)
+ *  flags          -- usage flags (see above)
  * returns:
  *  pconn          -- new connection context
  *
@@ -923,15 +933,16 @@ static int do_authorization(sasl_server_conn_t *s_conn)
 
 /* start a mechanism exchange within a connection context
  *  mech           -- the mechanism name client requested
- *  clientin       -- client initial response, NULL if empty
+ *  clientin       -- client initial response (NUL terminated), NULL if empty
  *  clientinlen    -- length of initial response
- *  serverout      -- initial server challenge, NULL if done
+ *  serverout      -- initial server challenge, NULL if done 
+ *                    (library handles freeing this string)
  *  serveroutlen   -- length of initial server challenge
  * output:
  *  pconn          -- the connection negotiation state on success
- *  errstr         -- set to string to send to user on failure
  *
- * Same returns as sasl_server_step()
+ * Same returns as sasl_server_step() or
+ * SASL_NOMECH if mechanism not available.
  */
 int sasl_server_start(sasl_conn_t *conn,
 		      const char *mech,
@@ -1057,8 +1068,7 @@ int sasl_server_start(sasl_conn_t *conn,
  *                      NULL on first step if no optional client step
  *  outputlen & output -- set to the server data to transmit
  *                        to the client in the next step
- *  errstr           -- set to a more text error message from
- *                    a lower level mechanism on failure
+ *                        (library handles freeing this)
  *
  * returns:
  *  SASL_OK        -- exchange is complete.
@@ -1271,18 +1281,17 @@ static int _sasl_checkpass(sasl_conn_t *conn, const char *service,
 
 
 /* check if a plaintext password is valid
- * if user is NULL, check if plaintext is enabled
+ *   if user is NULL, check if plaintext passwords are enabled
  * inputs:
- *  user         -- user to query in current user_realm
- *  userlen      -- length of username, 0 = strlen(user)
- *  pass         -- plaintext password to check
- *  passlen      -- length of password, 0 = strlen(pass)
- * outputs:
- *  errstr       -- set to error message for use in protocols
+ *  user          -- user to query in current user_domain
+ *  userlen       -- length of username, 0 = strlen(user)
+ *  pass          -- plaintext password to check
+ *  passlen       -- length of password, 0 = strlen(pass)
  * returns 
- *  SASL_OK      -- success
- *  SASL_NOMECH  -- user found, but no verifier
- *  SASL_NOUSER  -- user not found
+ *  SASL_OK       -- success
+ *  SASL_NOMECH   -- mechanism not supported
+ *  SASL_NOVERIFY -- user found, but no verifier
+ *  SASL_NOUSER   -- user not found
  */
 int sasl_checkpass(sasl_conn_t *conn,
 		   const char *user,
@@ -1292,10 +1301,14 @@ int sasl_checkpass(sasl_conn_t *conn,
 {
     int result;
 
-    /* check params */
     if (_sasl_server_active==0) return SASL_NOTINIT;
+
+    /* check if it's just a query if we are enabled */
+    if (!user)
+	return SASL_OK;
     
-    if ((conn == NULL) || (user == NULL) || (pass == NULL))
+    /* check params */
+    if ((conn == NULL) || (pass == NULL))
 	return SASL_BADPARAM;
 
     result = _sasl_checkpass(conn, conn->service, user, pass);
@@ -1356,19 +1369,21 @@ int sasl_user_exists(sasl_conn_t *conn,
 }
 
 
-/* check if an APOP exchange is valid
+/* check if an apop exchange is valid
  *  (note this is an optional part of the SASL API)
- *  if challenge is NULL, just check if APOP is installed
+ *  if challenge is NULL, just check if APOP is enabled
  * inputs:
  *  challenge     -- challenge which was sent to client
  *  challen       -- length of challenge, 0 = strlen(challenge)
- *  response      -- client response string: "32HEXDIGIT"
+ *  response      -- client response, "<user> <digest>" (RFC 1939)
  *  resplen       -- length of response, 0 = strlen(response)
  * returns 
  *  SASL_OK       -- success
- *  SASL_FAIL     -- failure
- *  SASL_BADPARAM -- invalid parameter
  *  SASL_BADAUTH  -- authentication failed
+ *  SASL_BADPARAM -- missing challenge
+ *  SASL_BADPROT  -- protocol error (e.g., response in wrong format)
+ *  SASL_NOVERIFY -- user found, but no verifier
+ *  SASL_NOMECH   -- mechanism not supported
  *  SASL_NOUSER   -- user not found
  */
 int sasl_checkapop(sasl_conn_t *conn,
@@ -1388,35 +1403,41 @@ int sasl_checkapop(sasl_conn_t *conn,
     sasl_server_conn_t *s_conn = (sasl_server_conn_t *) conn;
     char *user, *user_end;
     size_t user_len;
-    int ret;
-    int result = SASL_FAIL;
+    int result;
 
     if (_sasl_server_active==0) return SASL_NOTINIT;
 
-    /* check if it's just a query if we are installed */
+    /* check if it's just a query if we are enabled */
     if(!challenge)
 	return SASL_OK;
 
-    /* check other params */
+    /* check params */
     if (!conn || !response)
 	return SASL_BADPARAM;
 
-    /* Parse out username */
+    /* Parse out username and digest.
+     *
+     * Per RFC 1939, response must be "<user> <digest>", where
+     * <digest> is a 16-octet value which is sent in hexadecimal
+     * format, using lower-case ASCII characters.
+     */
     user_end = strrchr(response, ' ');
+    if (!user_end || strspn(user_end + 1, "0123456789abcdef") != 32) 
+	return SASL_BADPROT;
     user_len = (size_t)(user_end - response);
     user = sasl_ALLOC(user_len + 1);
     memcpy(user, response, user_len);
     user[user_len] = '\0';
 
     /* Cannonify it */
-    ret = _sasl_canon_user(conn,
+    result = _sasl_canon_user(conn,
 			   user, user_len,
 			   user, user_len,
 			   0, &(conn->oparams));
 
     sasl_FREE(user);
 
-    if(ret != SASL_OK) return ret;
+    if(result != SASL_OK) return result;
 
     /* Do APOP verification */
     result = _sasl_sasldb_verify_apop(conn, conn->oparams.user,
@@ -1433,7 +1454,7 @@ int sasl_checkapop(sasl_conn_t *conn,
 #else /* sasl_checkapop was disabled at compile time */
     _sasl_log(conn, SASL_LOG_NOTE,
 	      "sasl_checkapop called, but was disabled at compile time");
-    return SASL_FAIL;
+    return SASL_NOMECH;
 #endif /* DO_SASL_CHECKAPOP */
 }
  

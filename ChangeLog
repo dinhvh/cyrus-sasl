@@ -1,3 +1,7 @@
+2000-06-29  Rob Siemborsk <rjs3+@andrew.cmu.edu>
+	* Cleanup of APOP Code + new man page (Ken Murchison <ken@oceana.com>)
+	* Cleanup of comments in some files (Ken Murchison <ken@oceana.com>)
+
 2000-06-28  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Improved memory allocation in default sasl_decode handler
 	* Added ability to disable sasl_checkapop (--disable-checkapop)
@@ -9,6 +13,5 @@
 	* Version 2.0.1-ALPHA Released (due to DIGEST-MD5 problem)
 
 2000-06-27  Rob Siemborski <rjs3+@andrew.cmu.edu>
-
 	* Version 2.0.0-ALPHA Released
 

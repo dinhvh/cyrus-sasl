@@ -1,7 +1,7 @@
 /* saslutil.c
  * Rob Siemborski
  * Tim Martin
- * $Id: saslutil.c,v 1.30.2.8 2001/06/25 18:44:38 rjs3 Exp $
+ * $Id: saslutil.c,v 1.30.2.9 2001/06/30 00:53:56 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -217,8 +217,6 @@ int sasl_decode64(const char *in, unsigned inlen,
  *  hostflag -- 0 = don't include hostname, 1 = include hostname
  * returns final length or 0 if not enough space
  */
-
-/* xxx has this ever been tested??? */
 
 int sasl_mkchal(sasl_conn_t *conn,
 		char *buf,
