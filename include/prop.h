@@ -82,7 +82,7 @@ const struct propval *prop_get(struct propctx *ctx);
  *
  * The vals array MUST be atleast as long as the names array.
  *
- * returns SASL_OK on success
+ * returns # of matching properties on success
  * possible other return values include: SASL_BADPARAM
  */
 int prop_getnames(struct propctx *ctx, const char **names,
