@@ -1,7 +1,7 @@
 /* common.c - Functions that are common to server and clinet
  * Rob Siemborski
  * Tim Martin
- * $Id: common.c,v 1.64.2.31 2001/07/06 22:26:04 rjs3 Exp $
+ * $Id: common.c,v 1.64.2.32 2001/07/09 16:11:08 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -161,7 +161,7 @@ int sasl_encode(sasl_conn_t *conn, const char *input,
 {
     struct iovec tmp;
 
-    if(!conn || !input || !output || !outputlen)
+    if(!conn || !input || !inputlen || !output || !outputlen)
 	return SASL_BADPARAM;
 
     /* maxoutbuf checking is done in sasl_encodev */
