@@ -1,7 +1,7 @@
 /* GSSAPI SASL plugin
  * Leif Johansson
  * Rob Siemborski (SASL v2 Conversion)
- * $Id: gssapi.c,v 1.41.2.20 2001/07/12 14:10:13 rjs3 Exp $
+ * $Id: gssapi.c,v 1.41.2.21 2001/07/12 22:05:32 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -182,6 +182,7 @@ sasl_gss_encode(void *context, const struct iovec *invec, unsigned numiov,
     {
       if (output_token->value)
 	  gss_release_buffer(&min_stat, output_token);
+      SETERROR(text->utils, "GSSAPI Failure");
       return SASL_FAIL;
     }
 
@@ -244,8 +245,10 @@ sasl_gss_decode_once(void *context,
     int result;
     unsigned diff;
 
-    if (text->state != SASL_GSSAPI_STATE_AUTHENTICATED)
+    if (text->state != SASL_GSSAPI_STATE_AUTHENTICATED) {
+	SETERROR(text->utils, "GSSAPI Failure");
 	return SASL_NOTDONE;
+    }
 
     /* first we need to extract a packet */
     if (text->needsize > 0) {
@@ -263,14 +266,16 @@ sasl_gss_decode_once(void *context,
 	    text->size = ntohl(text->size);
 	    text->cursize = 0;
 
-	    if (text->size > 0xFFFF || text->size <= 0) return SASL_FAIL;
-
+	    if (text->size > 0xFFFF || text->size <= 0) {
+		SETERROR(text->utils, "GSSAPI Failure");
+		return SASL_FAIL;
+	    }
+	    
 	    if (text->bufsize < text->size + 5) {
 		result = _plug_buf_alloc(text->utils, &text->buffer,
 					       &(text->bufsize), text->size+5);
 		if(result != SASL_OK) return result;
 	    }
-	    if (text->buffer == NULL) return SASL_NOMEM;
 	}
 	if (*inputlen == 0) {
 	    /* need more data ! */
@@ -316,6 +321,7 @@ sasl_gss_decode_once(void *context,
     {
 	if (output_token->value)
 	    gss_release_buffer(&min_stat, output_token);
+	SETERROR(text->utils, "GSSAPI Failure");
 	return SASL_FAIL;
     }
 
@@ -408,8 +414,10 @@ sasl_gss_server_start(void *glob_context __attribute__((unused)),
   context_t *text;
   
   text = gss_new_context(params->utils);
-  if (text == NULL) 
-    return SASL_NOMEM;
+  if (text == NULL) {
+      MEMERROR(params->utils);
+      return SASL_NOMEM;
+  }
 
   text->gss_ctx = GSS_C_NO_CONTEXT;
   text->client_name = GSS_C_NO_NAME;
@@ -518,7 +526,10 @@ sasl_gss_server_step (void *conn_context,
   output_token->value = NULL; output_token->length = 0;
   input_token->value = NULL; input_token->length = 0;
 
-  if(!serverout) return SASL_BADPARAM;
+  if(!serverout) {
+      PARAMERROR(text->utils);
+      return SASL_BADPARAM;
+  }
 
   switch (text->state)
     {
@@ -539,8 +550,9 @@ sasl_gss_server_step (void *conn_context,
 	  name_token.value = (char *)params->utils->malloc((name_token.length + 1) * sizeof(char));
 	  if (name_token.value == NULL)
 	    {
-	      sasl_gss_free_context_contents(text);
-	      return SASL_NOMEM;
+		MEMERROR(text->utils);
+		sasl_gss_free_context_contents(text);
+		return SASL_NOMEM;
 	    }
 	  sprintf(name_token.value,"%s@%s", params->service, params->serverFQDN);
 
@@ -553,6 +565,7 @@ sasl_gss_server_step (void *conn_context,
 	  name_token.value = NULL;
 	  
 	  if (GSS_ERROR(maj_stat)) {
+	      SETERROR(text->utils, "GSSAPI Failure");
 	      sasl_gss_free_context_contents(text);
 	      return SASL_FAIL;
 	  }
@@ -572,6 +585,7 @@ sasl_gss_server_step (void *conn_context,
 				      NULL);
 	  
 	  if (GSS_ERROR(maj_stat)) {
+	      SETERROR(text->utils, "GSSAPI Failure");
 	      sasl_gss_free_context_contents(text);
 	      return SASL_FAIL;
 	  }
@@ -600,7 +614,7 @@ sasl_gss_server_step (void *conn_context,
 	  if (output_token->value) {
 	      gss_release_buffer(&min_stat, output_token);
 	  }
-
+	  SETERROR(text->utils, "GSSAPI Failure");
 	  sasl_gss_free_context_contents(text);
 	  return SASL_BADAUTH;
       }
@@ -659,6 +673,7 @@ sasl_gss_server_step (void *conn_context,
 		gss_release_buffer(&min_stat, &name_token);
 	    if (without)
 		gss_release_name(&min_stat, &without);
+	    SETERROR(text->utils, "GSSAPI Failure");
 	    sasl_gss_free_context_contents(text);
 	    return SASL_BADAUTH;
 	}
@@ -672,7 +687,10 @@ sasl_gss_server_step (void *conn_context,
 	    /* NOTE: libc malloc, as it is freed below by a gssapi internal
 	     *       function! */
 	    name_without_realm.value = malloc(strlen(name_token.value)+1);
-	    if (name_without_realm.value == NULL) return SASL_NOMEM;
+	    if (name_without_realm.value == NULL) {
+		MEMERROR(text->utils);
+		return SASL_NOMEM;
+	    }
 
 	    strcpy(name_without_realm.value, name_token.value);
 
@@ -692,6 +710,7 @@ sasl_gss_server_step (void *conn_context,
 		    gss_release_buffer(&min_stat, &name_token);
 		if (without)
 		    gss_release_name(&min_stat, &without);
+		SETERROR(text->utils, "GSSAPI Failure");
 		sasl_gss_free_context_contents(text);
 		return SASL_BADAUTH;
 	    }
@@ -707,6 +726,7 @@ sasl_gss_server_step (void *conn_context,
 		    gss_release_buffer(&min_stat, &name_token);
 		if (without)
 		    gss_release_name(&min_stat, &without);
+		SETERROR(text->utils, "GSSAPI Failure");
 		sasl_gss_free_context_contents(text);
 		return SASL_BADAUTH;
 	    }
@@ -720,12 +740,20 @@ sasl_gss_server_step (void *conn_context,
 	{
 	    text->u.authid =
 		(char *)params->utils->malloc(strlen(name_without_realm.value)+1);
-	    if (text->u.authid == NULL) return SASL_NOMEM;
+	    if (text->u.authid == NULL) {
+		MEMERROR(params->utils);
+		return SASL_NOMEM;
+	    }
+	    
 	    strcpy(text->u.authid, name_without_realm.value);
 	} else {
 	    text->u.authid =
 		(char *)params->utils->malloc(strlen(name_token.value)+1);
-	    if (text->u.authid == NULL) return SASL_NOMEM;
+	    if (text->u.authid == NULL) {
+		MEMERROR(params->utils);
+		return SASL_NOMEM;
+	    }
+	    
 	    strcpy(text->u.authid, name_token.value);
 	}
 
@@ -777,6 +805,7 @@ sasl_gss_server_step (void *conn_context,
 	if (GSS_ERROR(maj_stat)) {
 	    if (output_token->value)
 		gss_release_buffer(&min_stat, output_token);
+	    SETERROR(text->utils, "GSSAPI Failure");
 	    sasl_gss_free_context_contents(text);
 	    return SASL_FAIL;
 	}
@@ -821,6 +850,7 @@ sasl_gss_server_step (void *conn_context,
 			       NULL);
 	
 	if (GSS_ERROR(maj_stat)) {
+	    SETERROR(text->utils, "GSSAPI Failure");
 	    sasl_gss_free_context_contents(text);
 	    return SASL_FAIL;
 	}
@@ -846,6 +876,7 @@ sasl_gss_server_step (void *conn_context,
 		    "protocol violation: client requested invalid layer");
 	    if (output_token->value)
 		gss_release_buffer(&min_stat, output_token);
+	    SETERROR(text->utils, "GSSAPI Failure");
 	    sasl_gss_free_context_contents(text);
 	    return SASL_FAIL;
 	}
@@ -862,7 +893,7 @@ sasl_gss_server_step (void *conn_context,
 
 	    if (ret != SASL_OK) {
 		sasl_gss_free_context_contents(text);
-		return SASL_NOMEM;
+		return ret;
 	    }
 
 	    memcpy(&oparams->maxoutbuf,((char *) real_output_token.value) + 1,
@@ -887,11 +918,13 @@ sasl_gss_server_step (void *conn_context,
       break;
 
     default:
-      return SASL_FAIL;
-      break;
+	SETERROR(text->utils, "GSSAPI Failure");
+	return SASL_FAIL;
+	break;
     }
 
   /* we should never get here ! */
+  SETERROR(text->utils, "GSSAPI Failure");
   return SASL_FAIL;
 }
 
@@ -947,6 +980,7 @@ int gssapiv2_server_plug_init(
 	if (access(keytab, R_OK) != 0) {
 	    utils->log(NULL, SASL_LOG_ERR,
 		       "can't access keytab file %s: %m", keytab, errno);
+	    SETERROR(utils, "GSSAPI Failure");
 	    return SASL_FAIL;
 	}
 
@@ -1005,8 +1039,11 @@ make_prompts(sasl_client_params_t *params,
    if (auth_res==SASL_INTERACT) num++;
    if (pass_res==SASL_INTERACT) num++;
  
-   if (num==1) return SASL_FAIL;
- 
+   if (num==1) {
+       SETERROR(params->utils, "GSSAPI Failure");
+       return SASL_FAIL;
+   }
+   
    prompts=params->utils->malloc(sizeof(sasl_interact_t)*(num+1));
    if ((prompts) ==NULL) return SASL_NOMEM;
    *prompts_res=prompts;
@@ -1201,8 +1238,12 @@ sasl_gss_client_step (void *conn_context,
 		sasl_gss_free_context_contents(text);
 		return SASL_NOMEM;
 	      }
-	    if (params->serverFQDN == NULL || strlen(params->serverFQDN) == 0)
-	      return SASL_FAIL;
+	    if (params->serverFQDN == NULL
+		|| strlen(params->serverFQDN) == 0) {
+		SETERROR(text->utils, "GSSAPI Failure");
+		return SASL_FAIL;
+	    }
+	    
 	    sprintf(name_token.value,"%s@%s", params->service, params->serverFQDN);
 
 	    maj_stat = gss_import_name (&min_stat,
@@ -1214,10 +1255,11 @@ sasl_gss_client_step (void *conn_context,
 	    name_token.value = NULL;
 	    
 	    if (GSS_ERROR(maj_stat))
-	      {
+	    {
+		SETERROR(text->utils, "GSSAPI Failure");
 		sasl_gss_free_context_contents(text);
 		return SASL_FAIL;
-	      }
+	    }
 	  }
 
 	if (serverinlen)
@@ -1254,6 +1296,7 @@ sasl_gss_client_step (void *conn_context,
 	{
 	    if (output_token->value)
 		gss_release_buffer(&min_stat, output_token);
+	    SETERROR(text->utils, "GSSAPI Failure");
 	    sasl_gss_free_context_contents(text);
 	    return SASL_FAIL;
 	}
@@ -1302,6 +1345,7 @@ sasl_gss_client_step (void *conn_context,
 			       NULL);
 	
 	if (GSS_ERROR(maj_stat)) {
+	    SETERROR(text->utils, "GSSAPI Failure");
 	    sasl_gss_free_context_contents(text);
 	    if (output_token->value)
 		gss_release_buffer(&min_stat, output_token);
@@ -1395,6 +1439,7 @@ sasl_gss_client_step (void *conn_context,
 	  {
 	    if (output_token->value)
 		gss_release_buffer(&min_stat, output_token);
+	    SETERROR(text->utils, "GSSAPI Failure");
 	    sasl_gss_free_context_contents(text);
 	    return SASL_FAIL;
 	  }
@@ -1425,11 +1470,13 @@ sasl_gss_client_step (void *conn_context,
       break;
 
     default:
-      return SASL_FAIL;
-      break;
+	SETERROR(text->utils, "GSSAPI Failure");
+	return SASL_FAIL;
+	break;
     }
 
   /* we should never get here!!! */
+  SETERROR(text->utils, "GSSAPI Failure");
   return SASL_FAIL;
 }
 

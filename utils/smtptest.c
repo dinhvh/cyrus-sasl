@@ -414,7 +414,10 @@ int main(int argc, char **argv)
 		if (verbose) fprintf(debug, "AUTH %s\r\n", mechusing);
 		fprintf(server_out, "AUTH %s\r\n", mechusing);
 	    }
+	} else {
+	    fprintf(debug, "\nclient start failed: %s\n", sasl_errdetail(conn));
 	}
+	
     }
 
     /* jump to doneauth if we succeed */
