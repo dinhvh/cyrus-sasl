@@ -811,15 +811,10 @@ JNIEXPORT void JNICALL Java_CyrusSasl_GenericCommon_jni_1sasl_1set_1server
 {
   sasl_conn_t *conn=(sasl_conn_t *) ptr;
   char *ip = (*env)->GetByteArrayElements(env, jarr, 0);
-  struct sockaddr_in addr;
   char out[52];
   int result;
 
-  addr.sin_family = AF_INET;
-  memcpy(&addr.sin_addr, ip, 4);
-  addr.sin_port = htons(jport);
-
-  sprintf(out, "%d.%d.%d.%d;%d", ip[0], ip[1], ip[2], ip[3], jport);
+  sprintf(out, "%d.%d.%d.%d;%d", ip[0], ip[1], ip[2], ip[3], (int)jport);
 
   result=sasl_setprop(conn, SASL_IPREMOTEPORT, &out);  
 
@@ -839,15 +834,10 @@ JNIEXPORT void JNICALL Java_CyrusSasl_GenericCommon_jni_1sasl_1set_1client
 {
   sasl_conn_t *conn=(sasl_conn_t *) ptr;
   char *ip = (*env)->GetByteArrayElements(env, jarr, 0);
-  struct sockaddr_in addr;
   char out[52];
   int result;
 
-  addr.sin_family = AF_INET;
-  memcpy(&addr.sin_addr, ip, 4);
-  addr.sin_port = htons(jport);
-
-  sprintf(out, "%d.%d.%d.%d;%d", ip[0], ip[1], ip[2], ip[3], jport);
+  sprintf(out, "%d.%d.%d.%d;%d", ip[0], ip[1], ip[2], ip[3], (int)jport);
 
   result=sasl_setprop(conn, SASL_IPLOCALPORT, &out);
 
