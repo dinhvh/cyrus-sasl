@@ -25,3 +25,6 @@ New in 2.0.0-ALPHA
   questions, comments, or bug reports.
   - Most notably, the Java bindings have not been converted to work with
     the new API, and thus will not compile successfully.
+  - The current development branch with this source is in our
+    cvs repository as the "sasl-v2-rjs3" branch of the "sasl" collection.
+    (see http://asg.web.cmu.edu/cyrus/download/anoncvs.html for more info)
