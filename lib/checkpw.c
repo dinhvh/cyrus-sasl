@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: checkpw.c,v 1.41.2.17 2001/07/13 20:00:21 rjs3 Exp $
+ * $Id: checkpw.c,v 1.41.2.18 2001/07/17 21:48:44 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -95,102 +95,56 @@ extern int errno;
 
 /* erase & dispose of a sasl_secret_t
  */
-
-static void _sasl_free_secret(sasl_secret_t **secret)
-{
-  if (secret==NULL) return;
-  if (*secret==NULL) return;
-
-  /* overwrite the memory */
-  sasl_erasebuffer((*secret)->data, (*secret)->len);
-
-  sasl_FREE(*secret);
-
-  *secret=NULL;
-}
-
-/* returns the realm we should pretend to be in */
-static int parseuser(char **user, char **realm, const char *user_realm, 
-		     const char *serverFQDN, const char *input)
-{
-    int ret;
-    char *r;
-
-    assert(user && serverFQDN);
-
-    if (!user_realm) {
-	ret = _sasl_strdup(serverFQDN, realm, NULL);
-	if (ret == SASL_OK) {
-	    ret = _sasl_strdup(input, user, NULL);
-	}
-    } else if (user_realm[0]) {
-	ret = _sasl_strdup(user_realm, realm, NULL);
-	if (ret == SASL_OK) {
-	    ret = _sasl_strdup(input, user, NULL);
-	}
-    } else {
-	/* otherwise, we gotta get it from the user */
-	r = strchr(input, '@');
-	if (!r) {
-	    /* hmmm, the user didn't specify a realm */
-	    /* we'll default to the serverFQDN */
-	    ret = _sasl_strdup(serverFQDN, realm, NULL);
-	    if (ret == SASL_OK) {
-		ret = _sasl_strdup(input, user, NULL);
-	    }
-	} else {
-	    r++;
-	    ret = _sasl_strdup(r, realm, NULL);
-	    *--r = '\0';
-	    *user = sasl_ALLOC(r - input + 1);
-	    if (*user) {
-		strncpy(*user, input, r - input +1);
-	    } else {
-		ret = SASL_NOMEM;
-	    }
-	    *r = '@';
-	}
-    }
-
-    return ret;
-}
-
 static int sasldb_verify_password(sasl_conn_t *conn,
 				  const char *userstr,
 				  const char *passwd,
 				  const char *service __attribute__((unused)),
-				  const char *user_realm)
+				  const char *user_realm __attribute__((unused)))
 {
     int ret = SASL_FAIL;
-    sasl_secret_t *secret = NULL;
     char *userid = NULL;
     char *realm = NULL;
-
-    if (!userstr)
+    int result = SASL_OK;
+    sasl_server_conn_t *sconn = (sasl_server_conn_t *)conn;
+    const char *password_request[] = { SASL_AUX_PASSWORD, NULL };
+    struct propval auxprop_values[2];
+    
+    if (!conn || !userstr)
 	return SASL_BADPARAM;
 
-    ret = parseuser(&userid, &realm, user_realm, conn->serverFQDN, userstr);
-    if (ret != SASL_OK) {
-	/* error parsing user */
-	goto done;
-    }
+    /* We need to clear any previous results and re-canonify to 
+     * ensure correctness */
 
-    ret = _sasl_db_getsecret(conn, userid, realm, &secret);
-    if (ret != SASL_OK) {
-	/* error getting secret */
-	goto done;
-    }
+    prop_clear(sconn->sparams->propctx, 0);
+	
+    /* ensure its requested */
+    result = prop_request(sconn->sparams->propctx, password_request);
 
+    if(result != SASL_OK) return result;
+
+    result = _sasl_canon_user(conn,
+			      userstr, 0, userstr, 0,
+			      0, &(conn->oparams));
+    result = prop_getnames(sconn->sparams->propctx, password_request,
+			   auxprop_values);
+    if(result < 0)
+	return result;
+
+    if(!auxprop_values[0].name
+       || !auxprop_values[0].values || !auxprop_values[0].values[0])
+	    return SASL_FAIL;
+        
     /* It is possible for us to get useful information out of just
      * the lookup, so we won't check that we have a password until now */
     if(!passwd) {
 	ret = SASL_BADPARAM;
 	goto done;
     }
-    
-    if (!memcmp(secret->data, passwd, secret->len)) {
-	/* password verified! */
-	ret = SASL_OK;
+
+    /* At the point this has been called, the username has been canonified
+     * and we've done the auxprop lookup.  This should be easy. */
+    if(!strcmp(auxprop_values[0].values[0], passwd)) {
+	return SASL_OK;
     } else {
 	/* passwords do not match */
 	ret = SASL_BADAUTH;
@@ -200,7 +154,8 @@ static int sasldb_verify_password(sasl_conn_t *conn,
     if (userid) sasl_FREE(userid);
     if (realm)  sasl_FREE(realm);
 
-    if (secret) _sasl_free_secret(&secret);
+    /* We're not going to erase the property here because other people
+     * may want it */
     return ret;
 }
 
@@ -209,36 +164,40 @@ int _sasl_sasldb_verify_apop(sasl_conn_t *conn,
 			     const char *userstr,
 			     const char *challenge,
 			     const char *response,
-			     const char *user_realm)
+			     const char *user_realm __attribute__((unused)))
 {
     int ret = SASL_FAIL;
-    sasl_secret_t *secret = NULL;
     char *userid = NULL;
     char *realm = NULL;
     unsigned char digest[16];
     char digeststr[32];
+    const char *password_request[] = { SASL_AUX_PASSWORD, NULL };
+    struct propval auxprop_values[2];
+    sasl_server_conn_t *sconn = (sasl_server_conn_t *)conn;
     MD5_CTX ctx;
     int i;
 
-    if (!userstr || !challenge || !response) {
+    if (!conn || !userstr || !challenge || !response) {
       return SASL_BADPARAM;
     }
 
-    ret = parseuser(&userid, &realm, user_realm, conn->serverFQDN, userstr);
-    if (ret != SASL_OK) {
-      /* error parsing user */
-      goto done;
-    }
+    /* We've done the auxprop lookup already (in our caller) */
+    ret = prop_getnames(sconn->sparams->propctx, password_request,
+			auxprop_values);
+    if(ret < 0)
+	goto done;
 
-    ret = _sasl_db_getsecret(conn, userid, realm, &secret);
-    if (ret != SASL_OK) {
-      /* error getting APOP secret */
-      goto done;
-    }
+    if(!auxprop_values[0].name)
+	goto done;
+    
+    if(!auxprop_values[0].values[0])
+	goto done;
+    
 
     _sasl_MD5Init(&ctx);
     _sasl_MD5Update(&ctx, challenge, strlen(challenge));
-    _sasl_MD5Update(&ctx, secret->data, strlen(secret->data));
+    _sasl_MD5Update(&ctx, auxprop_values[0].values[0],
+		    strlen(auxprop_values[0].values[0]));
     _sasl_MD5Final(digest, &ctx);
 
     /* convert digest from binary to ASCII hex */
@@ -257,171 +216,9 @@ int _sasl_sasldb_verify_apop(sasl_conn_t *conn,
     if (userid) sasl_FREE(userid);
     if (realm)  sasl_FREE(realm);
 
-    if (secret) _sasl_free_secret(&secret);
     return ret;
 }
 #endif /* DO_SASL_CHECKAPOP */
-
-/* this routine sets the sasldb password given a user/pass */
-int _sasl_sasldb_set_pass(sasl_conn_t *conn,
-			  const char *userstr, 
-			  const char *pass,
-			  unsigned passlen,
-			  const char *user_realm,
-			  int flags)
-{
-    char *userid = NULL;
-    char *realm = NULL;
-    int ret = SASL_OK;
-
-    ret = parseuser(&userid, &realm, user_realm, conn->serverFQDN, userstr);
-    if (ret != SASL_OK) {
-	return ret;
-    }
-
-    if (pass != NULL && !(flags & SASL_SET_DISABLE)) {
-	/* set the password */
-	sasl_secret_t *sec = NULL;
-
-	/* if SASL_SET_CREATE is set, we don't want to overwrite an
-	   existing account */
-	if (flags & SASL_SET_CREATE) {
-	    ret = _sasl_db_getsecret(conn, userid, realm, &sec);
-	    if (ret == SASL_OK) {
-		_sasl_free_secret(&sec);
-		ret = SASL_NOCHANGE;
-	    } else {
-		/* Don't give up yet-- the DB might have failed because
-		 * does not exist, but will be created later... */
-		ret = SASL_OK;
-	    }
-	}
-	
-	/* ret == SASL_OK iff we still want to set this password */
-	if (ret == SASL_OK) {
-	    /* Create the sasl_secret_t */
-	    sec = sasl_ALLOC(sizeof(sasl_secret_t) + passlen);
-	    if(!sec) ret = SASL_NOMEM;
-	    else {
-		memcpy(sec->data, pass, passlen);
-		sec->data[passlen] = '\0';
-		sec->len = passlen;
-	    }
-	}
-	if (ret == SASL_OK) {
-	    ret = _sasl_db_putsecret(conn, userid, realm, sec);
-	}
-	if (ret != SASL_OK) {
-	    _sasl_log(conn, SASL_LOG_ERR, NULL, ret, 0,
-		      "failed to set plaintext secret for %s: %z", userid);
-	}
-	if (sec) {
-	    _sasl_free_secret(&sec);
-	}
-    } else { 
-	/* SASL_SET_DISABLE specified */
-	ret = _sasl_db_putsecret(conn, userid, realm, NULL);
-
-	if (ret != SASL_OK) {
-	    _sasl_log(conn, SASL_LOG_ERR,
-		      "failed to disable account for %s: %z", userid);
-	}
-    }
-
-    if (userid)   sasl_FREE(userid);
-    if (realm)    sasl_FREE(realm);
-    return ret;
-}
-
-
-static void sasldb_auxprop_lookup(void *glob_context __attribute__((unused)),
-				  sasl_server_params_t *sparams,
-				  unsigned flags,
-				  const char *user,
-				  unsigned ulen) 
-{
-    char *userid = NULL;
-    char *realm = NULL;
-    sasl_secret_t *secret = NULL;
-    sasl_server_conn_t *sconn;
-    int ret;
-    const char *proplookup[] = { SASL_AUX_PASSWORD, NULL };
-    struct propval values[2];
-    char *user_buf;
-    
-    if(!sparams || !user) return;
-
-    user_buf = sparams->utils->malloc(ulen + 1);
-    if(!user_buf)
-	goto done;
-
-    memcpy(user_buf, user, ulen);
-    user_buf[ulen] = '\0';
-    user = user_buf;
-
-    sconn = (sasl_server_conn_t *)(sparams->utils->conn);
-    
-    ret = parseuser(&userid, &realm, sconn->user_realm,
-		    sparams->utils->conn->serverFQDN, user);
-    if(ret!= SASL_OK) goto done;
-
-    ret = _sasl_db_getsecret(sparams->utils->conn, userid, realm, &secret);
-    if (ret != SASL_OK) {
-	/* error getting secret */
-	goto done;
-    }
-
-    ret = prop_getnames(sparams->propctx, proplookup, values);
-    /* did we get the one we were looking for? */
-    if(ret == 1 && values[0].values && values[0].valsize) {
-	if(flags & SASL_AUXPROP_OVERRIDE) {
-	    prop_erase(sparams->propctx, SASL_AUX_PASSWORD);
-	} else {
-	    /* We aren't going to override it... */
-	    goto done;
-	}
-    }
-    
-    /* Set the auxprop (the only one we support) */
-    prop_set(sparams->propctx, SASL_AUX_PASSWORD, secret->data, secret->len);
-
- done:
-    if (userid) sasl_FREE(userid);
-    if (realm)  sasl_FREE(realm);
-    if (user_buf) sasl_FREE(user_buf);
-
-    if (secret) _sasl_free_secret(&secret);
-}
-
-static sasl_auxprop_plug_t sasldb_auxprop_plugin = {
-    0,           /* Features */
-    0,           /* spare */
-    NULL,        /* glob_context */
-    NULL,        /* auxprop_free */
-    sasldb_auxprop_lookup, /* auxprop_lookup */
-    NULL,        /* spares */
-    NULL
-};
-
-int sasldb_auxprop_plug_init(const sasl_utils_t *utils __attribute__((unused)),
-                             int max_version,
-                             int *out_version,
-                             sasl_auxprop_plug_t **plug,
-                             const char *plugname) 
-{
-    if(!out_version || !plug) return SASL_BADPARAM;
-
-    /* We only support the "SASLDB" plugin */
-    if(plugname && strcmp(plugname, "SASLDB")) return SASL_NOMECH;
-
-    if(max_version < SASL_AUXPROP_PLUG_VERSION) return SASL_BADVERS;
-    
-    *out_version = SASL_AUXPROP_PLUG_VERSION;
-
-    *plug = &sasldb_auxprop_plugin;
-
-    return SASL_OK;
-}
 
 #ifdef HAVE_PWCHECK
 /*

@@ -1,9 +1,9 @@
-/* db_ndbm.c--SASL ndbm interface
+/* db_gdbm.c--SASL gdbm interface
  * Rob Siemborski
  * Rob Earhart
- * $Id: db_ndbm.c,v 1.15.4.3 2001/06/25 18:44:38 rjs3 Exp $
+ * $Id: db_gdbm.c,v 1.1.2.1 2001/07/17 21:48:48 rjs3 Exp $
  */
-/*
+/* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -44,20 +44,19 @@
  */
 
 #include <config.h>
-#include <ndbm.h>
-#include <fcntl.h>
+#include <gdbm.h>
 #include <sys/stat.h>
 #include <stdlib.h>
 #include <assert.h>
-#include "sasl.h"
-#include "saslint.h"
+#include "sasldb.h"
 
 static int db_ok = 0;
 
 /* This provides a version of _sasl_db_getsecret and
- * _sasl_db_putsecret which work with ndbm. */
+ * _sasl_db_putsecret which work with gdbm. */
 
-static int alloc_key(const char *auth_identity,
+static int alloc_key(const sasl_utils_t *utils,
+		     const char *auth_identity,
 		     const char *realm,
 		     char **key,
 		     size_t *key_len)
@@ -69,7 +68,7 @@ static int alloc_key(const char *auth_identity,
   auth_id_len = strlen(auth_identity);
   realm_len = strlen(realm);
   *key_len = auth_id_len + realm_len + 1;
-  *key = sasl_ALLOC(*key_len);
+  *key = utils->malloc(*key_len);
   if (! *key)
     return SASL_NOMEM;
   memcpy(*key, auth_identity, auth_id_len);
@@ -80,7 +79,8 @@ static int alloc_key(const char *auth_identity,
 }
 
 static int
-getsecret(sasl_conn_t *conn,
+getsecret(const sasl_utils_t *utils,
+	  sasl_conn_t *conn,
 	  const char *auth_identity,
 	  const char *realm,
 	  sasl_secret_t ** secret)
@@ -88,8 +88,8 @@ getsecret(sasl_conn_t *conn,
   int result = SASL_OK;
   char *key;
   size_t key_len;
-  DBM *db;
-  datum dkey, dvalue;
+  GDBM_FILE db;
+  datum gkey, gvalue;  
   void *cntxt;
   sasl_getopt_t *getopt;
   const char *path = SASL_DB_PATH;
@@ -97,11 +97,11 @@ getsecret(sasl_conn_t *conn,
   if (!auth_identity || !secret || !realm || !db_ok)
     return SASL_FAIL;
 
-  result = alloc_key(auth_identity, realm, &key, &key_len);
+  result = alloc_key(utils, auth_identity, realm, &key, &key_len);
   if (result != SASL_OK)
     return result;
 
-  if (_sasl_getcallback(conn, SASL_CB_GETOPT,
+  if (utils->getcallback(conn, SASL_CB_GETOPT,
                         &getopt, &cntxt) == SASL_OK) {
       const char *p;
       if (getopt(cntxt, NULL, "sasldb_path", &p, NULL) == SASL_OK 
@@ -109,45 +109,43 @@ getsecret(sasl_conn_t *conn,
           path = p;
       }
   }
-  db = dbm_open(path, O_RDONLY, S_IRUSR | S_IWUSR);
+  db = gdbm_open((char *)path, 0, GDBM_READER, S_IRUSR | S_IWUSR, NULL);
   if (! db) {
-    return SASL_FAIL;
+    result = SASL_FAIL;
+    goto cleanup;
   }
-  dkey.dptr = key;
-  dkey.dsize = key_len;
-  dvalue = dbm_fetch(db, dkey);
-  if (! dvalue.dptr) {
+  gkey.dptr = key;
+  gkey.dsize = key_len;
+  gvalue = gdbm_fetch(db, gkey);
+  gdbm_close(db);
+  if (! gvalue.dptr) {
     result = SASL_NOUSER;
     goto cleanup;
   }
-  *secret = sasl_ALLOC(sizeof(sasl_secret_t)
-		       + dvalue.dsize
-		       + 1);
+  *secret = utils->malloc(sizeof(sasl_secret_t)
+			  + gvalue.dsize
+			  + 1);
   if (! *secret) {
     result = SASL_NOMEM;
-#if NDBM_FREE
-    free(dvalue.dptr);
-#endif
+    free(gvalue.dptr);
     goto cleanup;
   }
-  (*secret)->len = dvalue.dsize;
-  memcpy(&(*secret)->data, dvalue.dptr, dvalue.dsize);
+  (*secret)->len = gvalue.dsize;
+  memcpy(&(*secret)->data, gvalue.dptr, gvalue.dsize);
   (*secret)->data[(*secret)->len] = '\0'; /* sanity */
-  /* Note: not sasl_FREE!  This is memory allocated by ndbm,
+  /* Note: not sasl_FREE!  This is memory allocated by gdbm,
    * which is using libc malloc/free. */
-#if NDBM_FREE
-  free(dvalue.dptr);
-#endif
+  free(gvalue.dptr);
 
  cleanup:
-  sasl_FREE(key);
-  dbm_close(db);
+  utils->free(key);
 
   return result;
 }
 
 static int
-putsecret(sasl_conn_t *conn,
+putsecret(const sasl_utils_t *utils,
+	  sasl_conn_t *conn,
 	  const char *auth_identity,
 	  const char *realm,
 	  const sasl_secret_t * secret)
@@ -155,50 +153,50 @@ putsecret(sasl_conn_t *conn,
   int result = SASL_OK;
   char *key;
   size_t key_len;
-  DBM *db;
-  datum dkey;
+  GDBM_FILE db;
+  datum gkey;
   void *cntxt;
   sasl_getopt_t *getopt;
   const char *path = SASL_DB_PATH;
 
   if (!auth_identity || !realm)
-    return SASL_FAIL;
+      return SASL_FAIL;
 
-  result = alloc_key(auth_identity, realm, &key, &key_len);
+  result = alloc_key(utils, auth_identity, realm, &key, &key_len);
   if (result != SASL_OK)
     return result;
 
-  if (_sasl_getcallback(conn, SASL_CB_GETOPT,
-                        &getopt, &cntxt) == SASL_OK) {
+  if (utils->getcallback(conn, SASL_CB_GETOPT,
+			 &getopt, &cntxt) == SASL_OK) {
       const char *p;
       if (getopt(cntxt, NULL, "sasldb_path", &p, NULL) == SASL_OK 
 	  && p != NULL && *p != 0) {
           path = p;
       }
   }
-
-  db = dbm_open(path,
-		O_RDWR | O_CREAT /* TODO: what should this be? */,
-		S_IRUSR | S_IWUSR);
+  db = gdbm_open((char *)path, 0, GDBM_WRCREAT, S_IRUSR | S_IWUSR, NULL);
   if (! db) {
+      utils->log(NULL, SASL_LOG_ERR,
+		"SASL error opening password file. Do you have write permissions?\n");
     result = SASL_FAIL;
     goto cleanup;
   }
-  dkey.dptr = key;
-  dkey.dsize = key_len;
+  gkey.dptr = key;
+  gkey.dsize = key_len;
   if (secret) {
-    datum dvalue;
-    dvalue.dptr = (void *)&secret->data;
-    dvalue.dsize = secret->len;
-    if (dbm_store(db, dkey, dvalue, DBM_REPLACE))
+    datum gvalue;
+    gvalue.dptr = (char *)&secret->data;
+    gvalue.dsize = secret->len;
+    if (gdbm_store(db, gkey, gvalue, GDBM_REPLACE))
       result = SASL_FAIL;
-  } else
-    if (dbm_delete(db, dkey))
+  } else {
+    if (gdbm_delete(db, gkey))
       result = SASL_NOUSER;
-  dbm_close(db);
+  }
+  gdbm_close(db);
 
  cleanup:
-  sasl_FREE(key);
+  utils->free(key);
 
   return result;
 }
@@ -206,22 +204,16 @@ putsecret(sasl_conn_t *conn,
 sasl_server_getsecret_t *_sasl_db_getsecret = &getsecret;
 sasl_server_putsecret_t *_sasl_db_putsecret = &putsecret;
 
-#ifdef DBM_SUFFIX
-#define SUFLEN (strlen(DBM_SUFFIX) + 1)
-#else
-#define SUFLEN 5
-#endif
-
-int _sasl_server_check_db(const sasl_callback_t *verifyfile_cb)
+int _sasl_check_db(const sasl_utils_t *utils)
 {
     const char *path = SASL_DB_PATH;
+    int ret;
     void *cntxt;
     sasl_getopt_t *getopt;
-    int ret = SASL_OK;
-    char *db;
+    sasl_verifyfile_t *vf;
 
-    if (_sasl_getcallback(NULL, SASL_CB_GETOPT,
-			  &getopt, &cntxt) == SASL_OK) {
+    if (utils->getcallback(NULL, SASL_CB_GETOPT,
+			   &getopt, &cntxt) == SASL_OK) {
 	const char *p;
 	if (getopt(cntxt, NULL, "sasldb_path", &p, NULL) == SASL_OK 
 	    && p != NULL && *p != 0) {
@@ -229,32 +221,12 @@ int _sasl_server_check_db(const sasl_callback_t *verifyfile_cb)
 	}
     }
 
-    db = sasl_ALLOC(strlen(path) + SUFLEN);
+    ret = utils->getcallback(NULL, SASL_CB_VERIFYFILE,
+			     &vf, &cntxt);
+    if(ret != SASL_OK) return ret;
 
-    if (db == NULL) {
-	ret = SASL_NOMEM;
-    }
-#ifdef DBM_SUFFIX
-    if (ret == SASL_OK) {
-	sprintf(db, "%s%s", path, DBM_SUFFIX);
-	ret = ((sasl_verifyfile_t *)(verifyfile_cb->proc))(
-	    verifyfile_cb->context, db, SASL_VRFY_PASSWD);
-    }
-#else
-    if (ret == SASL_OK) {
-	sprintf(db, "%s.dir", path);
-	ret = ((sasl_verifyfile_t *)(verifyfile_cb->proc))(
-	    verifyfile_cb->context, db, SASL_VRFY_PASSWD);
-    }
-    if (ret == SASL_OK) {
-	sprintf(db, "%s.pag", path);
-	ret = ((sasl_verifyfile_t *)(verifyfile_cb->proc))(
-	    verifyfile_cb->context, db, SASL_VRFY_PASSWD);
-    }
-#endif
-    if (db) {
-	sasl_FREE(db);
-    }
+    ret = vf(cntxt, path, SASL_VRFY_PASSWD);
+						       path, SASL_VRFY_PASSWD);
     if (ret == SASL_OK) {
 	db_ok = 1;
     }

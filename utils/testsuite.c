@@ -1,7 +1,7 @@
 /* testsuite.c -- Stress the library a little
  * Rob Siemborski
  * Tim Martin
- * $Id: testsuite.c,v 1.13.2.27 2001/07/13 21:10:52 rjs3 Exp $
+ * $Id: testsuite.c,v 1.13.2.28 2001/07/17 21:48:49 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -1853,16 +1853,22 @@ void create_ids(void)
 
     result = sasl_checkpass(saslconn, username, strlen(username),
 			    password, strlen(password));
-    if (result == SASL_OK)
-	fatal("sasl_checkpass got SASL_OK after disableing");
+    if (result == SASL_OK) {
+	printf("\n  WARNING: sasl_checkpass got SASL_OK after disableing\n");
+	printf("           This is generally ok, just an artifact of sasldb\n");
+	printf("           being an external verifier\n");
+    }
 
 #ifdef DO_SASL_CHECKAPOP
     /* And checkapop... */
     result = sasl_checkapop(saslconn,
                             challenge, strlen(challenge), 
                             buf, strlen(buf));
-    if(result == SASL_OK)
-        fatal("Checkapop succeeded but should have failed");
+    if (result == SASL_OK) {
+	printf("\n  WARNING: sasl_checkapop got SASL_OK after disableing\n");
+	printf("           This is generally ok, just an artifact of sasldb\n");
+	printf("           being an external verifier\n");
+    }
 #endif
 
     /* try bad params */
@@ -1961,7 +1967,8 @@ void notes(void)
     printf("-For KERBEROS_V4 must be able to read srvtab file (usually /etc/srvtab)\n");
     printf("-For GSSAPI must be able to read srvtab (/etc/krb5.keytab)\n");
     printf("-For both KERBEROS_V4 and GSSAPI you must have non-expired tickets\n");
-    printf("-Must be able to read and write to sasldb.\n");
+    printf("-Must be able to read sasldb, which needs to be setup with a.\n");
+    printf(" username and a password (see top of testsuite.c)\n");
     printf("\n\n");
 }
 
@@ -2023,10 +2030,10 @@ int main(int argc, char **argv)
 
     init(seed);
 
-    printf("Creating id's in sasldb... ");
+    printf("Creating id's in mechanisms (not in sasldb)...\n");
     create_ids();
     if(mem_stat() != SASL_OK) fatal("memory error");
-    printf("ok\n");
+    printf("Creating id's in mechanisms (not in sasldb)... ok\n");
 
     printf("Checking plaintext passwords... ");
     test_checkpass();

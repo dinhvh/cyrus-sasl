@@ -1,7 +1,7 @@
 /* db_testw32.c--SASL win32 test/dummy interface
  * Rob Siemborski
  * G. Diskin    NOTE THIS IS FOR TEST PURPOSES ONLY FOR WIN32
- * $Id: db_testw32.c,v 1.3.4.4 2001/07/03 18:00:56 rjs3 Exp $
+ * $Id: db_testw32.c,v 1.1.2.1 2001/07/17 21:48:48 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -69,7 +69,8 @@
 
 
 static int
-getsecret(sasl_conn_t *context __attribute__((unused)),
+getsecret(const sasl_utils_t *utils,
+	  sasl_conn_t *context __attribute__((unused)),
 	  const char *auth_identity,
 	  sasl_secret_t ** secret)
 {
@@ -105,9 +106,9 @@ getsecret(sasl_conn_t *context __attribute__((unused)),
 
   fclose(db);
   
-  *secret = sasl_ALLOC(sizeof(sasl_secret_t)
-		       + the_len
-		       + 1);
+  *secret = utils->malloc(sizeof(sasl_secret_t)
+			  + the_len
+			  + 1);
   if (! *secret) {
     result = SASL_NOMEM;
     goto cleanup;
@@ -122,7 +123,8 @@ getsecret(sasl_conn_t *context __attribute__((unused)),
 }
 
 static int
-putsecret(sasl_conn_t *context __attribute__((unused)),
+putsecret(const sasl_utils_t *utils,
+	  sasl_conn_t *context __attribute__((unused)),
 	  const char *auth_identity,
 	  const sasl_secret_t * secret)
 {
@@ -137,7 +139,7 @@ putsecret(sasl_conn_t *context __attribute__((unused)),
   db = fopen(filename, "wb");
 
   if (! db) {
-      _sasl_log(NULL, SASL_LOG_ERR,
+      utils->log(NULL, SASL_LOG_ERR,
 		"error opening password file. Do you have write permissions?");
     result = SASL_FAIL;
     goto cleanup;
@@ -163,7 +165,7 @@ sasl_server_getsecret_t *_sasl_db_getsecret = &getsecret;
 sasl_server_putsecret_t *_sasl_db_putsecret = &putsecret;
 
 
-int _sasl_server_check_db(const sasl_callback_t *verifyfile_cb)
+int _sasl_check_db(const sasl_utils_t *utils)
 {
     return SASL_OK;
 }

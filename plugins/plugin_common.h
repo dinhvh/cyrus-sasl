@@ -1,6 +1,6 @@
 /* Generic SASL plugin utility functions
  * Rob Siemborski
- * $Id: plugin_common.h,v 1.1.2.9 2001/07/06 18:15:36 rjs3 Exp $
+ * $Id: plugin_common.h,v 1.1.2.10 2001/07/17 21:48:46 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -81,6 +81,16 @@ int sasl_server_plug_init(const sasl_utils_t *utils, \
                          int *plugcount) { \
         return x##_server_plug_init(utils, maxversion, out_version, \
 				     pluglist, plugcount); \
+}
+
+#define SASL_AUXPROP_PLUG_INIT( x ) \
+extern sasl_auxprop_init_t x##_auxprop_plug_init; \
+int sasl_auxprop_plug_init(const sasl_utils_t *utils, \
+                           int maxversion, int *out_version, \
+                           sasl_auxprop_plug_t **plug, \
+                           const char *plugname) {\
+        return x##_auxprop_plug_init(utils, maxversion, out_version, \
+                                     plug, plugname); \
 }
 
 /* note: msg cannot include additional variables, so if you want to

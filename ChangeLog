@@ -1,3 +1,8 @@
+2001-07-17  Rob Siemborski <rjs3+@andrew.cmu.edu>
+	* Extricated sasldb support to an auxprop plugin only.
+	  sasldb modifications can now only be done through the saslpasswd
+	  interface.
+
 2001-07-13  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Fixed buffer overrun problem in sasldb auxprop plugin
 	* Removed severe memory leak from testsuite

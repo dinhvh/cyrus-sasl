@@ -1,6 +1,6 @@
 /* staticopen.h
  * Rob Siemborski
- * $Id: staticopen.h,v 1.1.2.1 2001/07/02 22:50:07 rjs3 Exp $
+ * $Id: staticopen.h,v 1.1.2.2 2001/07/17 21:48:45 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -67,9 +67,16 @@ int x##_server_plug_init(const sasl_utils_t *utils, \
                          int *plugcount, \
                          const char *plugname)
 
+#define SPECIFIC_AUXPROP_PLUG_INIT_PROTO( x ) \
+int x##_auxprop_plug_init(const sasl_utils_t *utils, \
+		     	  int maxversion, int *out_version, \
+		     	  sasl_auxprop_plug_t **plug, \
+			  const char *plugname)
+
 /* Static Compillation Foo */
 #define SPECIFIC_CLIENT_PLUG_INIT( x ) x##_client_plug_init
 #define SPECIFIC_SERVER_PLUG_INIT( x ) x##_server_plug_init
+#define SPECIFIC_AUXPROP_PLUG_INIT( x ) x##_auxprop_plug_init
 
 #ifdef STATIC_ANONYMOUS
 extern SPECIFIC_SERVER_PLUG_INIT_PROTO( anonymous );
@@ -102,4 +109,7 @@ extern SPECIFIC_CLIENT_PLUG_INIT_PROTO( plain );
 #ifdef STATIC_SRP
 extern SPECIFIC_SERVER_PLUG_INIT_PROTO( srp );
 extern SPECIFIC_CLIENT_PLUG_INIT_PROTO( srp );
+#endif
+#ifdef STATIC_SASLDB
+extern SPECIFIC_AUXPROP_PLUG_INIT_PROTO( sasldb );
 #endif

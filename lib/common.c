@@ -1,7 +1,7 @@
 /* common.c - Functions that are common to server and clinet
  * Rob Siemborski
  * Tim Martin
- * $Id: common.c,v 1.64.2.37 2001/07/12 21:04:37 rjs3 Exp $
+ * $Id: common.c,v 1.64.2.38 2001/07/17 21:48:44 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -1087,7 +1087,6 @@ int _sasl_getcallback(sasl_conn_t * conn,
 {
   const sasl_callback_t *callback;
 
-  if (!conn) return SASL_BADPARAM;
   if (! pproc || ! pcontext)
     PARAMERROR(conn);
 

@@ -1,7 +1,7 @@
-/* db_none.c--provides linkage for systems which lack a backend db lib
+/* saslint.h - internal SASL library definitions
  * Rob Siemborski
- * Rob Earhart
- * $Id: db_none.c,v 1.6.4.4 2001/06/25 18:44:38 rjs3 Exp $
+ * Tim Martin
+ * $Id: sasldb.h,v 1.1.2.1 2001/07/17 21:48:48 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -43,33 +43,26 @@
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <config.h>
-#include <sasl.h>
-#include "saslint.h"
+#ifndef SASLDB_H
+#define SASLDB_H
 
-/* This just exists to provide these symbols on systems where configure
- * couldn't find a database library. */
+#include "sasl.h"
+#include "saslplug.h"
 
-static int getsecret(sasl_conn_t *context __attribute__((unused)),
-		     const char *auth_identity __attribute__((unused)),
-		     const char *realm __attribute__((unused)),
-		     sasl_secret_t ** secret __attribute__((unused))) 
-{
-    return SASL_FAIL;
-}
+typedef int sasl_server_getsecret_t(const sasl_utils_t *utils,
+				    sasl_conn_t *context,
+				    const char *auth_identity,
+				    const char *realm,
+				    sasl_secret_t ** secret);
+typedef int sasl_server_putsecret_t(const sasl_utils_t *utils,
+				    sasl_conn_t *context,
+				    const char *auth_identity,
+				    const char *realm,
+				    const sasl_secret_t * secret);
 
-static int putsecret(sasl_conn_t *context __attribute__((unused)),
-		     const char *auth_identity __attribute__((unused)),
-		     const char *realm __attribute__((unused)),
-		     const sasl_secret_t *secret __attribute__((unused))) 
-{
-    return SASL_FAIL;
-}
+extern sasl_server_getsecret_t *_sasl_db_getsecret;
+extern sasl_server_putsecret_t *_sasl_db_putsecret;
 
-sasl_server_getsecret_t *_sasl_db_getsecret = &getsecret;
-sasl_server_putsecret_t *_sasl_db_putsecret = &putsecret;
+int _sasl_check_db(const sasl_utils_t *utils);
 
-int _sasl_server_check_db(const sasl_callback_t *verifyfile_cb __attribute__((unused)))
-{
-    return SASL_OK;
-}
+#endif /* SASLDB_H */

@@ -1,7 +1,6 @@
-# Makefile.am for the SASL utilities
-# Rob Earhart
-#
-################################################################
+# Makefile.am for the SASLdb library
+# Rob Siemborski
+# $Id: Makefile.am,v 1.1.2.1 2001/07/17 21:48:48 rjs3 Exp $
 # Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -40,45 +39,24 @@
 # AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 # OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
-################################################################
 
-all_sasl_libs = ../lib/libsasl2.la $(SASL_DB_LIB) $(LIB_SOCKET)
-all_sasl_static_libs = ../lib/libsasl2.a $(SASL_DB_LIB) $(LIB_SOCKET) $(GSSAPIBASE_LIBS) $(GSSAPI_LIBS) $(SASL_KRB_LIB) $(LIB_DES) $(PLAIN_LIBS) $(SRP_LIBS)
-
-sbin_PROGRAMS = saslpasswd sasldblistusers
-man_MANS = saslpasswd.8 sasldblistusers.8
-saslpasswd_LDADD = $(all_sasl_libs) ../sasldb/libsasldb.la
-sasldblistusers_LDADD = $(SASL_DB_LIB)
-
-EXTRA_PROGRAMS = testsuite testsuitestatic smtptest
-testsuite_LDADD = $(all_sasl_libs) @DMALLOC_LIBS@
-
-testsuitestatic_SOURCES = testsuite.c
-testsuitestatic_LDADD = $(all_sasl_static_libs) @DMALLOC_LIBS@
-testsuitestatic_DEPENDENCIES = ../lib/libsasl2.a
-
-smtptest_SOURCES =
-smtptest_DEPENDENCIES = ./smtptest.lo ./libsfsasl2.la
-smtptest_LDADD = ./smtptest.lo ./libsfsasl2.la @SFIO_LIB_FLAGS@ @DMALLOC_LIBS@ $(all_sasl_libs)
-
-saslincludedir = $(includedir)/sasl
-
-saslinclude_HEADERS = @SASL_UTIL_HEADERS_EXTRA@
-EXTRA_HEADERS = sfsasl.h
-
-# Note: we explicitly do *not* link to libsfio, as people will need to
-# link to that anyway if they want to use this. 
-lib_LTLIBRARIES = @SASL_UTIL_LIBS_EXTRA@
-EXTRA_LTLIBRARIES = libsfsasl2.la
-libsfsasl2_la_SOURCES = 
-libsfsasl2_la_LIBADD = sfsasl.lo
-libsfsasl2_la_LDFLAGS = -version-info 1:0:0 -export-dynamic -rpath $(libdir)
+# Library version info - here at the top, for sanity
+sasl_version = 1:1:0
 
 INCLUDES=-I$(top_srcdir)/include
-EXTRA_DIST = saslpasswd.8 sasldblistusers.8 sfsasl.h testsuite.c
 
-sfsasl.lo: sfsasl.c
-	$(LIBTOOL) --mode=compile $(COMPILE) @SFIO_INC_FLAGS@ -c $(srcdir)/sfsasl.c
+extra_common_sources = db_none.c db_ndbm.c db_gdbm.c db_berkeley.c db_testw32.c
 
-smtptest.lo: smtptest.c
-	$(LIBTOOL) --mode=compile $(COMPILE) @SFIO_INC_FLAGS@ -c $(srcdir)/smtptest.c
+noinst_LTLIBRARIES = libsasldb.la
+
+libsasldb_la_SOURCES =
+EXTRA_libsasldb_la_SOURCES = $(extra_common_sources)
+libsasldb_la_DEPENDENCIES = $(SASL_DB_BACKEND)
+libsasldb_la_LIBADD = $(SASL_DB_BACKEND) $(SASL_DB_LIB)
+
+#static version (semi-optional)
+noinst_LIBRARIES = libsasldb.a
+libsasldb_a_SOURCES =
+EXTRA_libsasldb_a_SOURCES = $(extra_common_sources)
+libsasldb_a_DEPENDENCIES = $(SASL_DB_BACKEND_STATIC)
+libsasldb_a_LIBADD = $(SASL_DB_BACKEND_STATIC)

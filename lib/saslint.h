@@ -1,7 +1,7 @@
 /* saslint.h - internal SASL library definitions
  * Rob Siemborski
  * Tim Martin
- * $Id: saslint.h,v 1.33.2.34 2001/07/12 14:10:11 rjs3 Exp $
+ * $Id: saslint.h,v 1.33.2.35 2001/07/17 21:48:44 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -66,19 +66,19 @@
  *   memory errors.
  *  -Only errors (error codes < SASL_OK) should be remembered
  */
-#define RETURN(conn, val) { if((val) < SASL_OK) \
+#define RETURN(conn, val) { if(conn && (val) < SASL_OK) \
                                (conn)->error_code = (val); \
                             return (val); }
 #define MEMERROR(conn) {\
-    sasl_seterror( (conn), 0, \
+    if(conn) sasl_seterror( (conn), 0, \
                    "Out of Memory in " __FILE__ " near line %d", __LINE__ ); \
     RETURN(conn, SASL_NOMEM) }
 #define PARAMERROR(conn) {\
-    sasl_seterror( (conn), SASL_NOLOG, \
+    if(conn) sasl_seterror( (conn), SASL_NOLOG, \
                   "Parameter error in " __FILE__ " near line %d", __LINE__ ); \
     RETURN(conn, SASL_BADPARAM) }
 #define INTERROR(conn, val) {\
-    sasl_seterror( (conn), 0, \
+    if(conn) sasl_seterror( (conn), 0, \
                    "Internal Error %d in " __FILE__ " near line %d", (val),\
 		   __LINE__ ); \
     RETURN(conn, (val)) }
@@ -241,15 +241,6 @@ typedef struct sasl_log_utils_s {
   sasl_log_t *log;
 } sasl_log_utils_t;
 
-typedef int sasl_server_getsecret_t(sasl_conn_t *context,
-				    const char *auth_identity,
-				    const char *realm,
-				    sasl_secret_t ** secret);
-typedef int sasl_server_putsecret_t(sasl_conn_t *context,
-				    const char *auth_identity,
-				    const char *realm,
-				    const sasl_secret_t * secret);
-
 typedef int sasl_plaintext_verifier(sasl_conn_t *conn,
 				    const char *userid,
 				    const char *passwd,
@@ -386,15 +377,6 @@ int _sasl_iptostring(const struct sockaddr_in *addr,
 int _sasl_ipfromstring(const char *addr, struct sockaddr_in *out);
 
 /*
- * Database Stuff (in db_*.c)
- */
-extern sasl_server_getsecret_t *_sasl_db_getsecret;
-extern sasl_server_putsecret_t *_sasl_db_putsecret;
-
-extern int
-_sasl_server_check_db(const sasl_callback_t *verifyfile_cb);
-
-/*
  * external plugin (external.c)
  */
 int external_client_init(const sasl_utils_t *utils,
@@ -418,16 +400,7 @@ extern const char *sasl_config_getstring(const char *key,const char *def);
 extern int sasl_config_getint(const char *key,int def);
 extern int sasl_config_getswitch(const char *key,int def);
 
-/*
- * clear password checking declarations (checkpw.c)
- */
-extern int _sasl_sasldb_set_pass(sasl_conn_t *conn,
-				 const char *user, 
-				 const char *pass,
-				 unsigned passlen,
-				 const char *user_realm,
-				 int flags);
-
+/* checkpw.c */
 #ifdef DO_SASL_CHECKAPOP
 extern int _sasl_sasldb_verify_apop(sasl_conn_t *conn,
 				    const char *userstr,

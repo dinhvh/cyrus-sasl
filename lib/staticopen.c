@@ -1,7 +1,7 @@
 /* dlopen.c--Unix dlopen() dynamic loader interface
  * Rob Siemborski
  * Rob Earhart
- * $Id: staticopen.c,v 1.1.2.3 2001/07/06 21:06:16 rjs3 Exp $
+ * $Id: staticopen.c,v 1.1.2.4 2001/07/17 21:48:45 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -170,6 +170,16 @@ int _sasl_load_plugins(const add_plugin_list_t *entrypoints,
 	}
 	if(result != SASL_OK) return result;
 #endif
+
+/* Note that this guy can fail and life can go on, but it's not currently
+ * written that way. */
+#ifdef STATIC_SASLDB
+	if(type == AUXPROP) {
+	    result = (*add_plugin)("SASLDB", SPECIFIC_AUXPROP_PLUG_INIT( sasldb ));
+	}
+	if(result != SASL_OK) return result;
+#endif
+
     }
     
     return SASL_OK;

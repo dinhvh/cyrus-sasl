@@ -1,7 +1,7 @@
 /* db_berkeley.c--SASL berkeley db interface
  * Rob Siemborski
  * Tim Martin
- * $Id: db_berkeley.c,v 1.16.2.5 2001/07/03 18:00:56 rjs3 Exp $
+ * $Id: db_berkeley.c,v 1.1.2.1 2001/07/17 21:48:48 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -48,8 +48,7 @@
 #include <sys/stat.h>
 #include <stdlib.h>
 #include <assert.h>
-#include "sasl.h"
-#include "saslint.h"
+#include "sasldb.h"
 
 static int db_ok = 0;
 
@@ -60,7 +59,8 @@ static int db_ok = 0;
  * Open the database
  *
  */
-static int berkeleydb_open(sasl_conn_t *conn, int rdwr, DB **mbdb)
+static int berkeleydb_open(const sasl_utils_t *utils,
+			   sasl_conn_t *conn, int rdwr, DB **mbdb)
 {
     const char *path = SASL_DB_PATH;
     int ret;
@@ -68,8 +68,8 @@ static int berkeleydb_open(sasl_conn_t *conn, int rdwr, DB **mbdb)
     sasl_getopt_t *getopt;
     int flags;
 
-    if (_sasl_getcallback(conn, SASL_CB_GETOPT,
-			  &getopt, &cntxt) == SASL_OK) {
+    if (utils->getcallback(conn, SASL_CB_GETOPT,
+			   &getopt, &cntxt) == SASL_OK) {
 	const char *p;
 	if (getopt(cntxt, NULL, "sasldb_path", &p, NULL) == SASL_OK 
 	    && p != NULL && *p != 0) {
@@ -96,7 +96,7 @@ static int berkeleydb_open(sasl_conn_t *conn, int rdwr, DB **mbdb)
 #endif /* DB_VERSION_MAJOR < 3 */
 
     if (ret != 0) {
-	_sasl_log (NULL, SASL_LOG_ERR,
+	utils->log(NULL, SASL_LOG_ERR,
 		   "unable to open Berkeley db %s: %s",
 		   path, strerror(ret));
 	return SASL_FAIL;
@@ -110,14 +110,14 @@ static int berkeleydb_open(sasl_conn_t *conn, int rdwr, DB **mbdb)
  *
  */
 
-static void berkeleydb_close(DB *mbdb)
+static void berkeleydb_close(const sasl_utils_t *utils, DB *mbdb)
 {
     int ret;
     
     ret = mbdb->close(mbdb, 0);
     if (ret!=0) {
 	/* error closing! */
-	_sasl_log (NULL, SASL_LOG_ERR,
+	utils->log(NULL, SASL_LOG_ERR,
 		   "error closing sasldb: %s",
 		   strerror(ret));
     }
@@ -127,19 +127,20 @@ static void berkeleydb_close(DB *mbdb)
  * Construct a key
  *
  */
-static int alloc_key(const char *auth_identity,
+static int alloc_key(const sasl_utils_t *utils,
+		     const char *auth_identity,
 		     const char *realm,
 		     char **key,
 		     size_t *key_len)
 {
   size_t auth_id_len, realm_len;
 
-  assert(auth_identity && realm && key && key_len);
+  assert(utils && auth_identity && realm && key && key_len);
 
   auth_id_len = strlen(auth_identity);
   realm_len = strlen(realm);
   *key_len = auth_id_len + realm_len + 1;
-  *key = sasl_ALLOC(*key_len);
+  *key = utils->malloc(*key_len);
   if (! *key)
     return SASL_NOMEM;
   memcpy(*key, auth_identity, auth_id_len);
@@ -157,7 +158,8 @@ static int alloc_key(const char *auth_identity,
  */
 
 static int
-getsecret(sasl_conn_t *context,
+getsecret(const sasl_utils_t *utils,
+	  sasl_conn_t *context,
 	  const char *auth_identity,
 	  const char *realm,
 	  sasl_secret_t ** secret)
@@ -173,13 +175,13 @@ getsecret(sasl_conn_t *context,
     return SASL_FAIL;
 
   /* allocate a key */
-  result = alloc_key(auth_identity, realm,
+  result = alloc_key(utils, auth_identity, realm,
 		     &key, &key_len);
   if (result != SASL_OK)
     return result;
 
   /* open the db */
-  result = berkeleydb_open(context, 0, &mbdb);
+  result = berkeleydb_open(utils, context, 0, &mbdb);
   if (result != SASL_OK) goto cleanup;
 
   /* zero out and create the key to search for */
@@ -201,7 +203,7 @@ getsecret(sasl_conn_t *context,
     goto cleanup;
     break;
   default:
-    _sasl_log (NULL, SASL_LOG_ERR,
+    utils->log(NULL, SASL_LOG_ERR,
 	       "error fetching from sasldb: %s",
 	       strerror(result));
     result = SASL_FAIL;
@@ -209,9 +211,9 @@ getsecret(sasl_conn_t *context,
     break;
   }
 
-  *secret = sasl_ALLOC(sizeof(sasl_secret_t)
-		       + data.size
-		       + 1);
+  *secret = utils->malloc(sizeof(sasl_secret_t)
+			  + data.size
+			  + 1);
   if (! *secret) {
     result = SASL_NOMEM;
     goto cleanup;
@@ -223,9 +225,9 @@ getsecret(sasl_conn_t *context,
 
  cleanup:
 
-  if (mbdb != NULL) berkeleydb_close(mbdb);
+  if (mbdb != NULL) berkeleydb_close(utils, mbdb);
 
-  sasl_FREE(key);
+  utils->free(key);
 
   return result;
 }
@@ -237,7 +239,8 @@ getsecret(sasl_conn_t *context,
  */
 
 static int
-putsecret(sasl_conn_t *context,
+putsecret(const sasl_utils_t *utils,
+	  sasl_conn_t *context,
 	  const char *auth_identity,
 	  const char *realm,
 	  const sasl_secret_t * secret)
@@ -251,12 +254,12 @@ putsecret(sasl_conn_t *context,
   if (!auth_identity || !realm)
       return SASL_FAIL;
 
-  result = alloc_key(auth_identity, realm, &key, &key_len);
+  result = alloc_key(utils, auth_identity, realm, &key, &key_len);
   if (result != SASL_OK)
     return result;
 
   /* open the db */
-  result=berkeleydb_open(context, 1, &mbdb);
+  result=berkeleydb_open(utils, context, 1, &mbdb);
   if (result!=SASL_OK) goto cleanup;
 
   /* create the db key */
@@ -276,7 +279,7 @@ putsecret(sasl_conn_t *context,
 
     if (result != 0)
     {
-      _sasl_log (NULL, SASL_LOG_ERR,
+      utils->log(NULL, SASL_LOG_ERR,
 		 "error updating sasldb: %s", strerror(result));
       result = SASL_FAIL;
       goto cleanup;
@@ -290,7 +293,7 @@ putsecret(sasl_conn_t *context,
 
     if (result != 0)
     {
-      _sasl_log (NULL, SASL_LOG_ERR,
+      utils->log(NULL, SASL_LOG_ERR,
 		 "error deleting entry from sasldb: %s", strerror(result));
       if (result == DB_NOTFOUND)
 	  result = SASL_NOUSER;
@@ -303,9 +306,9 @@ putsecret(sasl_conn_t *context,
 
  cleanup:
 
-  if (mbdb != NULL) berkeleydb_close(mbdb);
+  if (mbdb != NULL) berkeleydb_close(utils, mbdb);
 
-  sasl_FREE(key);
+  utils->free(key);
 
   return result;
 }
@@ -313,14 +316,15 @@ putsecret(sasl_conn_t *context,
 sasl_server_getsecret_t *_sasl_db_getsecret = &getsecret;
 sasl_server_putsecret_t *_sasl_db_putsecret = &putsecret;
 
-int _sasl_server_check_db(const sasl_callback_t *verifyfile_cb)
+int _sasl_check_db(const sasl_utils_t *utils)
 {
     const char *path = SASL_DB_PATH;
     int ret;
     void *cntxt;
     sasl_getopt_t *getopt;
+    sasl_verifyfile_t *vf;
 
-    if (_sasl_getcallback(NULL, SASL_CB_GETOPT,
+    if (utils->getcallback(NULL, SASL_CB_GETOPT,
 			  &getopt, &cntxt) == SASL_OK) {
 	const char *p;
 	if (getopt(cntxt, NULL, "sasldb_path", &p, NULL) == SASL_OK 
@@ -329,8 +333,12 @@ int _sasl_server_check_db(const sasl_callback_t *verifyfile_cb)
 	}
     }
 
-    ret = ((sasl_verifyfile_t *)(verifyfile_cb->proc))(verifyfile_cb->context,
-						       path, SASL_VRFY_PASSWD);
+    ret = utils->getcallback(NULL, SASL_CB_VERIFYFILE,
+			     &vf, &cntxt);
+    if(ret != SASL_OK) return ret;
+
+    ret = vf(cntxt, path, SASL_VRFY_PASSWD);
+
     if (ret == SASL_OK) {
 	db_ok = 1;
     }

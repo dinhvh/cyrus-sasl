@@ -70,6 +70,7 @@
 #undef STATIC_LOGIN
 #undef STATIC_PLAIN
 #undef STATIC_SRP
+#undef STATIC_SASLDB
 
 /* This is where plugins will live at runtime */
 #undef PLUGINDIR

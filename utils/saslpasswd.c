@@ -43,6 +43,7 @@
 
 #include <config.h>
 #include <stdio.h>
+#include <assert.h>
 
 #ifndef WIN32
 #include <termios.h>
@@ -58,6 +59,11 @@ __declspec(dllimport) int optind;
 __declspec(dllimport) int getsubopt(char **optionp, char * const *tokens, char **valuep);
 #endif /*WIN32*/
 #include <sasl.h>
+#include <saslplug.h>
+#include "../sasldb/sasldb.h"
+
+/* Cheat a bit */
+extern const sasl_utils_t *global_utils;
 
 #define PW_BUF_SIZE 2048
 
@@ -162,6 +168,121 @@ exit_sasl(int result, const char *errstr)
 		sasl_errstring(result, NULL, NULL),
 		errstr);
   exit(-result);
+}
+
+
+/* returns the realm we should pretend to be in */
+static int parseuser(char **user, char **realm, const char *user_realm, 
+		     const char *serverFQDN, const char *input)
+{
+    char *r;
+
+    assert(user && realm && serverFQDN);
+
+    *realm = *user = NULL;
+
+    if (!user_realm) {
+	*realm = strdup(serverFQDN);
+	*user = strdup(input);
+    } else if (user_realm[0]) {
+	*realm = strdup(user_realm);
+	*user = strdup(input);
+    } else {
+	/* otherwise, we gotta get it from the user */
+	r = strchr(input, '@');
+	if (!r) {
+	    /* hmmm, the user didn't specify a realm */
+	    /* we'll default to the serverFQDN */
+	    *realm = strdup(serverFQDN);
+	    *user = strdup(input);
+	} else {
+	    r++;
+	    *realm = strdup(r);
+	    *--r = '\0';
+	    *user = malloc(r - input + 1);
+	    if (*user) {
+		strncpy(*user, input, r - input +1);
+	    } else {
+		return SASL_NOMEM;
+	    }
+	    *r = '@';
+	}
+    }
+
+    if(! *user && ! *realm ) return SASL_FAIL;
+    else return SASL_OK;
+}
+
+/* this routine sets the sasldb password given a user/pass */
+int _sasl_sasldb_set_pass(sasl_conn_t *conn,
+			  const char *serverFQDN,
+			  const char *userstr, 
+			  const char *pass,
+			  unsigned passlen,
+			  const char *user_realm,
+			  int flags)
+{
+    char *userid = NULL;
+    char *realm = NULL;
+    int ret = SASL_OK;
+
+    ret = parseuser(&userid, &realm, user_realm, serverFQDN, userstr);
+    if (ret != SASL_OK) {
+	return ret;
+    }
+
+    if (pass != NULL && !(flags & SASL_SET_DISABLE)) {
+	/* set the password */
+	sasl_secret_t *sec = NULL;
+
+	/* if SASL_SET_CREATE is set, we don't want to overwrite an
+	   existing account */
+	if (flags & SASL_SET_CREATE) {
+	    ret = _sasl_db_getsecret(global_utils, conn, userid, realm, &sec);
+	    if (ret == SASL_OK) {
+		memset(sec->data, 0, sec->len);
+		free(sec);
+		ret = SASL_NOCHANGE;
+	    } else {
+		/* Don't give up yet-- the DB might have failed because
+		 * does not exist, but will be created later... */
+		ret = SASL_OK;
+	    }
+	}
+	
+	/* ret == SASL_OK iff we still want to set this password */
+	if (ret == SASL_OK) {
+	    /* Create the sasl_secret_t */
+	    sec = malloc(sizeof(sasl_secret_t) + passlen);
+	    if(!sec) ret = SASL_NOMEM;
+	    else {
+		memcpy(sec->data, pass, passlen);
+		sec->data[passlen] = '\0';
+		sec->len = passlen;
+	    }
+	}
+	if (ret == SASL_OK) {
+	    ret = _sasl_db_putsecret(global_utils, conn, userid, realm, sec);
+	}
+	if ( ret != SASL_OK ) {
+	    printf("Could not set secret for %s\n", userid);
+	}
+	if (sec) {
+	    memset(sec->data, 0, sec->len);
+	    free(sec);
+	}
+    } else { 
+	/* SASL_SET_DISABLE specified */
+	ret = _sasl_db_putsecret(global_utils, conn, userid, realm, NULL);
+
+	if (ret != SASL_OK) {
+	    printf("failed to disable account for %s", userid);
+	}
+    }
+
+    if (userid)   free(userid);
+    if (realm)    free(realm);
+    return ret;
 }
 
 int

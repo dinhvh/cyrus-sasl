@@ -1,7 +1,7 @@
 # Makefile.am for the SASL plugins
 # Rob Siemborski
 # Rob Earhart
-# $Id: Makefile.am,v 1.39.2.17 2001/07/13 20:00:22 rjs3 Exp $
+# $Id: Makefile.am,v 1.39.2.18 2001/07/17 21:48:46 rjs3 Exp $
 #
 ################################################################
 # Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
@@ -53,6 +53,7 @@ crammd5_version = 1:1:0
 gssapiv2_version = 1:1:0
 digestmd5_version = 1:2:0
 login_version = 1:1:0
+sasldb_version = 1:0:0
 srp_version = 1:1:0
 
 INCLUDES=-I$(top_srcdir)/include -I$(top_srcdir)/lib
@@ -68,7 +69,7 @@ common_sources = plugin_common.c plugin_common.h
 sasldir = $(prefix)/lib/sasl2
 sasl_LTLIBRARIES = @SASL_MECHS@
 EXTRA_LTLIBRARIES = libplain.la libanonymous.la libkerberos4.la libcrammd5.la \
-	libgssapiv2.la libdigestmd5.la liblogin.la libsrp.la
+	libgssapiv2.la libdigestmd5.la liblogin.la libsrp.la libsasldb.la
 
 libplain_la_SOURCES = plain.c plain_init.c $(common_sources)
 libplain_la_LDFLAGS = -version-info $(plain_version)
@@ -100,10 +101,15 @@ libsrp_la_SOURCES = srp.c srp_init.c $(common_sources)
 libsrp_la_LDFLAGS = -version-info $(srp_version)
 libsrp_la_LIBADD = $(SRP_LIBS)
 
+# Auxprop Plugins
+libsasldb_la_SOURCES = sasldb.c sasldb_init.c $(common_sources)
+libsasldb_la_LDFLAGS = -version-info $(sasldb_version)
+libsasldb_la_LIBADD = ../sasldb/libsasldb.la
+
 # Instructions for making the _init files
 
 init_src=anonymous_init.c crammd5_init.c digestmd5_init.c gssapiv2_init.c \
-kerberos4_init.c login_init.c plain_init.c srp_init.c
+kerberos4_init.c login_init.c plain_init.c srp_init.c sasldb_init.c
 
 CLEANFILES=$(init_src)
 

@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: server.c,v 1.84.2.44 2001/07/12 14:10:11 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.45 2001/07/17 21:48:44 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -147,25 +147,6 @@ int sasl_setpass(sasl_conn_t *conn,
     if ((!(flags & SASL_SET_DISABLE) && passlen == 0)
         || ((flags & SASL_SET_CREATE) && (flags & SASL_SET_DISABLE)))
 	PARAMERROR(conn);
-
-    /* set/create password for sasldb */
-    tmpresult = _sasl_sasldb_set_pass(conn, user, pass, passlen, 
-				      s_conn->user_realm, flags);
-
-    if (tmpresult != SASL_OK && tmpresult != SASL_NOCHANGE) {
-	result = tmpresult;
-	_sasl_log(conn, SASL_LOG_ERR,
-		  "failed to set secret for %s: %z (%m)", user, tmpresult,
-#ifndef WIN32
-		  errno
-#else
-		  GetLastError()
-#endif
-		  );
-    } else {
-	_sasl_log(conn, SASL_LOG_NOTE,
-		  "set secret for %s", user);
-    }
 
     /* call userdb callback function */
     result = _sasl_getcallback(conn, SASL_CB_SERVER_USERDB_SETPASS,
@@ -611,6 +592,10 @@ int sasl_server_init(const sasl_callback_t *callbacks,
     /* we require the appname to be non-null */
     if (appname==NULL) return SASL_BADPARAM;
 
+    ret = _sasl_common_init();
+    if (ret != SASL_OK)
+	return ret;
+ 
     _sasl_server_cleanup_hook = &server_done;
 
     /* verify that the callbacks look ok */
@@ -635,11 +620,7 @@ int sasl_server_init(const sasl_callback_t *callbacks,
 	return ret;
     }
 
-    /* check db */
-    ret = _sasl_server_check_db(vf);
-
     /* load internal plugins */
-    sasl_auxprop_add_plugin("SASLDB", &sasldb_auxprop_plug_init);
     sasl_server_add_plugin(NULL, &external_server_init);
 
     /* delayed loading of plugins? (DSO only, as it doesn't
@@ -672,8 +653,6 @@ int sasl_server_init(const sasl_callback_t *callbacks,
 				 _sasl_find_getpath_callback(callbacks),
 				 _sasl_find_verifyfile_callback(callbacks));
     }
-
-    if (ret == SASL_OK)	ret = _sasl_common_init();
   
     if (ret == SASL_OK) {
 	/* _sasl_server_active shows if we're active or not. 
@@ -813,7 +792,7 @@ int sasl_server_new(const char *service,
   serverconn->sparams->utils = utils;
   serverconn->sparams->transition = &_sasl_transition;
   serverconn->sparams->canon_user = &_sasl_canon_user;
-
+  serverconn->sparams->serverFQDN = (*pconn)->serverFQDN;
   serverconn->sparams->props = serverconn->base.props;
 
   /* set some variables */
@@ -1366,7 +1345,7 @@ int sasl_checkpass(sasl_conn_t *conn,
 		   unsigned passlen)
 {
     int result;
-
+    
     if (_sasl_server_active==0) return SASL_NOTINIT;
     
     /* check if it's just a query if we are enabled */
@@ -1474,6 +1453,7 @@ int sasl_checkapop(sasl_conn_t *conn,
 #ifdef DO_SASL_CHECKAPOP
     sasl_server_conn_t *s_conn = (sasl_server_conn_t *) conn;
     char *user, *user_end;
+    const char *password_request[] = { SASL_AUX_PASSWORD, NULL };
     size_t user_len;
     int result;
 
@@ -1506,6 +1486,10 @@ int sasl_checkapop(sasl_conn_t *conn,
     user = sasl_ALLOC(user_len + 1);
     memcpy(user, response, user_len);
     user[user_len] = '\0';
+
+    result = prop_request(s_conn->sparams->propctx, password_request);
+    if(result != SASL_OK)
+        RETURN(conn, result);
 
     /* Cannonify it */
     result = _sasl_canon_user(conn,
