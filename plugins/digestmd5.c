@@ -2,7 +2,7 @@
  * Rob Siemborski
  * Tim Martin
  * Alexey Melnikov 
- * $Id: digestmd5.c,v 1.97.2.8 2001/06/28 18:51:04 rjs3 Exp $
+ * $Id: digestmd5.c,v 1.97.2.9 2001/06/28 19:28:38 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -3226,6 +3226,8 @@ c_continue_step(void *conn_context,
 
   *clientout = NULL;
   *clientoutlen = 0;
+
+  if(serverinlen > 2048) return SASL_BADPROT;
 
   if (text->state == 1) {
     VL(("Digest-MD5 Step 1\n"));
