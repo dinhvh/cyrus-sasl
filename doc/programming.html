@@ -1,11 +1,11 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <html>
   <head>
-    <title>SASL Programmer's Guide</title>
+    <title>SASL Application Programmer's Guide</title>
   </head>
 
   <body>
-    <h1>SASL Programmer's Guide</h1>
+    <h1>SASL Application Programmer's Guide</h1>
 
     <h3>NOTE: This is a work in progress. Any contributions would be
     <i>very</i> appreciated</h3>
@@ -964,11 +964,16 @@ incorporate similar support without using the prot layer.
 
 <a name="empty_exchanges"><h3>Empty exchanges</h3></a>
 
-Some SASL mechanisms intentionally send no data; an application should
+<p>Some SASL mechanisms intentionally send no data; an application should
 be prepared to either send or receive an empty exchange.  The SASL
 profile for the protocol should define how to send an empty string;
 make sure to send an empty string when requested, and when receiving
-an empty string make sure that the "<tt>inlength</tt>" passed in is 0.
+an empty string make sure that the "<tt>inlength</tt>" passed in is 0.</p>
+
+<p>Note especially that the distinction between the empty string "" and
+the lack of a string (NULL) is extreemly important in many cases (most
+notably, the client-send first scenario), and the application must ensure
+that it is passing the correct values to the SASL library at all times.</p>
 
 <a name="idle"><h3>Idle</h3></a>
 
