@@ -4,14 +4,14 @@ Library
 ) Test suite [still] needs work
 ) better support for including missing routines
 ) check return settings (ssf, etc.) on auth failure
-) Make real global objects in cram, digest
 ) add SASL_SEC_MUTUAL_AUTHENTICATION
 ) fix DIGEST-MD5 interoperability
 
 Documentation
 ~~~~~~~~~~~~~
 ) so much to do here
-) man pages (check spelling) (do saslpasswd, sasldblistusers etc)
+) man pages (check spelling) 
+) programmers/sysadmin guide updates and clarifications
 ) update INSTALL to have clearer step-by-step instructions
 
 Mechs to write
@@ -22,10 +22,7 @@ Digest-MD5
 ~~~~~~~~~~
 ) Checking wacko cases or even not so wacko cases
 ) Testing
-) correct handling of SASL_SET_CREATE
-) allow sending multiple realms from server to client
-) reauth?
-) eliminate last client step. Applications will need to be rewritten.
+) reauth? (probabally not)
 
 Kerberos_V4
 ~~~~~~~~~~~
@@ -34,7 +31,7 @@ Kerberos_V4
 
 GSSAPI
 ~~~~~~
-) Allow specification of alternate keytab file?
+) Allow specification of alternate keytab file
 
 Plain
 ~~~~~
