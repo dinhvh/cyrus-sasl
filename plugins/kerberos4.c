@@ -1,7 +1,7 @@
 /* Kerberos4 SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: kerberos4.c,v 1.65.2.24 2001/07/03 18:01:05 rjs3 Exp $
+ * $Id: kerberos4.c,v 1.65.2.25 2001/07/05 21:30:32 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -581,7 +581,7 @@ static int server_continue_step (void *conn_context,
         from machine to machine) */
 
     /* get ip number in addr*/
-    result = _plug_ipfromstring(sparams->ipremoteport, &addr);
+    result = _plug_ipfromstring(sparams->utils, sparams->ipremoteport, &addr);
     if (result != SASL_OK)
 	/* couldn't get remote IP address */
 	return result;
@@ -714,13 +714,15 @@ static int server_continue_step (void *conn_context,
 
     /* get ip data */
     /* get ip number in addr*/
-    result = _plug_ipfromstring(sparams->iplocalport, &(text->ip_local));
+    result = _plug_ipfromstring(sparams->utils,
+				sparams->iplocalport, &(text->ip_local));
     if (result != SASL_OK) {
 	/* couldn't get local IP address */
 	return result;
     }
 
-    result = _plug_ipfromstring(sparams->ipremoteport, &(text->ip_remote));
+    result = _plug_ipfromstring(sparams->utils,
+				sparams->ipremoteport, &(text->ip_remote));
     if (result != SASL_OK) {
 	/* couldn't get remote IP address */
 	return result;
@@ -1227,7 +1229,8 @@ static int client_continue_step (void *conn_context,
 
 	/* nothing more to do; should be authenticated */
 	if(cparams->iplocalport) {   
-	    result = _plug_ipfromstring(cparams->iplocalport,
+	    result = _plug_ipfromstring(cparams->utils,
+					cparams->iplocalport,
 					&(text->ip_local));
 	    if (result != SASL_OK) {
 		/* couldn't get local IP address */
@@ -1236,7 +1239,8 @@ static int client_continue_step (void *conn_context,
 	}
 	
 	if(cparams->ipremoteport) {
-	    result = _plug_ipfromstring(cparams->ipremoteport,
+	    result = _plug_ipfromstring(cparams->utils,
+					cparams->ipremoteport,
 					&(text->ip_remote));
 	    if (result != SASL_OK) {
 		/* couldn't get local IP address */

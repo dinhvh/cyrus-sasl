@@ -1,6 +1,6 @@
 /* Generic SASL plugin utility functions
  * Rob Siemborski
- * $Id: plugin_common.c,v 1.1.2.10 2001/07/03 18:01:05 rjs3 Exp $
+ * $Id: plugin_common.c,v 1.1.2.11 2001/07/05 21:30:33 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -67,26 +67,37 @@
 #include "plugin_common.h"
 
 /* FIXME: This only parses IPV4 addresses */
-int _plug_ipfromstring(const char *addr, struct sockaddr_in *out) 
+int _plug_ipfromstring(const sasl_utils_t *utils, const char *addr,
+		       struct sockaddr_in *out) 
 {
     int i;
     unsigned int val = 0;
     unsigned int port;
     
-    if(!addr || !out) return SASL_BADPARAM;
+    if(!utils || !addr || !out) {
+	if(utils) PARAMERROR( utils );
+	return SASL_BADPARAM;
+    }
 
     /* Parse the address */
     for(i=0; i<4 && *addr && *addr != ';'; i++) {
 	int inval;
 	
 	inval = atoi(addr);
-	if(inval < 0 || inval > 255) return SASL_BADPARAM;
-
+	if(inval < 0 || inval > 255) {
+	    PARAMERROR( utils );
+	    return SASL_BADPARAM;
+	}
+	
 	val = val << 8;
 	val |= inval;
 	
         for(;*addr && *addr != '.' && *addr != ';'; addr++)
-	    if(!isdigit((int)(*addr))) return SASL_BADPARAM;
+	    if(!isdigit((int)(*addr))) {
+		PARAMERROR( utils );
+		return SASL_BADPARAM;
+	    }
+	
 
 	/* skip the separator */
 	addr++;
@@ -94,15 +105,25 @@ int _plug_ipfromstring(const char *addr, struct sockaddr_in *out)
     
     /* We have a bad ip address if we have less than 4 octets, or
      * if we didn't just skip a semicolon */
-    if(i!=4 || *(addr-1) != ';') return SASL_BADPARAM;
+    if(i!=4 || *(addr-1) != ';') {
+	PARAMERROR( utils );
+	return SASL_BADPARAM;
+    }
     
     port = atoi(addr);
 
     /* Ports can only be 16 bits in IPV4 */
-    if((port & 0xFFFF) != port) return SASL_BADPARAM;
-        
+    if((port & 0xFFFF) != port) {
+	PARAMERROR( utils );
+	return SASL_BADPARAM;
+    }
+    
     for(;*addr;addr++)
-	if(!isdigit((int)(*addr))) return SASL_BADPARAM;
+	if(!isdigit((int)(*addr))) {
+	    PARAMERROR( utils );
+	    return SASL_BADPARAM;
+	}
+    
     
     memset(out, 0, sizeof(struct sockaddr_in));
     out->sin_addr.s_addr = val;
@@ -119,11 +140,17 @@ int _plug_iovec_to_buf(const sasl_utils_t *utils, const struct iovec *vec,
     buffer_info_t *out;
     char *pos;
 
-    if(!vec || !output) return SASL_BADPARAM;
-
+    if(!utils || !vec || !output) {
+	if(utils) PARAMERROR( utils );
+	return SASL_BADPARAM;
+    }
+    
     if(!(*output)) {
 	*output = utils->malloc(sizeof(buffer_info_t));
-	if(!*output) return SASL_NOMEM;
+	if(!*output) {
+	    MEMERROR(utils);
+	    return SASL_NOMEM;
+	}
 	memset(*output,0,sizeof(buffer_info_t));
     }
 
@@ -135,7 +162,10 @@ int _plug_iovec_to_buf(const sasl_utils_t *utils, const struct iovec *vec,
 
     ret = _plug_buf_alloc(utils, &out->data, &out->reallen, out->curlen);
 
-    if(ret != SASL_OK) return SASL_NOMEM;
+    if(ret != SASL_OK) {
+	MEMERROR(utils);
+	return SASL_NOMEM;
+    }
     
     memset(out->data, 0, out->reallen);
     pos = out->data;
@@ -152,12 +182,16 @@ int _plug_iovec_to_buf(const sasl_utils_t *utils, const struct iovec *vec,
 int _plug_buf_alloc(const sasl_utils_t *utils, char **rwbuf,
 		    unsigned *curlen, unsigned newlen) 
 {
-    if(!rwbuf || !curlen) return SASL_BADPARAM;
+    if(!utils || !rwbuf || !curlen) {
+	PARAMERROR(utils);
+	return SASL_BADPARAM;
+    }
 
     if(!(*rwbuf)) {
 	*rwbuf = utils->malloc(newlen);
 	if (*rwbuf == NULL) {
 	    *curlen = 0;
+	    MEMERROR(utils);
 	    return SASL_NOMEM;
 	}
 	*curlen = newlen;
@@ -170,6 +204,7 @@ int _plug_buf_alloc(const sasl_utils_t *utils, char **rwbuf,
 	*rwbuf = utils->realloc(*rwbuf, needed);
 	if (*rwbuf == NULL) {
 	    *curlen = 0;
+	    MEMERROR(utils);
 	    return SASL_NOMEM;
 	}
 	*curlen = needed;
@@ -184,8 +219,14 @@ int _plug_strdup(const sasl_utils_t * utils, const char *in,
 {
   size_t len = strlen(in);
 
+  if(!utils || !in || !out) {
+      if(utils) PARAMERROR(utils);
+      return SASL_BADPARAM;
+  }
+
   *out = utils->malloc(len + 1);
   if (!*out) {
+      MEMERROR(utils);
       return SASL_NOMEM;
   }
 

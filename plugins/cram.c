@@ -1,7 +1,7 @@
 /* CRAM-MD5 SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: cram.c,v 1.55.2.12 2001/07/03 18:01:04 rjs3 Exp $
+ * $Id: cram.c,v 1.55.2.13 2001/07/05 21:30:32 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -101,7 +101,10 @@ static int start(void *glob_context __attribute__((unused)),
   context_t *text;
 
   text= sparams->utils->malloc(sizeof(context_t));
-  if (text==NULL) return SASL_NOMEM;
+  if (text==NULL) {
+      MEMERROR( sparams->utils );
+      return SASL_NOMEM;
+  }
 
   memset(text, 0, sizeof(context_t));
 
@@ -196,6 +199,7 @@ static int parseuser(const sasl_utils_t *utils,
 		}
 		(*user)[i] = '\0';
 	    } else {
+		MEMERROR( utils );
 		ret = SASL_NOMEM;
 	    }
 	}
@@ -291,8 +295,7 @@ static int server_continue_step (void *conn_context,
 
   /* this should be well more than is ever needed */
   if (clientinlen > 1024) {
-	sparams->utils->seterror(sparams->utils->conn, 0,
-				 "CRAM-MD5 input longer than 1024 bytes");
+	SETERROR(sparams->utils, "CRAM-MD5 input longer than 1024 bytes");
 	return SASL_BADPROT;
   }
 
@@ -304,15 +307,17 @@ static int server_continue_step (void *conn_context,
     /* we shouldn't have received anything */
     if (clientinlen!=0)
     {
-	sparams->utils->seterror(sparams->utils->conn, 0,
-				 "CRAM-MD5 does not accpet inital data");
+	SETERROR(sparams->utils, "CRAM-MD5 does not accpet inital data");
 	return SASL_BADPROT;
     }
 
     /* get time and a random number for the nonce */
     time=gettime(sparams);
     randdigits=randomdigits(sparams);
-    if ((time==NULL) || (randdigits==NULL)) return SASL_NOMEM;
+    if ((time==NULL) || (randdigits==NULL)) {
+	MEMERROR( sparams->utils );
+	return SASL_NOMEM;
+    }
 
     /* allocate some space for the nonce */
     result = _plug_buf_alloc(sparams->utils, &(text->out_buf),
@@ -334,7 +339,11 @@ static int server_continue_step (void *conn_context,
 
     /* save nonce so we can check against it later */
     text->msgid=sparams->utils->malloc((*serveroutlen)+1);
-    if (text->msgid==NULL) return SASL_NOMEM;
+    if (text->msgid==NULL) {
+	MEMERROR(sparams->utils);
+	return SASL_NOMEM;
+    }
+    
     memcpy(text->msgid,*serverout,*serveroutlen);
     text->msgid[ *serveroutlen ] ='\0';
 
@@ -365,13 +374,16 @@ static int server_continue_step (void *conn_context,
 	pos--;
     }
     if (pos<=0) {
-        sparams->utils->seterror(sparams->utils->conn,0,
-				 "need authentication name");
+        SETERROR( sparams->utils,"need authentication name");
 	return SASL_BADPROT;
     }
 
     authstr=(char *) sparams->utils->malloc(pos+1);
-    if (authstr == NULL) return SASL_NOMEM;
+    if (authstr == NULL) {
+	MEMERROR( sparams->utils);
+	return SASL_NOMEM;
+    }
+    
     /* copy authstr out */
     for (lup = 0; lup < pos; lup++) {
 	authstr[lup] = clientin[lup];
@@ -477,6 +489,7 @@ static int server_continue_step (void *conn_context,
     return result;
   }
 
+  SETERROR( sparams->utils, "Reached unreachable point in CRAM plugin");
   return SASL_FAIL; /* should never get here */
 }
 
@@ -500,42 +513,47 @@ static sasl_server_plug_t plugins[] =
   }
 };
 
-int crammd5_server_plug_init(const sasl_utils_t *utils __attribute__((unused)),
+int crammd5_server_plug_init(const sasl_utils_t *utils,
 				 int maxversion,
 				 int *out_version,
 				 sasl_server_plug_t **pluglist,
 				 int *plugcount,
 				 const char *plugname __attribute__((unused)))
 {
-  if (maxversion<SASL_SERVER_PLUG_VERSION)
-    return SASL_BADVERS;
+    if (maxversion<SASL_SERVER_PLUG_VERSION) {
+	SETERROR( utils, "CRAM version mismatch");
+	return SASL_BADVERS;
+    }
 
-  /* make sure there is a cram entry */
+    /* make sure there is a cram entry */
+    
+    *pluglist=plugins;
 
-  *pluglist=plugins;
-
-  *plugcount=1;  
-  *out_version=SASL_SERVER_PLUG_VERSION;
-
-  return SASL_OK;
+    *plugcount=1;  
+    *out_version=SASL_SERVER_PLUG_VERSION;
+    
+    return SASL_OK;
 }
 
 static int c_start(void *glob_context __attribute__((unused)), 
 		 sasl_client_params_t *params,
 		 void **conn)
 {
-  context_t *text;
+    context_t *text;
 
-  /* holds state are in */
+    /* holds state are in */
     text= params->utils->malloc(sizeof(context_t));
-    if (text==NULL) return SASL_NOMEM;
+    if (text==NULL) {
+	MEMERROR(params->utils);
+	return SASL_NOMEM;
+    }
 
     memset(text, 0, sizeof(context_t));
     text->state=1;  
 
-  *conn=text;
+    *conn=text;
 
-  return SASL_OK;
+    return SASL_OK;
 }
 
 /* 
@@ -576,8 +594,10 @@ static int get_authid(sasl_client_params_t *params,
   {
     /* copy it */
     *authid=params->utils->malloc(prompt->len+1);
-    if ((*authid)==NULL) return SASL_NOMEM;
-
+    if ((*authid)==NULL) {
+	MEMERROR( params->utils );
+	return SASL_NOMEM;
+    }
     strncpy(*authid, prompt->result, prompt->len+1);
     return SASL_OK;
   }
@@ -590,29 +610,35 @@ static int get_authid(sasl_client_params_t *params,
   switch (result)
     {
     case SASL_INTERACT:
-      return SASL_INTERACT;
-
+	return SASL_INTERACT;
+      
     case SASL_OK:
-      if (! getauth_cb)
-	  return SASL_FAIL;
-      result = getauth_cb(getauth_context,
-			  SASL_CB_AUTHNAME,
-			  (const char **)&ptr,
-			  NULL);
-      if (result != SASL_OK)
-	  return result;
+	if (! getauth_cb){
+	    SETERROR(params->utils, "no getauth_cb in CRAM plugin");
+	    return SASL_FAIL;
+	}
+	
+	result = getauth_cb(getauth_context,
+			    SASL_CB_AUTHNAME,
+			    (const char **)&ptr,
+			    NULL);
+	if (result != SASL_OK)
+	    return result;
 
-      *authid=params->utils->malloc(strlen(ptr)+1);
-      if ((*authid)==NULL) return SASL_NOMEM;
-      strcpy(*authid, ptr);
-      break;
+	*authid=params->utils->malloc(strlen(ptr)+1);
+	if ((*authid)==NULL) {
+	    MEMERROR( params->utils );
+	    return SASL_NOMEM;
+	}
+	
+	strcpy(*authid, ptr);
+	break;
 
     default:
-      break;
+	break;
     }
 
   return result;
-
 }
 
 
@@ -632,19 +658,21 @@ static int get_password(sasl_client_params_t *params,
   {
     /* We prompted, and got.*/
 	
-    if (! prompt->result)
-      return SASL_FAIL;
+      if (! prompt->result) {
+	  SETERROR(params->utils, "no prompt->result in CRAM plugin");
+	  return SASL_FAIL;
+      }
 
-    /* copy what we got into a secret_t */
-    *password = (sasl_secret_t *) params->utils->malloc(sizeof(sasl_secret_t)+
-						       prompt->len+1);
-    if (! *password) return SASL_NOMEM;
+      /* copy what we got into a secret_t */
+      *password = (sasl_secret_t *) params->utils->malloc(sizeof(sasl_secret_t)+
+							  prompt->len+1);
+      if (! *password) return SASL_NOMEM;
 
-    (*password)->len=prompt->len;
-    memcpy((*password)->data, prompt->result, prompt->len);
-    (*password)->data[(*password)->len]=0;
+      (*password)->len=prompt->len;
+      memcpy((*password)->data, prompt->result, prompt->len);
+      (*password)->data[(*password)->len]=0;
 
-    return SASL_OK;
+      return SASL_OK;
   }
 
   /* Try to get the callback... */
@@ -656,21 +684,24 @@ static int get_password(sasl_client_params_t *params,
   switch (result)
     {
     case SASL_INTERACT:      
-      return SASL_INTERACT;
+	return SASL_INTERACT;
     case SASL_OK:
-      if (! getpass_cb)
-	return SASL_FAIL;
-      result = getpass_cb(params->utils->conn,
-			  getpass_context,
-			  SASL_CB_PASS,
-			  password);
-      if (result != SASL_OK)
-	return result;
+	if (! getpass_cb) {
+	    SETERROR(params->utils, "No getpass_cb in CRAM plugin");
+	    return SASL_FAIL;
+	}
+	
+	result = getpass_cb(params->utils->conn,
+			    getpass_context,
+			    SASL_CB_PASS,
+			    password);
+	if (result != SASL_OK)
+	    return result;
 
-      break;
+	break;
     default:
-      /* sucess */
-      break;
+	/* sucess */
+	break;
     }
 
   return result;
@@ -690,10 +721,17 @@ static int make_prompts(sasl_client_params_t *params,
   if (auth_res==SASL_INTERACT) num++;
   if (pass_res==SASL_INTERACT) num++;
 
-  if (num==1) return SASL_FAIL;
+  if (num==1) {
+      SETERROR(params->utils, "no prompts to make in CRAM make_prompts");
+      return SASL_FAIL;
+  }
 
   prompts=params->utils->malloc(sizeof(sasl_interact_t)*num);
-  if ((prompts) ==NULL) return SASL_NOMEM;
+  if ((prompts) ==NULL) {
+      MEMERROR( params->utils );
+      return SASL_NOMEM;
+  }
+  
   *prompts_res=prompts;
 
   if (auth_res==SASL_INTERACT)
@@ -756,8 +794,10 @@ static int c_continue_step (void *conn_context,
     secprops=params->props;
     external=params->external_ssf;
 
-    if (secprops.min_ssf>0+external)
-      return SASL_TOOWEAK;
+    if (secprops.min_ssf>0+external) {
+	SETERROR( params->utils, "whoops! looks like someone wanted SSF out of the CRAM plugin");
+	return SASL_TOOWEAK;
+    }
 
     text->state=2;
     return SASL_CONTINUE;
@@ -823,7 +863,10 @@ static int c_continue_step (void *conn_context,
     in16=make_hashed(text->password,(char *) serverin, serverinlen,
 		     params->utils);
 
-    if (in16==NULL) return SASL_FAIL;
+    if (in16==NULL) {
+	SETERROR(params->utils, "whoops, make_hashed failed us this time");
+	return SASL_FAIL;
+    }
 
     maxsize=32+1+strlen(text->authid)+30;
     result = _plug_buf_alloc(params->utils, &(text->out_buf),
@@ -866,6 +909,7 @@ static int c_continue_step (void *conn_context,
       return SASL_OK;      
   }
 
+  SETERROR(params->utils, "CRAM-MD5 says: \"WERT\"");
   return SASL_FAIL; /* should never get here */
 }
 
@@ -894,19 +938,21 @@ static sasl_client_plug_t client_plugins[] =
   }
 };
 
-int crammd5_client_plug_init(const sasl_utils_t *utils __attribute__((unused)),
+int crammd5_client_plug_init(const sasl_utils_t *utils,
 				 int maxversion,
 				 int *out_version,
 				 sasl_client_plug_t **pluglist,
 				 int *plugcount,
 				 const char *plugname __attribute__((unused)))
 {
-  if (maxversion<SASL_CLIENT_PLUG_VERSION)
-    return SASL_BADVERS;
+    if (maxversion<SASL_CLIENT_PLUG_VERSION) {
+	SETERROR( utils, "CRAM version mismatch");
+	return SASL_BADVERS;
+    }
 
-  *pluglist=client_plugins;
-  *plugcount=1;
-  *out_version=SASL_CLIENT_PLUG_VERSION;
+    *pluglist=client_plugins;
+    *plugcount=1;
+    *out_version=SASL_CLIENT_PLUG_VERSION;
 
-  return SASL_OK;
+    return SASL_OK;
 }

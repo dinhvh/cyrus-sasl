@@ -1,6 +1,6 @@
 /* Generic SASL plugin utility functions
  * Rob Siemborski
- * $Id: plugin_common.h,v 1.1.2.7 2001/07/02 22:50:10 rjs3 Exp $
+ * $Id: plugin_common.h,v 1.1.2.8 2001/07/05 21:30:33 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -85,6 +85,16 @@ int sasl_server_plug_init(const sasl_utils_t *utils, \
 				     pluglist, plugcount, plugname); \
 }
 
+/* note: msg cannot include additional variables, so if you want to
+ * do a printf-format string, then you need to call seterror yourself */
+#define SETERROR( utils, msg ) (utils)->seterror( (utils)->conn, 0, (msg) )
+#define MEMERROR( utils ) \
+    (utils)->seterror( (utils)->conn, 0, \
+                       "Out of Memory in " __FILE__ " near line %d", __LINE__ )
+
+#define PARAMERROR( utils ) \
+    (utils)->seterror( (utils)->conn, 0, \
+                       "Parameter Error in " __FILE__ " near line %d", __LINE__ )
 
 typedef struct buffer_info 
 {
@@ -93,7 +103,8 @@ typedef struct buffer_info
     unsigned reallen;  /* total length of buffer (>= curlen) */
 } buffer_info_t;
 
-int _plug_ipfromstring(const char *addr, struct sockaddr_in *out);
+int _plug_ipfromstring(const sasl_utils_t *utils, const char *addr,
+		       struct sockaddr_in *out);
 int _plug_iovec_to_buf(const sasl_utils_t *utils, const struct iovec *vec,
 		       unsigned numiov, buffer_info_t **output);
 int _plug_buf_alloc(const sasl_utils_t *utils, char **rwbuf,

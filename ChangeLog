@@ -1,6 +1,7 @@
 2000-07-05  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Working libsfsasl and smtptest program (--with-sfio)
 	* Fixed sasldblistusers (atleast for Berkeley DB)
+	* seterror() calls in ANONYMOUS, CRAM, PLAIN and LOGIN
 
 2000-07-03  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Static library compilation now optional (--with-staticsasl)

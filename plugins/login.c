@@ -2,7 +2,7 @@
  * Rob Siemborski (SASLv2 Conversion)
  * contributed by Rainer Schoepf <schoepf@uni-mainz.de>
  * based on PLAIN, by Tim Martin <tmartin@andrew.cmu.edu>
- * $Id: login.c,v 1.6.2.9 2001/07/03 18:55:49 rjs3 Exp $
+ * $Id: login.c,v 1.6.2.10 2001/07/05 21:30:32 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -83,7 +83,10 @@ static int start(void *glob_context __attribute__((unused)),
 
   /* holds state are in */
   text=sparams->utils->malloc(sizeof(context_t));
-  if (text==NULL) return SASL_NOMEM;
+  if (text==NULL) {
+      MEMERROR( sparams->utils );
+      return SASL_NOMEM;
+  }
 
   memset(text, 0, sizeof(context_t));
 
@@ -169,11 +172,18 @@ server_continue_step (void *conn_context,
 
   if (text->state == 2) {
     /* Catch really long usernames */
-    if(clientinlen > 1024) return SASL_BADPROT;
+    if(clientinlen > 1024) {
+	SETERROR(params->utils, "username too long (>1024 characters)");
+	return SASL_BADPROT;
+    }
 
     /* get username */
-    text->username = (sasl_secret_t *) params->utils->malloc(sizeof(sasl_secret_t)+clientinlen+1);
-    if (! text->username) return SASL_NOMEM;
+    text->username =
+	(sasl_secret_t *)params->utils->malloc(sizeof(sasl_secret_t)+clientinlen+1);
+    if (! text->username) {
+	MEMERROR( params->utils );
+	return SASL_NOMEM;
+    }
 
     strncpy(text->username->data,clientin,clientinlen);
     text->username->data[clientinlen] = '\0';
@@ -193,13 +203,17 @@ server_continue_step (void *conn_context,
     int result;
 
     /* Catch really long passwords */
-    if(clientinlen > 1024) return SASL_BADPROT;
+    if(clientinlen > 1024) {
+	SETERROR(params->utils, "clientinlen is > 1024 characters in LOGIN plugin");
+	return SASL_BADPROT;
+    }
 
     /* get password */
-
-    text->password = params->utils->malloc (sizeof(sasl_secret_t) + clientinlen + 1);
-    if (! text->password)
-      return SASL_NOMEM;
+    text->password = params->utils->malloc(sizeof(sasl_secret_t) + clientinlen + 1);
+    if (! text->password) {
+	MEMERROR(params->utils);
+	return SASL_NOMEM;
+    }
 
     strncpy(text->password->data,clientin,clientinlen);
     text->password->data[clientinlen] = '\0';
@@ -263,15 +277,17 @@ int login_server_plug_init(sasl_utils_t *utils __attribute__((unused)),
 			   int *plugcount,
 			   const char *plugname __attribute__((unused)))
 {
-  if (maxversion<SASL_SERVER_PLUG_VERSION)
-    return SASL_BADVERS;
+    if (maxversion<SASL_SERVER_PLUG_VERSION) {
+	SETERROR(utils, "LOGIN version mismatch");
+	return SASL_BADVERS;
+    }
+    
+    *pluglist=plugins;
 
-  *pluglist=plugins;
+    *plugcount=1;  
+    *out_version=SASL_SERVER_PLUG_VERSION;
 
-  *plugcount=1;  
-  *out_version=SASL_SERVER_PLUG_VERSION;
-
-  return SASL_OK;
+    return SASL_OK;
 }
 
 /* put in sasl_wrongmech */
@@ -283,7 +299,10 @@ static int c_start(void *glob_context __attribute__((unused)),
 
   /* holds state are in */
   text = params->utils->malloc(sizeof(context_t));
-  if (text==NULL) return SASL_NOMEM;
+  if (text==NULL) {
+      MEMERROR(params->utils);
+      return SASL_NOMEM;
+  }
 
   memset(text, 0, sizeof(context_t));
 
@@ -354,8 +373,11 @@ static int get_userid(sasl_client_params_t *params,
 			NULL);
     if (result != SASL_OK)
       return result;
-    if (! id)
-      return SASL_BADPARAM;
+    if (! id) {
+	PARAMERROR(params->utils);
+	return SASL_BADPARAM;
+    }
+    
     *userid = id;
   }
 
@@ -376,21 +398,27 @@ static int get_password(sasl_client_params_t *params,
   prompt=find_prompt(prompt_need,SASL_CB_PASS);
   if (prompt!=NULL)
   {
-    /* We prompted, and got.*/
+      /* We prompted, and got.*/
 	
-    if (! prompt->result)
-      return SASL_FAIL;
+      if (! prompt->result) {
+	  SETERROR(params->utils, "Expected prompt result and got none in LOGIN");
+	  return SASL_FAIL;
+      }
+      
 
-    /* copy what we got into a secret_t */
-    *password = (sasl_secret_t *) params->utils->malloc(sizeof(sasl_secret_t)+
-						       prompt->len+1);
-    if (! *password) return SASL_NOMEM;
+      /* copy what we got into a secret_t */
+      *password = (sasl_secret_t *) params->utils->malloc(sizeof(sasl_secret_t)
+							  + prompt->len+1);
+      if (! *password) {
+	  MEMERROR(params->utils);
+	  return SASL_NOMEM;
+      }
 
-    (*password)->len=prompt->len;
-    memcpy((*password)->data, prompt->result, prompt->len);
-    (*password)->data[(*password)->len]=0;
+      (*password)->len=prompt->len;
+      memcpy((*password)->data, prompt->result, prompt->len);
+      (*password)->data[(*password)->len]=0;
 
-    return SASL_OK;
+      return SASL_OK;
   }
 
 
@@ -424,10 +452,17 @@ static int make_prompts(sasl_client_params_t *params,
   if (user_res==SASL_INTERACT) num++;
   if (pass_res==SASL_INTERACT) num++;
 
-  if (num==1) return SASL_FAIL;
+  if (num==1) {
+      SETERROR(params->utils, "LOGIN make_prompts called without any results");
+      return SASL_FAIL;
+  }
 
   prompts=params->utils->malloc(sizeof(sasl_interact_t)*(num+1));
-  if ((prompts) ==NULL) return SASL_NOMEM;
+  if ((prompts) ==NULL) {
+      MEMERROR(params->utils);
+      return SASL_NOMEM;
+  }
+  
   *prompts_res=prompts;
 
   if (user_res==SASL_INTERACT)
@@ -484,8 +519,10 @@ static int client_continue_step (void *conn_context,
     int pass_result=SASL_OK;
 
     /* check if sec layer strong enough */
-    if (params->props.min_ssf>0)
-      return SASL_TOOWEAK;
+    if (params->props.min_ssf>0+params->external_ssf) {
+	SETERROR( params->utils, "SSF requested of LOGIN plugin");
+	return SASL_TOOWEAK;
+    }
 
     /* try to get the userid */
     if (oparams->user==NULL)
@@ -528,8 +565,10 @@ static int client_continue_step (void *conn_context,
 
     params->canon_user(params->utils->conn, user, 0, user, 0, 0, oparams);
     
-    if (!oparams->authid || !text->password)
-      return SASL_BADPARAM;
+    if (!oparams->authid || !text->password) {
+	PARAMERROR(params->utils);
+	return SASL_BADPARAM;
+    }
 
     /* Watch for initial client send */
     if(clientout) {
@@ -550,38 +589,49 @@ static int client_continue_step (void *conn_context,
   }
 
   if (text->state == 2) {
-    /* server should have sent request for username */
-    if (serverinlen != strlen(USERNAME) || strcmp(USERNAME,serverin))
-      return SASL_BADPROT;
+      /* server should have sent request for username */
+      if (serverinlen != strlen(USERNAME) || strcmp(USERNAME,serverin)) {
+	  SETERROR( params->utils, "Invalid Server USERNAME response in LOGIN plugin");
+	  return SASL_BADPROT;
+      }
 
-    if(!clientout) return SASL_BADPARAM;
+      if(!clientout) {
+	  PARAMERROR( params->utils );
+	  return SASL_BADPARAM;
+      }
+      
+      if(clientoutlen) *clientoutlen = strlen(oparams->user);
+      *clientout = oparams->user;
 
-    if(clientoutlen) *clientoutlen = strlen(oparams->user);
-    *clientout = oparams->user;
+      text->state = 3;
 
-    text->state = 3;
-
-    return SASL_CONTINUE;
+      return SASL_CONTINUE;
   }
 
   if (text->state == 3) {
-    if (serverinlen != strlen(PASSWORD) || strcmp(PASSWORD,serverin))
-      return SASL_BADPROT;
+      if (serverinlen != strlen(PASSWORD) || strcmp(PASSWORD,serverin)) {
+	  SETERROR( params->utils, "Invalid Server PASSWORD response in LOGIN plugin");
+	  return SASL_BADPROT;
+      }
 
-    if(!clientout) return SASL_BADPARAM;
+      if(!clientout) {
+	  PARAMERROR(params->utils);
+	  return SASL_BADPARAM;
+      }
 
-    if(clientoutlen) *clientoutlen = text->password->len;
-    *clientout = text->password->data;
+      if(clientoutlen) *clientoutlen = text->password->len;
+      *clientout = text->password->data;
+      
+      /* set oparams */
+      oparams->param_version = 0;
+      oparams->doneflag = 1;
 
-    /* set oparams */
-    oparams->param_version = 0;
-    oparams->doneflag = 1;
+      text->state = 99;
 
-    text->state = 99;
-
-    return SASL_OK;
+      return SASL_OK;
   }
 
+  SETERROR( params->utils, "Did the impossible in client-side of LOGIN.");
   return SASL_FAIL; /* should never get here */
 }
 
@@ -604,21 +654,23 @@ static sasl_client_plug_t client_plugins[] =
   }
 };
 
-int login_client_plug_init(sasl_utils_t *utils __attribute__((unused)),
+int login_client_plug_init(sasl_utils_t *utils,
 			   int maxversion,
 			   int *out_version,
 			   sasl_client_plug_t **pluglist,
 			   int *plugcount,
 			   const char *plugname __attribute__((unused)))
 {
-  if (maxversion<SASL_CLIENT_PLUG_VERSION)
-    return SASL_BADVERS;
+    if (maxversion<SASL_CLIENT_PLUG_VERSION) {
+	SETERROR(utils, "Version mismatch in LOGIN");
+	return SASL_BADVERS;
+    }
 
-  *pluglist=client_plugins;
+    *pluglist=client_plugins;
 
-  *plugcount=1;
-  *out_version=SASL_CLIENT_PLUG_VERSION;
+    *plugcount=1;
+    *out_version=SASL_CLIENT_PLUG_VERSION;
 
-  return SASL_OK;
+    return SASL_OK;
 }
 
