@@ -990,7 +990,8 @@ LIBSASL_API int sasl_checkpass(sasl_conn_t *conn,
 			       const char *pass, unsigned passlen);
 
 /* check if a user exists on server
- *  conn          -- connection context (may be NULL, used to hold last error)
+ *  conn          -- connection context
+ * FIXME: chris newman allows conn to be null
  *  service       -- registered name of the service using SASL (e.g. "imap")
  *  user_realm    -- permits multiple user realms on server, NULL = default
  *  user          -- NUL terminated user name

@@ -1,6 +1,6 @@
 /* SASL server API implementation
  * Tim Martin
- * $Id: server.c,v 1.84.2.24 2001/06/25 16:43:57 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.25 2001/06/25 18:21:15 rjs3 Exp $
  */
 
 /* 
@@ -87,7 +87,7 @@ extern int gethostname(char *, int);
  * sasl_server_step
  * sasl_checkpass
  * sasl_checkapop
- * sasl_userexists <= not yet implemented
+ * sasl_user_exists <= not yet implemented
  * sasl_setpass
  */
 
@@ -99,12 +99,6 @@ int _is_sasl_server_active(void) { return _sasl_server_active; }
 
 static int _sasl_checkpass(sasl_conn_t *conn, const char *service, 
 			   const char *user, const char *pass);
-
-/*
-static int _sasl_checkpass(sasl_conn_t *conn,
-			   const char *user, unsigned userlen,
-			   const char *pass, unsigned passlen);
-*/
 
 static mech_list_t *mechlist = NULL; /* global var which holds the list */
 
@@ -1294,18 +1288,63 @@ int sasl_checkpass(sasl_conn_t *conn,
     result = _sasl_checkpass(conn, conn->service, user, pass);
 
     if (result == SASL_OK) {
-	char *tmp;
-	
-	result = _sasl_strdup(user, &tmp, NULL);
-	conn->oparams.authid = tmp;
-
-	if (result != SASL_OK) return result;
+	strncpy(conn->authid_buf, user, CANON_BUF_SIZE);
+	conn->oparams.authid = conn->authid_buf;
       
-	_sasl_transition(conn, pass, passlen);
+	result = _sasl_transition(conn, pass, passlen);
     }
 
     return result;
 }
+
+/* check if a user exists on server
+ *  conn          -- connection context (may be NULL, used to hold last error)
+ *  service       -- registered name of the service using SASL (e.g. "imap")
+ *  user_realm    -- permits multiple user realms on server, NULL = default
+ *  user          -- NUL terminated user name
+ *
+ * returns:
+ *  SASL_OK       -- success
+ *  SASL_DISABLED -- account disabled [FIXME: currently not detected]
+ *  SASL_NOUSER   -- user not found
+ *  SASL_NOVERIFY -- user found, but no usable mechanism [FIXME: not supported]
+ *  SASL_NOMECH   -- no mechanisms enabled
+ */
+int sasl_user_exists(sasl_conn_t *conn,
+		     const char *service,
+		     const char *user_realm,
+		     const char *user) 
+{
+    int result=SASL_NOMECH;
+    struct sasl_verify_password_s *v;
+
+    /* check params */
+    if (_sasl_server_active==0) return SASL_NOTINIT;
+
+    if(!conn || !service || !user) return SASL_BADPARAM;
+
+    for (v = _sasl_verify_password; v->name; v++) {
+	if (is_mech(DEFAULT_PLAIN_MECHANISM, v->name)) {
+	    result = v->verify(conn, user, NULL, service, user_realm);
+	    break;
+	}
+    }
+
+    /* Screen out the SASL_BADPARAM response
+     * we'll get from not giving a password */
+    if(result == SASL_BADPARAM) {
+	result = SASL_OK;
+    }
+
+    if (result == SASL_NOMECH) {
+	/* no mechanism available ?!? */
+	_sasl_log(conn, SASL_LOG_ERR, "unrecognized plaintext verifier %s",
+		  DEFAULT_PLAIN_MECHANISM);
+    }
+    
+    return result;
+}
+
 
 /* check if an APOP exchange is valid
  *  (note this is an optional part of the SASL API)

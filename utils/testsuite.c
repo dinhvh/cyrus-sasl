@@ -3,7 +3,7 @@
  * Rob Siemborski (SASL v2 changes)
  */
 /* 
- * Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
+ * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -52,7 +52,7 @@
  */
 
 /*
- * TODO:
+ * TODO [FIXME]:
  *  put in alloc() routines that fail occasionally.
  *  verify ssf's
  */
@@ -91,6 +91,7 @@ char myhostname[1024+1];
 #define REALLY_LONG_BACKOFF  2000
 
 const char *username = "rjs3";
+const char *nonexistant_username = "ABCDEFGHIJ";
 const char *authname = "rjs3";
 const char *password = "1234";
 
@@ -1656,6 +1657,15 @@ void create_ids(void)
 			    password, strlen(password));
     if (result != SASL_OK)
 	fatal("Unable to verify password we just set");
+
+    result = sasl_user_exists(saslconn, "imap", NULL, username);
+    if(result != SASL_OK)
+	fatal("sasl_user_exists did not find user");
+
+    result = sasl_user_exists(saslconn, "imap", NULL,
+			      nonexistant_username);
+    if(result == SASL_OK)
+	fatal("sasl_user_exists found nonexistant username");
 
     /* Test sasl_checkapop */
     MD5Init(&ctx);

@@ -165,9 +165,9 @@ static int sasldb_verify_password(sasl_conn_t *conn,
     char *userid = NULL;
     char *realm = NULL;
 
-    if (!userstr || !passwd) {
+    if (!userstr)
 	return SASL_BADPARAM;
-    }
+
     ret = parseuser(&userid, &realm, user_realm, conn->serverFQDN, userstr);
     if (ret != SASL_OK) {
 	/* error parsing user */
@@ -180,6 +180,13 @@ static int sasldb_verify_password(sasl_conn_t *conn,
 	goto done;
     }
 
+    /* It is possible for us to get useful information out of just
+     * the lookup, so we won't check that we have a password until now */
+    if(!passwd) {
+	ret = SASL_BADPARAM;
+	goto done;
+    }
+    
     if (!memcmp(secret->data, passwd, secret->len)) {
 	/* password verified! */
 	ret = SASL_OK;
