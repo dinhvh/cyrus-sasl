@@ -1,3 +1,6 @@
+2001-07-23  Rob Siemborski <rjs3+@andrew.cmu.edu>
+	* Added check for db3/db.h
+
 2001-07-20  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Can now deal with variable client-first mechs such as
 	  DIGEST-MD5, though this interface is subject to change

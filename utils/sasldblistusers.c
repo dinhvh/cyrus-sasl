@@ -145,7 +145,12 @@ int listusers(const char *path, listcb_t *cb)
 
 #ifdef SASL_BERKELEYDB
 
+#ifdef HAVE_DB3_DB_H
+#include <db3/db.h>
+#else
 #include <db.h>
+#endif
+
 /*
  * Open the database
  *
