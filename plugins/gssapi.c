@@ -165,6 +165,8 @@ sasl_gss_encode(void *context, const struct iovec *invec, unsigned numiov,
   real_input_token.length = text->enc_in_buf->curlen;
   
   output_token = &real_output_token;
+  output_token->value = NULL;
+  output_token->length = 0;
   
   maj_stat = gss_wrap (&min_stat,
 		       text->gss_ctx,
@@ -298,6 +300,8 @@ sasl_gss_decode_once(void *context,
     real_input_token.length = text->size;
   
     output_token = &real_output_token;
+    output_token->value = NULL;
+    output_token->length = 0;
     
     maj_stat = gss_unwrap (&min_stat,
 			   text->gss_ctx,
