@@ -112,14 +112,16 @@ static int prop_init(struct propctx *ctx, unsigned estimate)
 
     ctx->mem_base = alloc_proppool(VALUES_SIZE + estimate);
     if(!ctx->mem_base) return SASL_NOMEM;
-    
+
+    ctx->mem_cur = ctx->mem_base;
+
     ctx->values = (struct propval *)ctx->mem_base->data;
     ctx->mem_base->unused = ctx->mem_base->size - VALUES_SIZE;
     ctx->allocated_values = PROP_DEFAULT;
     ctx->used_values = 0;
 
     ctx->data_end = ctx->mem_base->data + ctx->mem_base->size;
-    ctx->list_end = (char **)ctx->mem_base->data + VALUES_SIZE;
+    ctx->list_end = (char **)(ctx->mem_base->data + VALUES_SIZE);
 
     ctx->prev_val = NULL;
 
@@ -152,17 +154,56 @@ struct propctx *prop_new(unsigned estimate)
  */
 int prop_dup(struct propctx *src_ctx, struct propctx **dst_ctx) 
 {
+    struct proppool *pool;
+    struct propctx *retval = NULL;
+    unsigned i;
+    int result;
+    size_t total_size = 0, values_size;
+    
     if(!src_ctx || !dst_ctx) return SASL_BADPARAM;
 
-    /* FIXME: [broken] */
-    
-    *dst_ctx = sasl_ALLOC(sizeof(struct propctx));
-    if(!(*dst_ctx)) return SASL_NOMEM;
-    
+    /* What is the total allocated size of src_ctx? */
+    pool = src_ctx->mem_base;
+    while(pool) {
+	total_size += pool->size;
+	pool = pool->next;
+    }
+
+    /* allocate the new context */
+    retval = prop_new(total_size);
+    if(!retval) return SASL_NOMEM;
+
+    retval->used_values = src_ctx->used_values;
+    retval->allocated_values = src_ctx->used_values + 1;
+
+    values_size = (retval->allocated_values * sizeof(struct propval));
+
+    retval->mem_base->unused = retval->mem_base->size - values_size;
+
+    retval->list_end = (char **)(retval->mem_base->data + values_size);
+    /* data_end should still be OK */
+
+    /* Now dup the values */
+    for(i=0; i<src_ctx->used_values; i++) {
+	retval->values[i].name = src_ctx->values[i].name;
+	result = prop_setvals(retval, retval->values[i].name,
+			      src_ctx->values[i].values);
+	if(result != SASL_OK)
+	    goto fail;
+    }
+
+    retval->prev_val = src_ctx->prev_val;
+
+    *dst_ctx = retval;
     return SASL_OK;
+
+    fail:
+    if(retval) prop_dispose(&retval);
+    return result;
 }
 
-/* dispose of property context
+/*
+ * dispose of property context
  *  ctx      -- is disposed and set to NULL; noop if ctx or *ctx is NULL
  */
 void prop_dispose(struct propctx **ctx)
@@ -187,6 +228,9 @@ void prop_dispose(struct propctx **ctx)
  *  ctx       -- context from prop_new()
  *  names     -- list of property names; must persist until context freed
  *               or requests cleared
+ *
+ * FIXME: What happens if this context is dup'd?  Then that invariant applies
+ *        to the new context as well!
  *
  * NOTE: may clear values from context as side-effect
  * returns -1 on error
@@ -295,7 +339,6 @@ const struct propval *prop_get(struct propctx *ctx)
  *  if a name requested here was never requested by a prop_request, then
  *  the name field of the associated vals entry will be set to NULL
  */
-
 /* FIXME?: We rely on the fact that the vals array is long enough! */
 int prop_getnames(struct propctx *ctx, const char **names,
 		  struct propval *vals) 
@@ -442,8 +485,6 @@ int prop_format(struct propctx *ctx, const char *sep, int seplen,
  *            if NULL, remove existing values
  *  vallen -- length of value, if < 0 then strlen(value) will be used
  */
-/* FIXME: There is a LOT of casting in this function. is it really
- * necessary? */
 int prop_set(struct propctx *ctx, const char *name,
 	     const char *value, int vallen)
 {
@@ -479,7 +520,7 @@ int prop_set(struct propctx *ctx, const char *name,
 	if(cur->values) {
 
 	    if(!value) {
-		/* If we would be setting a null value, then we are done */
+		/* If we would be adding a null value, then we are done */
 		return SASL_OK;
 	    }
 
@@ -651,8 +692,11 @@ int prop_setvals(struct propctx *ctx, const char *name,
     const char **val = values;
     int result = SASL_OK;
 
-    if(!ctx || !values) return SASL_BADPARAM;
+    if(!ctx) return SASL_BADPARAM;
 
+    /* If they want us to add no values, we can do that */
+    if(!values) return SASL_OK;
+    
     /* Basically, use prop_set to do all our dirty work for us */
     if(name) {
 	result = prop_set(ctx, name, *val, 0);
