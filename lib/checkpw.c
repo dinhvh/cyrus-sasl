@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: checkpw.c,v 1.41.2.18 2001/07/17 21:48:44 rjs3 Exp $
+ * $Id: checkpw.c,v 1.41.2.19 2001/07/25 15:32:06 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -95,11 +95,11 @@ extern int errno;
 
 /* erase & dispose of a sasl_secret_t
  */
-static int sasldb_verify_password(sasl_conn_t *conn,
-				  const char *userstr,
-				  const char *passwd,
-				  const char *service __attribute__((unused)),
-				  const char *user_realm __attribute__((unused)))
+static int auxprop_verify_password(sasl_conn_t *conn,
+				   const char *userstr,
+				   const char *passwd,
+				   const char *service __attribute__((unused)),
+				   const char *user_realm __attribute__((unused)))
 {
     int ret = SASL_FAIL;
     char *userid = NULL;
@@ -160,11 +160,11 @@ static int sasldb_verify_password(sasl_conn_t *conn,
 }
 
 #ifdef DO_SASL_CHECKAPOP
-int _sasl_sasldb_verify_apop(sasl_conn_t *conn,
-			     const char *userstr,
-			     const char *challenge,
-			     const char *response,
-			     const char *user_realm __attribute__((unused)))
+int _sasl_auxprop_verify_apop(sasl_conn_t *conn,
+			      const char *userstr,
+			      const char *challenge,
+			      const char *response,
+			      const char *user_realm __attribute__((unused)))
 {
     int ret = SASL_FAIL;
     char *userid = NULL;
@@ -437,7 +437,7 @@ static int saslauthd_verify_password(sasl_conn_t *conn,
 #endif
 
 struct sasl_verify_password_s _sasl_verify_password[] = {
-    { "sasldb", &sasldb_verify_password },
+    { "auxprop", &auxprop_verify_password },
 #ifdef HAVE_PWCHECK
     { "pwcheck", &pwcheck_verify_password },
 #endif

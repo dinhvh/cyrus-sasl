@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: server.c,v 1.84.2.51 2001/07/23 21:23:40 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.52 2001/07/25 15:32:06 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -68,7 +68,7 @@
 extern int gethostname(char *, int);
 #endif
 
-#define DEFAULT_CHECKPASS_MECH "sasldb"
+#define DEFAULT_CHECKPASS_MECH "auxprop"
 
 #ifndef PATH_MAX
 # ifdef _POSIX_PATH_MAX
@@ -1399,7 +1399,7 @@ static int _sasl_checkpass(sasl_conn_t *conn, const char *service,
 	    return SASL_OK;
     }
 
-    /* figure out how to check (i.e. sasldb or saslauthd or pwcheck) */
+    /* figure out how to check (i.e. auxprop or saslauthd or pwcheck) */
     if (_sasl_getcallback(conn, SASL_CB_GETOPT, &getopt, &context)
             == SASL_OK) {
         getopt(context, NULL, "pwcheck_method", &mech, NULL);
@@ -1604,9 +1604,8 @@ int sasl_checkapop(sasl_conn_t *conn,
     if(result != SASL_OK) RETURN(conn, result);
 
     /* Do APOP verification */
-    result = _sasl_sasldb_verify_apop(conn, conn->oparams.user,
-				      challenge, user_end + 1,
-				      s_conn->user_realm);
+    result = _sasl_auxprop_verify_apop(conn, conn->oparams.user,
+	challenge, user_end + 1, s_conn->user_realm);
 
     /* If verification failed, we don't want to encourage getprop to work */
     if(result != SASL_OK) {

@@ -1,7 +1,7 @@
 /* saslint.h - internal SASL library definitions
  * Rob Siemborski
  * Tim Martin
- * $Id: saslint.h,v 1.33.2.40 2001/07/23 20:38:08 rjs3 Exp $
+ * $Id: saslint.h,v 1.33.2.41 2001/07/25 15:32:06 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -416,11 +416,11 @@ extern int sasl_config_getswitch(const char *key,int def);
 
 /* checkpw.c */
 #ifdef DO_SASL_CHECKAPOP
-extern int _sasl_sasldb_verify_apop(sasl_conn_t *conn,
-				    const char *userstr,
-				    const char *challenge,
-				    const char *response,
-				    const char *user_realm);
+extern int _sasl_auxprop_verify_apop(sasl_conn_t *conn,
+				     const char *userstr,
+				     const char *challenge,
+				     const char *response,
+				     const char *user_realm);
 #endif /* DO_SASL_CHECKAPOP */
 
 /* Auxprop Plugin (checkpw.c) */

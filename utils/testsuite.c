@@ -1,7 +1,7 @@
 /* testsuite.c -- Stress the library a little
  * Rob Siemborski
  * Tim Martin
- * $Id: testsuite.c,v 1.13.2.29 2001/07/18 20:54:37 rjs3 Exp $
+ * $Id: testsuite.c,v 1.13.2.30 2001/07/25 15:32:08 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -358,9 +358,9 @@ int good_getopt(void *context __attribute__((unused)),
 {
     if (strcmp(option,"pwcheck_method")==0)
     {
-	*result = "sasldb";
+	*result = "auxprop";
 	if (len)
-	    *len = strlen("sasldb");
+	    *len = strlen("auxprop");
 	return SASL_OK;
     } else if (!strcmp(option, "sasldb_path")) {
 	*result = "./sasldb";

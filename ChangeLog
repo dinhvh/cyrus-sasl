@@ -1,3 +1,6 @@
+2001-07-25  Rob Siemborski <rjs3+@andrew.cmu.edu>
+	* changed "sasldb" verifier to "auxprop"
+
 2001-07-24  Rob Siemborski <rjs3+@andrew.cmu.edu>
 	* Cleaned up some direct calls into the glue code in sasldb.c
 	* Cleaned up java test utilities and gave them a build system
