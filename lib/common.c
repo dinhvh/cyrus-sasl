@@ -1,7 +1,7 @@
 /* common.c - Functions that are common to server and clinet
  * Rob Siemborski
  * Tim Martin
- * $Id: common.c,v 1.64.2.49 2001/07/31 22:34:34 rjs3 Exp $
+ * $Id: common.c,v 1.64.2.50 2001/08/01 14:27:21 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -786,7 +786,7 @@ void sasl_seterror(sasl_conn_t *conn,
 	      return;
 	  
 	  log_cb(log_ctx, SASL_LOG_FAIL,
-		 "No sasl_conn_t passed to sas_seterror");
+		 "No sasl_conn_t passed to sasl_seterror");
       }  
       return;
   } else if(!fmt) return;    
