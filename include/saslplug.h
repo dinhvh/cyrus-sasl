@@ -86,6 +86,8 @@ typedef struct sasl_utils {
     void (*rand)(sasl_rand_t *rpool, char *buf, unsigned len);
     void (*churn)(sasl_rand_t *rpool, const char *data, unsigned len);
 
+    /* FIXME: This is *WRONG*.  If this were true, then saslauthd would
+     * not necessarally be available if PLAIN were to be changed. */
     /* This allows recursive calls to the sasl_checkpass() routine from
      * within a SASL plug-in.  This MUST NOT be used in the PLAIN mechanism
      * as sasl_checkpass is a front-end for the PLAIN mechanism.
