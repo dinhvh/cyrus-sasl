@@ -1022,14 +1022,13 @@ void foreach_mechanism(foreach_t *func, void *rock)
     }
 }
 
-void test_serverstart(int steps)
+void test_serverstart()
 {
     int result;
     sasl_conn_t *saslconn;
     const char *out;
     unsigned outlen;
     tosend_t tosend;
-    int lup;
     struct sockaddr_in addr;
     struct hostent *hp;
     char buf[8192];
@@ -1092,16 +1091,36 @@ void test_serverstart(int steps)
 
     printf("trying to do correctly\n");
     foreach_mechanism((foreach_t *) &sendbadsecond,&tosend);
+}
 
+void test_rand_corrupt(unsigned steps) 
+{
+    unsigned lup;
+    tosend_t tosend;
+    
     for (lup=0;lup<steps;lup++)
     {
 	tosend.type = rand() % CORRUPT_SIZE;
 	tosend.step = lup % MAX_STEPS;
 
-	printf("trying random crap (%s in step %d) (%d of %d)\n",corrupt_types[tosend.type],tosend.step,lup+1,steps);
+	printf("RANDOM TEST: (%s in step %d) (%d of %d)\n",corrupt_types[tosend.type],tosend.step,lup+1,steps);
 	foreach_mechanism((foreach_t *) &sendbadsecond,&tosend);
     }
 }
+
+void test_all_corrupt() 
+{
+    tosend_t tosend;
+    
+    for(tosend.type=0; tosend.type<CORRUPT_SIZE; tosend.type++) {
+	for(tosend.step=0; tosend.step<MAX_STEPS; tosend.step++) {
+	    printf("TEST: %s in step %d:\n", corrupt_types[tosend.type],
+		   tosend.step);
+	    foreach_mechanism((foreach_t *) &sendbadsecond, &tosend);
+	}
+    }
+}
+
 
 void create_ids(void)
 {
@@ -1287,9 +1306,10 @@ void notes(void)
 void usage(void)
 {
     printf("Usage:\n" \
-           " testsuite [-g name] [-s seed] [-r tests]\n" \
+           " testsuite [-g name] [-s seed] [-r tests] -a\n" \
            "    g -- gssapi service name to use (default: host)\n" \
 	   "    r -- # of random tests to do (default: 25)\n" \
+	   "    a -- do all corruption tests (and ignores random ones unless -r specified)\n" \
 	   "    h -- show this screen\n" \
            "    s -- random seed to use\n" \
            );
@@ -1298,9 +1318,10 @@ void usage(void)
 int main(int argc, char **argv)
 {
     char c;
-    unsigned random_tests = 25;
+    int random_tests = -1;
+    int do_all = 0;
     unsigned int seed = time(NULL);
-    while ((c = getopt(argc, argv, "s:g:r:h:")) != EOF)
+    while ((c = getopt(argc, argv, "s:g:r:h:a")) != EOF)
 	switch (c) {
 	case 's':
 	    seed = atoi(optarg);
@@ -1311,6 +1332,10 @@ int main(int argc, char **argv)
 	case 'r':
 	    random_tests = atoi(optarg);
 	    break;
+	case 'a':
+	    random_tests = 0;
+	    do_all = 1;
+	    break;
 	case 'h':
 	    usage();
 	    exit(0);
@@ -1320,6 +1345,8 @@ int main(int argc, char **argv)
 	    fatal("Invalid parameter\n");
 	    break;
     }
+
+    if(random_tests < 0) random_tests = 25;
 
     notes();
 
@@ -1343,9 +1370,19 @@ int main(int argc, char **argv)
     test_listmech();
     printf("Tests of sasl_listmech()... ok\n");
 
-    test_serverstart(random_tests);
-    printf("Random Tests (Tests of serverstart)... ok\n");
+    test_serverstart();
+    printf("Tests of serverstart... ok\n");
 
+    if(do_all) {	
+	test_all_corrupt();
+	printf("All corruption tests... ok\n");
+    }
+    
+    if(random_tests) {
+	test_rand_corrupt(random_tests);
+	printf("Random tests... ok\n");
+    }
+    
     printf("All tests seemed to go ok (i.e. we didn't crash)\n");
 
     exit(0);
