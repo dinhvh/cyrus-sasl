@@ -1,7 +1,7 @@
 /* CRAM-MD5 SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: cram.c,v 1.55.2.18 2001/07/19 22:50:00 rjs3 Exp $
+ * $Id: cram.c,v 1.55.2.19 2001/07/25 20:41:12 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -902,12 +902,6 @@ static int c_continue_step (void *conn_context,
   return SASL_FAIL; /* should never get here */
 }
 
-static const long client_required_prompts[] = {
-  SASL_CB_AUTHNAME,
-  SASL_CB_PASS,
-  SASL_CB_LIST_END
-};
-
 static sasl_client_plug_t client_plugins[] = 
 {
   {
@@ -915,7 +909,7 @@ static sasl_client_plug_t client_plugins[] =
     0,
     SASL_SEC_NOPLAINTEXT | SASL_SEC_NOANONYMOUS,
     0,
-    client_required_prompts,
+    NULL,
     NULL,
     &c_start,
     &c_continue_step,
