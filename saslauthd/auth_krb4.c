@@ -28,11 +28,12 @@
  * END COPYRIGHT */
 
 #ifdef __GNUC__
-#ident "$Id: auth_krb4.c,v 1.2 2001/01/04 21:20:45 leg Exp $"
+#ident "$Id: auth_krb4.c,v 1.2.2.1 2001/07/02 22:37:01 rjs3 Exp $"
 #endif
 
 /* PUBLIC DEPENDENCIES */
 #include <config.h>
+#include <unistd.h>
 #include "mechanisms.h"
 
 #ifdef AUTH_KRB4
