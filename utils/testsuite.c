@@ -108,6 +108,21 @@ typedef enum {
     CORRUPT_SIZE		/* keep this one last */
 } corrupt_type_t;
 
+const char *corrupt_types[] = {
+    "NOTHING",
+    "ONEBYTE_RANDOM",
+    "ONEBYTE_NULL",
+    "ONEBYTE_QUOTES",
+    "ONLY_ONE_BYTE",
+    "ADDSOME",
+    "SHORTEN",
+    "REASONABLE_RANDOM",
+    "REALLYBIG",
+    "NEGATIVE_LENGTH",
+    "CORRUPT_SIZE"
+};
+
+
 typedef void *foreach_t(char *mech, void *rock);
 
 typedef struct tosend_s {
@@ -622,6 +637,7 @@ void set_properties(sasl_conn_t *conn)
 void corrupt(corrupt_type_t type, char *in, int inlen, char **out, unsigned *outlen)
 {
     unsigned lup;
+    
 
     switch (type)
 	{
@@ -653,7 +669,6 @@ void corrupt(corrupt_type_t type, char *in, int inlen, char **out, unsigned *out
 	    *outlen = inlen;
 	    break;
 	case ONLY_ONE_BYTE:
-	    free(in);
 	    *out = (char *) malloc(1);
 	    (*out)[0] = (char) (rand() % 256);
 	    *outlen = 1;
@@ -667,7 +682,6 @@ void corrupt(corrupt_type_t type, char *in, int inlen, char **out, unsigned *out
 	    for (lup=inlen;lup<*outlen;lup++)
 		(*out)[lup] = (char) (rand() %256);
 
-	    free(in);
 	    break;
 
 	case SHORTEN:
@@ -676,7 +690,6 @@ void corrupt(corrupt_type_t type, char *in, int inlen, char **out, unsigned *out
 		*outlen = (rand() % inlen);
 		*out = (char *) malloc(*outlen);
 		memcpy(*out, in, *outlen);
-		free(in);
 	    } else {
 		*outlen = inlen;
 		*out = in;
@@ -687,7 +700,6 @@ void corrupt(corrupt_type_t type, char *in, int inlen, char **out, unsigned *out
 	    *out = (char *) malloc(*outlen);
 	    for (lup=0;lup<*outlen;lup++)
 		(*out)[lup] = (char) (rand() % 256);
-	    free(in);
 	    break;
 	case REALLYBIG:
 	    *outlen = rand() % 50000;
@@ -696,7 +708,6 @@ void corrupt(corrupt_type_t type, char *in, int inlen, char **out, unsigned *out
 	    for (lup=0;lup<*outlen;lup++)
 		(*out)[lup] = (char) (rand() % 256);
 	    
-	    free(in);
 	    break;
 	case NEGATIVE_LENGTH:
 
@@ -778,7 +789,7 @@ void sendbadsecond(char *mech, void *rock)
 			       
     if (result < 0)
     {
-	printf("%s\n",sasl_errstring(result,NULL,NULL));
+	printf("%s - \n",sasl_errstring(result,NULL,NULL));
 	fatal("sasl_client_start() error");
     }
 
@@ -799,7 +810,7 @@ void sendbadsecond(char *mech, void *rock)
 
     if (mayfail)
     {
-	if (result >= 0)
+	if (result >= SASL_OK)
 	    printf("WARNING: We did a corruption but it still worked\n");
 	else {
 	    goto done;
@@ -1073,7 +1084,7 @@ void test_serverstart(int steps)
 	tosend.type = rand() % CORRUPT_SIZE;
 	tosend.step = lup % MAX_STEPS;
 
-	printf("trying random crap (%d of %d)\n",lup,steps);
+	printf("trying random crap (%s in step %d) (%d of %d)\n",corrupt_types[tosend.type],tosend.step,lup,steps);
 	foreach_mechanism((foreach_t *) &sendbadsecond,&tosend);
     }
 }
@@ -1229,8 +1240,9 @@ void notes(void)
 void usage(void)
 {
     printf("Usage:\n" \
-           " testsuite [-g][-s]\n" \
+           " testsuite [-g name] [-s seed] [-r tests]\n" \
            "    g -- gssapi service name to use (default: host)\n" \
+	   "    r -- # of random tests to do (default: 25)\n" \
 	   "    h -- show this screen\n" \
            "    s -- random seed to use\n" \
            );
@@ -1239,14 +1251,18 @@ void usage(void)
 int main(int argc, char **argv)
 {
     char c;
+    unsigned random_tests = 25;
     unsigned int seed = time(NULL);
-    while ((c = getopt(argc, argv, "s:g:h:")) != EOF)
+    while ((c = getopt(argc, argv, "s:g:r:h:")) != EOF)
 	switch (c) {
 	case 's':
 	    seed = atoi(optarg);
 	    break;
 	case 'g':
 	    gssapi_service = optarg;
+	    break;
+	case 'r':
+	    random_tests = atoi(optarg);
 	    break;
 	case 'h':
 	    usage();
@@ -1280,10 +1296,10 @@ int main(int argc, char **argv)
     test_listmech();
     printf("Tests of sasl_listmech()... ok\n");
 
-    test_serverstart(7);
-    printf("Tests of sasl_server_start()... ok\n");
+    test_serverstart(random_tests);
+    printf("Random Tests (Tests of serverstart)... ok\n");
 
-    printf("All tests seemed to go ok\n");
+    printf("All tests seemed to go ok (i.e. we didn't crash)\n");
 
     exit(0);
 }
