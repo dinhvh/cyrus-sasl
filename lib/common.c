@@ -1,7 +1,7 @@
 /* common.c - Functions that are common to server and clinet
  * Rob Siemborski
  * Tim Martin
- * $Id: common.c,v 1.64.2.44 2001/07/23 20:38:07 rjs3 Exp $
+ * $Id: common.c,v 1.64.2.45 2001/07/23 21:23:40 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -1593,14 +1593,14 @@ int _sasl_ipfromstring(const char *addr,
     if(!addr) return SASL_BADPARAM;
 
     /* Parse the address */
-    for (i = 0; addr[i] != '\0' && addr[i] != ';' && addr[i] != ':'; i++) {
+    for (i = 0; addr[i] != '\0' && addr[i] != ';'; i++) {
 	if (i >= NI_MAXHOST)
 	    return SASL_BADPARAM;
 	hbuf[i] = addr[i];
     }
     hbuf[i] = '\0';
 
-    if (addr[i] == ';' || addr[i] == ':')
+    if (addr[i] == ';')
 	i++;
     /* XXX: Do we need this check? */
     for (j = i; addr[j] != '\0'; j++)

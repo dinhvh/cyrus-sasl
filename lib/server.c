@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: server.c,v 1.84.2.50 2001/07/23 20:38:08 rjs3 Exp $
+ * $Id: server.c,v 1.84.2.51 2001/07/23 21:23:40 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -754,6 +754,8 @@ int sasl_server_new(const char *service,
   *pconn=sasl_ALLOC(sizeof(sasl_server_conn_t));
   if (*pconn==NULL) return SASL_NOMEM;
 
+  memset(*pconn, 0, sizeof(sasl_server_conn_t));
+
   (*pconn)->destroy_conn = &server_dispose;
   result = _sasl_conn_init(*pconn, service, flags, SASL_CONN_SERVER,
 			   &server_idle, serverFQDN,
@@ -763,15 +765,6 @@ int sasl_server_new(const char *service,
       goto done_error;
 
   serverconn = (sasl_server_conn_t *)*pconn;
-
-  serverconn->mechlist_buf = NULL;
-  serverconn->mechlist_buf_len = 0;
-
-  serverconn->mech_contexts = NULL;
-
-  serverconn->sent_last = 0;
-
-  serverconn->mech = NULL;
 
   /* make sparams */
   serverconn->sparams=sasl_ALLOC(sizeof(sasl_server_params_t));

@@ -1,7 +1,7 @@
 /* Kerberos4 SASL plugin
  * Rob Siemborski
  * Tim Martin 
- * $Id: kerberos4.c,v 1.65.2.32 2001/07/23 17:41:49 rjs3 Exp $
+ * $Id: kerberos4.c,v 1.65.2.33 2001/07/23 21:23:42 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -850,6 +850,7 @@ int mech_avail(void *glob_context __attribute__((unused)),
 	       void **conn_context __attribute__((unused))) 
 {
 #ifndef KRB4_IGNORE_IP_ADDRESS
+    /* FIXME: this should also ensure that it is an IPv4 address! */
     if(!sparams->iplocalport || !sparams->ipremoteport) {
 	SETERROR(sparams->utils,
 		 "KERBEROS_V4 unavailable due to lack of IP information");

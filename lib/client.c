@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: client.c,v 1.34.4.28 2001/07/23 19:16:34 rjs3 Exp $
+ * $Id: client.c,v 1.34.4.29 2001/07/23 21:23:40 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -219,13 +219,13 @@ static void client_dispose(sasl_conn_t *pconn)
 
   pconn->context = NULL;
 
-  _sasl_free_utils(&(c_conn->cparams->utils));
-
   if (c_conn->serverFQDN)
       sasl_FREE(c_conn->serverFQDN);
 
-  if (c_conn->cparams)
+  if (c_conn->cparams) {
+      _sasl_free_utils(&(c_conn->cparams->utils));
       sasl_FREE(c_conn->cparams);
+  }
 
   _sasl_conn_dispose(pconn);
 }
@@ -274,6 +274,7 @@ int sasl_client_new(const char *service,
 		"Out of memory allocating connection context");
       return SASL_NOMEM;
   }
+  memset(*pconn, 0, sizeof(sasl_client_conn_t));
 
   (*pconn)->destroy_conn = &client_dispose;
 
