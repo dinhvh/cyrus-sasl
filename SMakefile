@@ -32,6 +32,6 @@ esac
 MAKE=gmake
 LNCOMMAND="${SRCDIR}/configure --with-staticsasl --prefix=/usr/local --enable-cmulocal --with-sfio=/usr/local --enable-java ${LNEXTRA}"
 CPPFLAGS=-I/usr/local/include/gssapi
-INSTCOMMAND="${MAKE} DESTDIR=${DESTDIR} install"
+INSTCOMMAND="${MAKE} DESTDIR=${DESTDIR} install; echo 'usr/local /' > ${DESTDIR}/depot.conf"
 
 export CC CFLAGS CPPFLAGS LIBS
