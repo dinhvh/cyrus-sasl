@@ -1,6 +1,6 @@
 /* Generic SASL plugin utility functions
  * Rob Siemborski
- * $Id: plugin_common.c,v 1.1.2.3 2001/06/06 22:11:27 rjs3 Exp $
+ * $Id: plugin_common.c,v 1.1.2.4 2001/06/08 17:04:57 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
@@ -86,7 +86,7 @@ int _plug_ipfromstring(const char *addr, struct sockaddr_in *out)
 	val |= inval;
 	
         for(;*addr && *addr != '.' && *addr != ';'; addr++)
-	    if(!isdigit(*addr)) return SASL_BADPARAM;
+	    if(!isdigit((int)(*addr))) return SASL_BADPARAM;
 
 	/* skip the separator */
 	addr++;
@@ -102,9 +102,9 @@ int _plug_ipfromstring(const char *addr, struct sockaddr_in *out)
     if((port & 0xFFFF) != port) return SASL_BADPARAM;
         
     for(;*addr;addr++)
-	if(!isdigit(*addr)) return SASL_BADPARAM;
+	if(!isdigit((int)(*addr))) return SASL_BADPARAM;
     
-    bzero(out, sizeof(struct sockaddr_in));
+    memset(out, 0, sizeof(struct sockaddr_in));
     out->sin_addr.s_addr = val;
     out->sin_port = port;
 
@@ -137,7 +137,7 @@ int _plug_iovec_to_buf(const sasl_utils_t *utils, const struct iovec *vec,
 
     if(ret != SASL_OK) return SASL_NOMEM;
     
-    bzero(out->data, out->reallen);
+    memset(out->data, 0, out->reallen);
     pos = out->data;
     
     for(i=0; i<numiov; i++) {
