@@ -2,7 +2,7 @@
  * Rob Siemborski
  * Tim Martin
  * Alexey Melnikov 
- * $Id: digestmd5.c,v 1.97.2.25 2001/08/03 20:39:33 rjs3 Exp $
+ * $Id: digestmd5.c,v 1.97.2.26 2001/08/07 19:13:25 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -3363,7 +3363,7 @@ digestmd5_client_mech_step(void *conn_context,
     if (algorithm_count != 1)
     {
 	params->utils->seterror(params->utils->conn, 0,
-			    "Must see 'algoirthm' once. Didn't see at all");
+			    "Must see 'algorithm' once. Didn't see at all");
 	result = SASL_FAIL;
 	goto FreeAllocatedMem;
     }
