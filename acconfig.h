@@ -179,7 +179,7 @@
 @BOTTOM@
 
 /* Create a struct iovec if we need one */
-#if !defined(_WIN32) && !defined(HAVE_SYS_SIO_H)
+#if !defined(_WIN32) && !defined(HAVE_SYS_UIO_H)
 /* (win32 is handled in sasl.h) */
 struct iovec {
     long iov_len;
