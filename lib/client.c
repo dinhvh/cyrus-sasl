@@ -1,7 +1,7 @@
 /* SASL server API implementation
  * Rob Siemborski
  * Tim Martin
- * $Id: client.c,v 1.34.4.21 2001/07/06 21:06:15 rjs3 Exp $
+ * $Id: client.c,v 1.34.4.22 2001/07/09 20:29:54 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -302,8 +302,6 @@ int sasl_client_new(const char *service,
 
   utils->conn= *pconn;
   conn->cparams->utils = utils;
-
-  /* canon_user FIXME this needs to support plugins! */
   conn->cparams->canon_user = &_sasl_canon_user;
   
   if((*pconn)->got_ip_local) {      
