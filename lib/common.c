@@ -1,7 +1,7 @@
 /* common.c - Functions that are common to server and clinet
  * Rob Siemborski
  * Tim Martin
- * $Id: common.c,v 1.64.2.25 2001/06/26 23:05:43 rjs3 Exp $
+ * $Id: common.c,v 1.64.2.26 2001/06/27 20:12:10 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -579,7 +579,8 @@ int sasl_setprop(sasl_conn_t *conn, int propnum, const void *value)
   return result;
 }
 
-int sasl_usererr(int saslerr)
+/* this is apparently no longer a user function */
+static int sasl_usererr(int saslerr)
 {
     /* Hide the difference in a username failure and a password failure */
     if (saslerr == SASL_NOUSER)
