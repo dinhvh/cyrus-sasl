@@ -1,7 +1,7 @@
 /* db_testw32.c--SASL win32 test/dummy interface
  * Rob Siemborski
  * G. Diskin    NOTE THIS IS FOR TEST PURPOSES ONLY FOR WIN32
- * $Id: db_testw32.c,v 1.1.2.1 2001/07/17 21:48:48 rjs3 Exp $
+ * $Id: db_testw32.c,v 1.1.2.2 2001/07/26 22:13:41 rjs3 Exp $
  */
 /* 
  * Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
@@ -165,7 +165,7 @@ sasl_server_getsecret_t *_sasl_db_getsecret = &getsecret;
 sasl_server_putsecret_t *_sasl_db_putsecret = &putsecret;
 
 
-int _sasl_check_db(const sasl_utils_t *utils)
+int _sasl_check_db(const sasl_utils_t *utils, sasl_conn_t *conn)
 {
     return SASL_OK;
 }
