@@ -1,4 +1,4 @@
-.\" -*- nroff -*-
+s.\" -*- nroff -*-
 .\" 
 .\" Copyright (c) 2001 Carnegie Mellon University.  All rights reserved.
 .\"
@@ -85,10 +85,14 @@ is created. It is the initial client response to send to the
 server. It is the job of the
 client to send it over the network to the server.
 Any protocal specific encoding (such as base64
-encoding) necessary needs to be done by the client. On sucess
-.PP
+encoding) necessary needs to be done by the client.
+
+If the protocol lacks client-send-first capability, then sent
+.I clientout
+to NULL.
+
 .I mech
-contains the name of the chosen SASL mechanism.
+contains the name of the chosen SASL mechanism (on success)
 
 .SH "RETURN VALUE"
 

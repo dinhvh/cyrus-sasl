@@ -72,7 +72,9 @@ is the SASL context for this connection
 is the mechanism name that the client requested
 .PP
 .I clientin
-is the client initial response, NULL if empty
+is the client initial response, NULL if the protocol lacks support for
+client-send-first, (or if the other end did not send first),
+
 .PP
 .I clientinlen
 is the length of initial response
