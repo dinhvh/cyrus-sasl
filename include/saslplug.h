@@ -793,7 +793,7 @@ typedef struct sasl_auxprop_plug {
     /* global state for plugin */
     void *glob_context;
 
-    /* free global state for plugin */
+    /* free global state for plugin (OPTIONAL) */
     void (*auxprop_free)(void *glob_context, const sasl_utils_t *utils);
 
     /* fill in fields of an auxiliary property context
@@ -824,7 +824,8 @@ typedef struct sasl_auxprop_plug {
 typedef int sasl_auxprop_init_t(const sasl_utils_t *utils,
 				int max_version,
 				int *out_version,
-				sasl_auxprop_plug_t **plug,
+		/* FIXME: Not const for chris newman */
+				const sasl_auxprop_plug_t **plug,
 				const char *plugname);
 
 /* add an auxiliary property plug-in
