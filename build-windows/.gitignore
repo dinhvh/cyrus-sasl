@@ -1,0 +1,16 @@
+#Windows
+*.sdf
+*.opensdf
+*.suo
+cyrus-sasl/Debug
+cyrus-sasl/Release
+cyrus-sasl/x64/Debug
+cyrus-sasl/x64/Release
+cyrus-sasl/cyrus-sasl/Release
+cyrus-sasl/cyrus-sasl/x64/Release
+cyrus-sasl/cyrus-sasl/Debug
+cyrus-sasl/cyrus-sasl/x64/Debug
+cyrus-sasl/test/Release
+cyrus-sasl/test/x64/Release
+cyrus-sasl/test/Debug
+cyrus-sasl/test/x64/Debug
