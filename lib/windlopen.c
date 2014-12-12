@@ -262,7 +262,7 @@ int _sasl_load_plugins(const add_plugin_list_t *entrypoints,
 /* : Check for overflow */
 	    if (length + prefix_len >= PATH_MAX) continue; /* too big */
 
-	    if (stricmp(finddata.name + (length - strlen(DLL_SUFFIX)), DLL_SUFFIX) != 0) {
+	    if (strcasecmp(finddata.name + (length - strlen(DLL_SUFFIX)), DLL_SUFFIX) != 0) {
 		continue;
 	    }
 

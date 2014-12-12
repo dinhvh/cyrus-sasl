@@ -838,7 +838,10 @@ void _plug_snprintf_os_info (char * osbuf, int osbuf_len)
 
     versioninfo.dwOSVersionInfoSize = sizeof (versioninfo);
     sysname = "Unknown Windows";
-
+#if 1
+	snprintf(osbuf, osbuf_len, "%s", sysname);
+	goto SKIP_OS_INFO;
+#else
     if (GetVersionEx ((OSVERSIONINFO *) &versioninfo) == FALSE) {
 	snprintf(osbuf, osbuf_len, "%s", sysname);
 	goto SKIP_OS_INFO;
@@ -902,7 +905,7 @@ void _plug_snprintf_os_info (char * osbuf, int osbuf_len)
 	     versioninfo.szCSDVersion,
 	     versioninfo.dwBuildNumber
 	     );
-
+#endif
 SKIP_OS_INFO:
     ;
 

@@ -56,7 +56,8 @@
 
 #ifdef WIN32
 # include <process.h>	    /* for getpid */
-  typedef int pid_t;
+#define getpid       _getpid
+typedef int pid_t;
 #else
 # include <unistd.h>
 # include <sys/types.h>

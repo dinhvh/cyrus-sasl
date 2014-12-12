@@ -1279,7 +1279,7 @@ static int otp_setpass(void *glob_context __attribute__((unused)),
     char *user = NULL;
     char *user_only = NULL;
     char *realm = NULL;
-    sasl_secret_t *sec;
+    sasl_secret_t *sec = NULL;
     struct propctx *propctx = NULL;
     const char *store_request[] = { "cmusaslsecretOTP",
 				     NULL };
