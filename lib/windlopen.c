@@ -136,7 +136,7 @@ int _sasl_get_plugin(const char *file,
     newhead = sasl_ALLOC(sizeof(lib_list_t));
     if (!newhead) return SASL_NOMEM;
 
-    if (!(library = LoadLibrary (file))) {
+    if (!(library = LoadLibraryA (file))) {
 	_sasl_log(NULL, SASL_LOG_ERR,
 		  "unable to LoadLibrary %s: %s", file, GetLastError());
 	sasl_FREE(newhead);

@@ -445,6 +445,77 @@ int external_server_plug_init(const sasl_utils_t *utils,
 			      sasl_server_plug_t **pluglist,
 			      int *plugcount);
 
+/*
+* plain plugin (plain.c)
+*/
+int plain_client_plug_init(const sasl_utils_t *utils,
+	int max_version,
+	int *out_version,
+	sasl_client_plug_t **pluglist,
+	int *plugcount);
+int plain_server_plug_init(const sasl_utils_t *utils,
+	int max_version,
+	int *out_version,
+	sasl_server_plug_t **pluglist,
+	int *plugcount);
+
+int anonymous_client_plug_init(const sasl_utils_t *utils,
+	int maxversion,
+	int *out_version,
+	sasl_client_plug_t **pluglist,
+	int *plugcount);
+int anonymous_server_plug_init(const sasl_utils_t *utils,
+	int maxversion,
+	int *out_version,
+	sasl_server_plug_t **pluglist,
+	int *plugcount);
+
+int crammd5_client_plug_init(const sasl_utils_t *utils,
+	int maxversion,
+	int *out_version,
+	sasl_client_plug_t **pluglist,
+	int *plugcount);
+int crammd5_server_plug_init(const sasl_utils_t *utils,
+	int maxversion,
+	int *out_version,
+	sasl_server_plug_t **pluglist,
+	int *plugcount);
+
+int digestmd5_client_plug_init(sasl_utils_t *utils,
+	int maxversion,
+	int *out_version,
+	sasl_client_plug_t **pluglist,
+	int *plugcount);
+int digestmd5_server_plug_init(sasl_utils_t *utils,
+	int maxversion,
+	int *out_version,
+	sasl_server_plug_t **pluglist,
+	int *plugcount);
+
+int login_client_plug_init(sasl_utils_t *utils,
+	int maxversion,
+	int *out_version,
+	sasl_client_plug_t **pluglist,
+	int *plugcount);
+int login_server_plug_init(sasl_utils_t *utils,
+	int maxversion,
+	int *out_version,
+	sasl_server_plug_t **pluglist,
+	int *plugcount);
+
+int scram_client_plug_init(const sasl_utils_t *utils,
+	int maxversion,
+	int *out_version,
+	sasl_client_plug_t **pluglist,
+	int *plugcount);
+int scram_server_plug_init(const sasl_utils_t *utils,
+	int maxversion,
+	int *out_version,
+	sasl_server_plug_t **pluglist,
+	int *plugcount);
+
+
+
 /* Mech Listing Functions */
 int _sasl_build_mechlist(void);
 int _sasl_server_listmech(sasl_conn_t *conn,

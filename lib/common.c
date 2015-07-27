@@ -2462,6 +2462,32 @@ _sasl_get_default_win_path(void *context __attribute__((unused)),
                            char * reg_attr_name,
                            char * default_value)
 {
+	//New method of determining default path, for libetpan and mailcore, simplicity, portability, just look in local execution folder.
+	char *saslPath = sasl_ALLOC(MAX_PATH + 1),
+		*return_value;
+	DWORD r;
+	if (saslPath != 0) {
+		if (GetModuleFileNameA(NULL, saslPath, MAX_PATH))
+		{
+			char *pDiv = strrchr(saslPath, '\\'); //remove file name from path, and \ as well.
+			if (strchr(saslPath, '\\') != pDiv)
+				*(pDiv) = NULL;
+			else
+				*(pDiv + 1) = NULL;
+			return saslPath;
+		}
+	}
+	(void)_sasl_strdup(default_value, &return_value, NULL);
+	return return_value;
+}
+
+static char *
+_sasl_get_default_win_path_old(void *context __attribute__((unused)),
+char * reg_attr_name,
+char * default_value)
+{
+	//This is the old CMU registry method...
+
     /* Open registry entry, and find all registered SASL libraries.
      *
      * Registry location:
