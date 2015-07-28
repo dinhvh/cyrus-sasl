@@ -445,7 +445,6 @@ int external_server_plug_init(const sasl_utils_t *utils,
 			      sasl_server_plug_t **pluglist,
 			      int *plugcount);
 
-
 /* Mech Listing Functions */
 int _sasl_build_mechlist(void);
 int _sasl_server_listmech(sasl_conn_t *conn,
