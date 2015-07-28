@@ -312,14 +312,6 @@ int sasl_client_init(const sasl_callback_t *callbacks)
 			       _sasl_find_getpath_callback(callbacks),
 			       _sasl_find_verifyfile_callback(callbacks));
   
-  //add base 'plugins' to list by default
-  sasl_client_add_plugin("PLAIN", &plain_client_plug_init);
-  sasl_client_add_plugin("ANONYMOUS", &anonymous_client_plug_init);
-  sasl_client_add_plugin("CRAMMD5", &crammd5_client_plug_init);
-  sasl_client_add_plugin("DIGESTMD5", &digestmd5_client_plug_init);
-  sasl_client_add_plugin("LOGIN", &login_client_plug_init);
-  sasl_client_add_plugin("SCRAM", &scram_client_plug_init);
-
   if (ret == SASL_OK) {
       _sasl_client_cleanup_hook = &client_done;
       _sasl_client_idle_hook = &client_idle;
