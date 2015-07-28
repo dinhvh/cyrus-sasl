@@ -181,11 +181,9 @@ int _sasl_load_plugins(const add_plugin_list_t *entrypoints,
     intptr_t fhandle;			/* file handle for _findnext function */
     struct _finddata_t finddata;	/* data returned by _findnext() */
     size_t prefix_len;
-#ifndef PIC
-	add_plugin_t *add_plugin;
-	_sasl_plug_type type;
-	_sasl_plug_rec *p;
-#endif
+    add_plugin_t *add_plugin;
+    _sasl_plug_type type;
+    _sasl_plug_rec *p;
 
     if (! entrypoints
 	|| ! getpath_cb
@@ -196,39 +194,39 @@ int _sasl_load_plugins(const add_plugin_list_t *entrypoints,
 	|| ! verifyfile_cb->proc)
 	return SASL_BADPARAM;
 
-#ifndef PIC
-	/* do all the static plugins first */
 
-	for (cur_ep = entrypoints; cur_ep->entryname; cur_ep++) {
+    /* do all the static plugins first */
 
-		/* What type of plugin are we looking for? */
-		if (!strcmp(cur_ep->entryname, "sasl_server_plug_init")) {
-			type = SERVER;
-			add_plugin = (add_plugin_t *)sasl_server_add_plugin;
-		}
-		else if (!strcmp(cur_ep->entryname, "sasl_client_plug_init")) {
-			type = CLIENT;
-			add_plugin = (add_plugin_t *)sasl_client_add_plugin;
-		}
-		else if (!strcmp(cur_ep->entryname, "sasl_auxprop_plug_init")) {
-			type = AUXPROP;
-			add_plugin = (add_plugin_t *)sasl_auxprop_add_plugin;
-		}
-		else if (!strcmp(cur_ep->entryname, "sasl_canonuser_init")) {
-			type = CANONUSER;
-			add_plugin = (add_plugin_t *)sasl_canonuser_add_plugin;
-		}
-		else {
-			/* What are we looking for then? */
-			return SASL_FAIL;
-		}
-		for (p = _sasl_static_plugins; p->type; p++) {
-			if (type == p->type)
-				result = add_plugin(p->name, p->plug);
-		}
+    for (cur_ep = entrypoints; cur_ep->entryname; cur_ep++) {
+
+	/* What type of plugin are we looking for? */
+	if (!strcmp(cur_ep->entryname, "sasl_server_plug_init")) {
+		type = SERVER;
+		add_plugin = (add_plugin_t *)sasl_server_add_plugin;
 	}
+	else if (!strcmp(cur_ep->entryname, "sasl_client_plug_init")) {
+		type = CLIENT;
+		add_plugin = (add_plugin_t *)sasl_client_add_plugin;
+	}
+	else if (!strcmp(cur_ep->entryname, "sasl_auxprop_plug_init")) {
+		type = AUXPROP;
+		add_plugin = (add_plugin_t *)sasl_auxprop_add_plugin;
+	}
+	else if (!strcmp(cur_ep->entryname, "sasl_canonuser_init")) {
+		type = CANONUSER;
+		add_plugin = (add_plugin_t *)sasl_canonuser_add_plugin;
+	}
+	else {
+		/* What are we looking for then? */
+		return SASL_FAIL;
+	}
+	for (p = _sasl_static_plugins; p->type; p++) {
+		if (type == p->type)
+			result = add_plugin(p->name, p->plug);
+	}
+    }
 
-#else
+
     /* get the path to the plugins */
     result = ((sasl_getpath_t *)(getpath_cb->proc))(getpath_cb->context,
 						    &path);
@@ -346,8 +344,6 @@ int _sasl_load_plugins(const add_plugin_list_t *entrypoints,
 	_findclose (fhandle);
 
     } while ((c!='=') && (c!=0));
-
-#endif /* PIC */
 
     return SASL_OK;
 }
